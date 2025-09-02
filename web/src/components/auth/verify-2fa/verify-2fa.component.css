@@ -1,0 +1,5 @@
+/* Extra spacing for the 2FA verification form */
+:host {
+  display: block;
+  margin-top: 2rem;
+} 

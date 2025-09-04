@@ -1,0 +1,13 @@
+<div class="layout-container">
+    <app-topbar [isSidebarCollapsed]="isSidebarCollapsed"></app-topbar>
+    <app-sidebar 
+      [isCollapsed]="isSidebarCollapsed" 
+      (toggleSidebar)="onSidebarToggle($event)">
+    </app-sidebar>
+        <div class="main-content"
+         [ngClass]="isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'">
+      <div class="content-wrapper">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </div>

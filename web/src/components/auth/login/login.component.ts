@@ -2,7 +2,7 @@ import { Component, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService } from '../../..//services/auth.service';
 import { Subject, takeUntil, finalize } from 'rxjs';
 
 @Component({
@@ -92,7 +92,7 @@ export class LoginComponent implements OnDestroy {
         })
       )
       .subscribe({
-        next: (response) => {
+        next: (response: any) => {
           console.log('LoginComponent: Login response received:', response);
           const force2FASetup = localStorage.getItem('force2FASetup');
           if (force2FASetup === 'true') {
@@ -115,7 +115,7 @@ export class LoginComponent implements OnDestroy {
             this.handleSuccessfulLogin('User logged in successfully!');
           }
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('LoginComponent: Login error:', error);
           this.handleLoginError(error);
         }
@@ -150,6 +150,8 @@ export class LoginComponent implements OnDestroy {
       this.errorMessage = error.error.message;
     } else if (error.status === 401) {
       this.errorMessage = 'Invalid credentials. Please check your email/phone and password.';
+    } else if (error.status === 403) {
+      this.errorMessage = 'Access denied. Please contact support if this persists.';
     } else if (error.status === 429) {
       this.errorMessage = 'Too many login attempts. Please try again later.';
     } else if (error.status === 0) {
@@ -184,7 +186,7 @@ export class LoginComponent implements OnDestroy {
         })
       )
       .subscribe({
-        next: (response) => {
+        next: (response: any) => {
           console.log('LoginComponent: 2FA verification successful:', response);
           
           this.successMessage = '2FA successful! Logging in...';
@@ -205,7 +207,7 @@ export class LoginComponent implements OnDestroy {
             });
           }, 1500);
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('LoginComponent: 2FA verification error:', error);
           
           if (error.error?.message) {
@@ -223,13 +225,13 @@ export class LoginComponent implements OnDestroy {
   fetchQRCode(): void {
     console.log('LoginComponent: Fetching QR code for 2FA setup');
     this.authService.get2FASetup().subscribe({
-      next: (data) => {
+      next: (data: any) => {
         console.log('LoginComponent: QR code fetched successfully');
         this.qrCode = data.qrCode;
         this.manualEntryKey = data.manualEntryKey;
         this.showQRCode = true;
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('LoginComponent: Failed to fetch QR code:', err);
         this.twoFAError = 'Failed to load QR code for 2FA setup.';
       }
@@ -280,4 +282,5 @@ export class LoginComponent implements OnDestroy {
     const control = formGroup.get(fieldName);
     return !!(control && control.errors && control.touched);
   }
+
 }

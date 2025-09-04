@@ -1,0 +1,69 @@
+.topbar-nav {
+  left: 240px; /* Match new sidebar width */
+  right: 0;
+  transition: left 0.3s ease;
+}
+.topbar-nav.collapsed {
+  left: 240px; /* Same as expanded on desktop */
+}
+:host ::ng-deep .p-button {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #6b7280 !important;
+  padding: 0.5rem !important;
+  min-width: 40px !important;
+  height: 40px !important;
+}
+
+:host ::ng-deep .p-button:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+:host ::ng-deep .p-button:focus {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5) !important;
+}
+
+:host ::ng-deep .p-button .p-button-icon {
+  font-size: 1rem !important;
+}
+
+.notification-btn {
+  position: relative;
+}
+
+.topbar-nav img {
+  transition: all 0.2s ease;
+}
+
+.topbar-nav img:hover {
+  transform: scale(1.05);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .topbar-nav {
+    left: 200px; /* When sidebar is expanded on mobile */
+    transition: left 0.3s ease;
+  }
+  
+  .topbar-nav.collapsed {
+    left: 60px; /* When sidebar is collapsed on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-nav {
+    left: 180px; /* Smaller sidebar on small mobile */
+  }
+  
+  .topbar-nav.collapsed {
+    left: 50px; /* Collapsed sidebar on small mobile */
+  }
+  
+  /* Hide user info text on very small screens */
+  .topbar-nav .hidden {
+    display: none !important;
+  }
+}

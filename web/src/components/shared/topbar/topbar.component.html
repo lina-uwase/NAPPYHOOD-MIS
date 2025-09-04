@@ -1,0 +1,40 @@
+<nav class="fixed top-0 bg-white border-b border-gray-200 px-4 py-3 shadow-sm z-50 topbar-nav"
+     [ngClass]="{'collapsed': isSidebarCollapsed}">
+  <div class="flex items-center justify-between">
+    
+    <div class="flex items-center space-x-4">
+      <!-- <h1 class="text-lg font-semibold text-gray-800 hidden sm:block">Dashboard</h1> -->
+    </div>
+
+    <div class="flex items-center space-x-3">
+      
+      <div class="relative">
+        <p-button 
+          icon="pi pi-bell" 
+          [text]="true" 
+          [rounded]="true"
+          severity="secondary"
+          class="notification-btn"
+          [pTooltip]="'Notifications'"
+          tooltipPosition="bottom">
+        </p-button>
+        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+          {{ notificationCount }}
+        </span>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <div class="hidden md:block ">
+          <p class="text-sm font-medium text-gray-900">{{ currentUser.name }}</p>
+          <p class="text-xs text-gray-900">{{ currentUser.role }}</p>
+        </div>
+        <!-- <img 
+          [src]="currentUser.avatar || '/images/default-avatar.png'" 
+          alt="User Avatar" 
+          class="h-8 w-8 rounded-full border border-gray-200 cursor-pointer hover:border-gray-300 transition-colors"
+          (click)="toggleUserMenu()"> -->
+      </div>
+   
+    </div>
+  </div>
+</nav>

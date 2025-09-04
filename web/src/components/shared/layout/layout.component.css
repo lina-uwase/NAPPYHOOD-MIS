@@ -1,0 +1,45 @@
+.layout-container {
+    height: 100vh;
+    background-color: #f3f4f6;
+  }
+.main-content.sidebar-expanded {
+  margin-left: 180px; /* Match new smaller width */
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: 50px; /* Match new collapsed width */
+}
+  .main-content {
+    padding-top: 70px; /* Account for fixed topbar height */
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+  }
+  
+  .main-content.sidebar-expanded {
+    margin-left: 280px; /* Match sidebar width */
+  }
+  
+  .main-content.sidebar-collapsed {
+    margin-left: 70px; /* Match collapsed sidebar width */
+  }
+  
+  .content-wrapper {
+    padding: 1%;
+    height: calc(100vh - 70px);
+    overflow-y: auto;
+  }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .main-content.sidebar-expanded {
+      margin-left: 250px;
+    }
+    
+    .main-content.sidebar-collapsed {
+      margin-left: 60px;
+    }
+    
+    .content-wrapper {
+      padding: 1rem;
+    }
+  }

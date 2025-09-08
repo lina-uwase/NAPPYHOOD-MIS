@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* NAPPYHOOD brand tokens */
+:root {
+  --nh-brand: #5A8621;
+}
+
+@layer base {
+  html, body {
+    height: 100%;
+  }
+}
+
+@layer components {
+  /* Reusable brand-styled button */
+  .btn-brand {
+    @apply bg-[var(--nh-brand)] text-white hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-[var(--nh-brand)] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Brand link */
+  .link-brand {
+    @apply text-[var(--nh-brand)] hover:underline;
+  }
+}

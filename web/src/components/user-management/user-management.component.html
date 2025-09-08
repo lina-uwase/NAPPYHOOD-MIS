@@ -1,0 +1,749 @@
+<div class="container mx-auto min-h-screen">
+  <!-- Header Section -->
+  <div class="mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-blue-400 mb-1">All Users</h1>
+      <p class="text-sm text-gray-600">Manage all users in the system with their roles and permissions</p>
+    </div>
+  </div>
+
+  <!-- Controls Section -->
+  <div class="bg-white p-4">
+ 
+     <!-- Tabs and Actions -->
+     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+      <!-- Tabs -->
+      <div class="flex gap-1 p-1 bg-gray-100 rounded-lg">
+        <button
+          class="px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ease-in-out"
+          [ngClass]="{
+            'bg-blue-400 text-white shadow-md transform scale-105': activeTab === 'all',
+            'text-gray-600 hover:text-primary hover:bg-white': activeTab !== 'all'
+          }"
+          (click)="switchTab('all')"
+        >
+          <i class="pi pi-users mr-1 text-sm"></i>
+          All Users
+        </button>
+        <button
+          class="px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ease-in-out"
+          [ngClass]="{
+            'bg-blue-400 text-white shadow-md transform scale-105': activeTab === 'inactive',
+            'text-gray-600 hover:text-primary hover:bg-white': activeTab !== 'inactive'
+          }"
+          (click)="switchTab('inactive')"
+        >
+          <i class="pi pi-user-minus mr-1 text-sm"></i>
+          Inactive Users
+        </button>
+      </div>
+
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap gap-2 items-center">
+        <p-button 
+          label="Add User" 
+          icon="pi pi-plus" 
+          (onClick)="openNew()" 
+        />
+        <p-button 
+          label="Import" 
+          icon="pi pi-upload" 
+          [outlined]="true"
+          (onClick)="openImportDialog()" 
+        />
+        <p-button 
+          label="Export" 
+          icon="pi pi-download" 
+          severity="secondary"
+          (onClick)="exportCSV()" 
+        />
+      </div>
+    </div>
+
+    <!-- Enhanced Search and Filter Row -->
+    <div class="flex flex-col lg:flex-row items-center justify-between gap-3 mb-4">
+      <!-- Search Input with Clear Button -->
+      <div class="flex items-center w-full lg:w-1/2 relative">
+        <input
+          type="text"
+          pInputText
+          [(ngModel)]="searchValue"
+          (input)="onSearch($event)"
+          class="w-full pl-9 pr-10 py-2 border border-gray-300 rounded-lg text-s focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+          placeholder="Search by name, email, phone, role, or location..."
+        />
+        <button 
+          *ngIf="searchValue"
+          (click)="clearSearch()"
+          class="absolute right-3 text-gray-400 hover:text-gray-600 transition-colors"
+          type="button"
+        >
+          <i class="pi pi-times text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Filter Dropdown -->
+      <div class="flex items-center gap-3">
+        <p-dropdown
+          [(ngModel)]="selectedFilter"
+          [options]="filterOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Filter by role/status"
+          (onChange)="onFilterChange()"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          styleClass="filter-dropdown !min-w-48"
+          panelStyleClass="!text-sm"
+          class="text-sm"
+        >
+          <ng-template pTemplate="selectedItem" let-selectedOption>
+            <div class="flex align-items-center" *ngIf="selectedOption">
+              <i class="pi pi-filter mr-2 text-primary text-sm"></i>
+              <span class="text-sm">{{ selectedOption.label }}</span>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="flex align-items-center">
+              <span class="text-sm">{{ option.label }}</span>
+            </div>
+          </ng-template>
+        </p-dropdown>
+
+        <!-- Clear All Filters Button -->
+        <p-button 
+          *ngIf="hasActiveFilters()"
+          label="Clear Filters"
+          icon="pi pi-filter-slash"
+          severity="secondary"
+          (onClick)="clearFilters()" 
+        />
+      </div>
+    </div>
+
+    <!-- Filter Status Bar -->
+    <div class="flex items-center justify-between mb-4 p-3 bg-surface-50 border border-primary-200 rounded-lg" *ngIf="hasActiveFilters()">
+      <div class="flex items-center gap-2">
+        <i class="pi pi-info-circle text-primary text-sm"></i>
+        <span class="text-s text-primary-700">
+          Showing <strong>{{ getFilteredUsersCount() }}</strong> of <strong>{{ getTotalUsersCount() }}</strong> users
+          <span *ngIf="selectedFilter"> - filtered by <strong>{{ getActiveFilterLabel() }}</strong></span>
+          <span *ngIf="searchValue"> - matching "<strong>{{ searchValue }}</strong>"</span>
+        </span>
+      </div>
+      <button 
+        (click)="clearFilters()"
+        class="text-primary hover:text-primary-800 text-s font-medium transition-colors"
+      >
+        Clear all filters
+      </button>
+    </div>
+  </div>
+
+  <!-- Table Section -->
+  <div class="bg-white  shadow-sm border border-gray-200 overflow-hidden">
+    <p-table
+      #dt
+      [value]="filteredUsers"
+      [rows]="itemsPerPage"
+      [paginator]="true"
+      [tableStyle]="{ 'min-width': '75rem' }"
+      [(selection)]="selectedUsers"
+      [rowHover]="true"
+      dataKey="id"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+      [showCurrentPageReport]="true"
+      [loading]="loading"
+      [totalRecords]="totalRecords"
+      styleClass="users-table"
+      [showFirstLastIcon]="false"
+    >
+      <ng-template pTemplate="header">
+        <tr class="bg-gray-50">
+          <th style="width: 3rem" class="p-3">
+            <p-tableHeaderCheckbox />
+          </th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">No.</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Names</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Role</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Telephone</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Location</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Status</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Actions</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-user let-rowIndex="rowIndex">
+        <tr class="border-b border-gray-100 hover:bg-surface-50 transition-colors duration-150">
+          <td class="p-3"><p-tableCheckbox [value]="user" /></td>
+          <td class="p-3">
+            <span class="inline-flex items-center justify-center w-6 h-6 text-s font-semibold rounded-full">
+              {{ String(rowIndex + 1).padStart(2, '0') }}
+            </span>
+          </td>
+          <td class="p-3">
+            <div class="flex items-center">
+              <div>
+                <div class="text-s font-semibold text-gray-900">{{ user.firstName }} {{ user.lastName }}</div>
+                <div class="text-s text-gray-500">{{ user.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="p-3">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-s font-medium text-gray-800">
+              {{ user.role?.name }}
+            </span>
+          </td>
+          <td class="p-3">
+            <span class="text-s text-gray-600 font-mono">{{ user.telephoneNumber }}</span>
+          </td>
+          <td class="p-3">
+            <div class="text-s text-gray-600">
+              <!-- Enhanced location display using getLocationDisplay utility -->
+              <div class="font-medium">{{ getLocationDisplay(user) }}</div>
+            
+            </div>
+          </td>
+          <td class="p-3">
+            <p-tag
+              [value]="user.status"
+              [severity]="getStatusSeverity(user.status)"
+              styleClass="status-tag !px-2 !py-1 !text-s !font-semibold"
+            />
+          </td>
+          <td class="p-3">
+            <div class="flex gap-1">
+              <p-button 
+                icon="pi pi-pencil" 
+                [text]="false" 
+                [rounded]="true" 
+                size="small" 
+                (click)="editUser(user)" 
+                pTooltip="Edit user"
+                tooltipPosition="top"
+              />
+              <p-button 
+                icon="pi pi-trash" 
+                severity="danger"
+                [text]="false" 
+                [rounded]="true" 
+                size="small" 
+                (click)="deleteUser(user)" 
+                pTooltip="Delete user"
+                tooltipPosition="top"
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="8" class="text-center py-8">
+            <div class="flex flex-col items-center">
+              <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                <i class="pi pi-users text-lg text-gray-400"></i>
+              </div>
+              <h3 class="text-sm font-semibold text-gray-900 mb-1">
+                {{ hasActiveFilters() ? 'No matching users found' : 'No users found' }}
+              </h3>
+              <p class="text-sm text-gray-500 max-w-sm">
+                <span *ngIf="hasActiveFilters()">
+                  No users match your current search criteria. Try adjusting your filters or search terms.
+                </span>
+                <span *ngIf="!hasActiveFilters()">
+                  There are no users in the system yet. Create your first user to get started.
+                </span>
+              </p>
+              <p-button 
+                *ngIf="hasActiveFilters()"
+                label="Clear Filters" 
+                icon="pi pi-filter-slash"
+                (onClick)="clearFilters()" 
+              />
+            </div>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="paginatorleft">
+        <div class="flex items-center gap-2">
+          <span class="text-s text-gray-600 font-medium">Rows per page:</span>
+          <p-dropdown
+            [(ngModel)]="itemsPerPage"
+            [options]="rowsPerPageOptions"
+            (onChange)="onPageSizeChange()"
+            styleClass="items-per-page-dropdown !border-gray-300 !rounded-md"
+            optionLabel="label"
+            optionValue="value"
+            scrollHeight="150px"
+            [appendTo]="'body'"
+            [showClear]="false"
+          />
+        </div>
+      </ng-template>
+    </p-table>
+  </div>
+
+  <!-- Enhanced Bulk Actions -->
+  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 flex items-center justify-between shadow-sm" *ngIf="selectedUsers.length > 0">    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+        <span class="text-black text-s font-semibold">{{ selectedUsers.length }}</span>
+      </div>
+      <span class="text-s font-semibold text-primary-900">
+        {{ selectedUsers.length === 1 ? 'user' : 'users' }} selected
+        <span *ngIf="hasActiveFilters()" class="text-primary-700"> from filtered results</span>
+      </span>
+    </div>
+    <div class="flex gap-2">
+      <p-button
+        label="Delete Selected"
+        icon="pi pi-trash"
+        severity="danger"
+        (onClick)="deleteSelectedUsers()"
+      />
+    </div>
+  </div>
+</div>
+
+<!-- User Dialog -->
+<p-dialog 
+  [(visible)]="userDialog" 
+  [style]="{ width: '45%', maxWidth: '650px', background:'white' }" 
+  header="{{ dialogTitle }}"
+  [modal]="true"
+  styleClass="user-dialog w-full z-50"
+  [closable]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [appendTo]="'body'"
+>
+  <div class="text-s text-gray-600 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+    <i class="pi pi-info-circle mr-2 text-primary"></i>
+    Fill in the details to {{ isEditMode ? 'update the' : 'create a new' }} user account
+  </div>
+
+  <form class="space-y-6">
+    <!-- Personal Information Section -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200"> 
+      <h3 class="text-sm font-semibold text-gray-800 mb-3">Personal Information</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">
+            First Name <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            pInputText 
+            [(ngModel)]="user.firstName" 
+            name="firstName"
+            required 
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            placeholder="Enter first name"
+          />
+          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.firstName">
+            First name is required.
+          </small>
+        </div>
+        
+        <div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">
+            Last Name <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            pInputText 
+            [(ngModel)]="user.lastName" 
+            name="lastName"
+            required 
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            placeholder="Enter last name"
+          />
+          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.lastName">
+            Last name is required.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Information Section -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-800 mb-3">Contact Information</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">
+            Email Address <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="email" 
+            pInputText 
+            [(ngModel)]="user.email" 
+            name="email"
+            required 
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            placeholder="Enter email address"
+          />
+          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.email">
+            Email is required.
+          </small>
+        </div>
+
+        <div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">
+            Phone Number <span class="text-red-500">*</span>
+          </label>
+          <input
+            type="tel"
+            [(ngModel)]="user.telephoneNumber" 
+            pInputText
+            name="telephoneNumber"
+            inputId="phone"
+            required 
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            placeholder="Enter phone number"
+          />
+          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.telephoneNumber">
+            Phone number is required.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Role & Permissions Section -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-800 mb-3">Role & Permissions</h3>
+      <div>
+        <label class="block font-medium text-sm text-gray-700 mb-2">
+          Role <span class="text-red-500">*</span>
+        </label>
+        <p-dropdown
+          [(ngModel)]="user.roleId" 
+          name="roleId"
+          [options]="roles" 
+          optionLabel="label" 
+          optionValue="value"
+          placeholder="Select a role"
+          [loading]="loadingRoles"
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          [virtualScroll]="false"
+          scrollHeight="200px"
+          class="w-full"
+          panelStyleClass="!text-sm"
+          [style]="{'width': '100%'}"
+          [panelStyle]="{'width': '100%'}"
+        >
+          <ng-template pTemplate="selectedItem" let-selectedOption>
+            <div class="flex align-items-center" *ngIf="selectedOption">
+              <span class="text-sm">{{ selectedOption.label }}</span>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="flex align-items-center">
+              <span class="text-sm">{{ option.label }}</span>
+            </div>
+          </ng-template>
+        </p-dropdown>
+        <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.roleId">
+          Role is required.
+        </small>
+      </div>
+    </div>
+
+    <!-- Location Information Section -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <h3 class="text-sm font-semibold text-gray-800 mb-3">Location Information</h3>
+      
+      <div class="space-y-4">
+        <!-- Province + District -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium text-sm text-gray-700 mb-2">
+              Province <span class="text-red-500">*</span>
+            </label>
+            <p-dropdown
+              [(ngModel)]="user.provinceId" 
+              name="provinceId"
+              [options]="provinces"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Province"
+              [loading]="loadingProvinces"
+              [showClear]="true"
+              [filter]="true"
+              filterBy="label"
+              (onChange)="onProvinceChange()"
+              [virtualScroll]="false"
+              scrollHeight="200px"
+              class="w-full"
+              panelStyleClass="!text-sm"
+              [style]="{'width': '100%'}"
+              [panelStyle]="{'width': '100%'}"
+            >
+              <ng-template pTemplate="selectedItem" let-selectedOption>
+                <div class="flex align-items-center" *ngIf="selectedOption">
+                  <span class="text-sm">{{ selectedOption.label }}</span>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="item" let-option>
+                <div class="flex align-items-center">
+                  <span class="text-sm">{{ option.label }}</span>
+                </div>
+              </ng-template>
+            </p-dropdown>
+            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.provinceId">
+              Province is required.
+            </small>
+          </div>
+
+          <div>
+            <label class="block font-medium text-sm text-gray-700 mb-2">
+              District <span class="text-red-500">*</span>
+            </label>
+            <p-dropdown
+              [(ngModel)]="user.districtId"
+              name="districtId"
+              [options]="districts"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select District"
+              [loading]="loadingDistricts"
+              [disabled]="!user.provinceId"
+              [showClear]="true"
+              [filter]="true"
+              filterBy="label"
+              (onChange)="onDistrictChange()"
+              [virtualScroll]="false"
+              scrollHeight="200px"
+              class="w-full"
+              panelStyleClass="!text-sm"
+              [style]="{'width': '100%'}"
+              [panelStyle]="{'width': '100%'}"
+            >
+              <ng-template pTemplate="selectedItem" let-selectedOption>
+                <div class="flex align-items-center" *ngIf="selectedOption">
+                  <span class="text-sm">{{ selectedOption.label }}</span>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="item" let-option>
+                <div class="flex align-items-center">
+                  <span class="text-sm">{{ option.label }}</span>
+                </div>
+              </ng-template>
+            </p-dropdown>
+            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.districtId">
+              District is required.
+            </small>
+          </div>
+        </div>
+
+        <!-- Sector + Cell -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block font-medium text-sm text-gray-700 mb-2">
+              Sector <span class="text-red-500">*</span>
+            </label>
+            <p-dropdown
+              [(ngModel)]="user.sectorId"
+              name="sectorId"
+              [options]="sectors"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Sector"
+              [loading]="loadingSectors"
+              [disabled]="!user.districtId"
+              [showClear]="true"
+              [filter]="true"
+              filterBy="label"
+              (onChange)="onSectorChange()"
+              [virtualScroll]="false"
+              scrollHeight="200px"
+              class="w-full"
+              panelStyleClass="!text-sm"
+              [style]="{'width': '100%'}"
+              [panelStyle]="{'width': '100%'}"
+            >
+              <ng-template pTemplate="selectedItem" let-selectedOption>
+                <div class="flex align-items-center" *ngIf="selectedOption">
+                  <span class="text-sm">{{ selectedOption.label }}</span>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="item" let-option>
+                <div class="flex align-items-center">
+                  <span class="text-sm">{{ option.label }}</span>
+                </div>
+              </ng-template>
+            </p-dropdown>
+            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.sectorId">
+              Sector is required.
+            </small>
+          </div>
+
+          <div>
+            <label class="block font-medium text-sm text-gray-700 mb-2">
+              Cell <span class="text-red-500">*</span>
+            </label>
+            <p-dropdown
+              [(ngModel)]="user.cellId"
+              name="cellId"
+              [options]="cells"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select Cell"
+              [loading]="loadingCells"
+              [disabled]="!user.sectorId"
+              [showClear]="true"
+              [filter]="true"
+              filterBy="label"
+              (onChange)="onCellChange()"
+              [virtualScroll]="false"
+              scrollHeight="200px"
+              class="w-full"
+              panelStyleClass="!text-sm"
+              [style]="{'width': '100%'}"
+              [panelStyle]="{'width': '100%'}"
+            >
+              <ng-template pTemplate="selectedItem" let-selectedOption>
+                <div class="flex align-items-center" *ngIf="selectedOption">
+                  <span class="text-sm">{{ selectedOption.label }}</span>
+                </div>
+              </ng-template>
+              <ng-template pTemplate="item" let-option>
+                <div class="flex align-items-center">
+                  <span class="text-sm">{{ option.label }}</span>
+                </div>
+              </ng-template>
+            </p-dropdown>
+            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.cellId">
+              Cell is required.
+            </small>
+          </div>
+        </div>
+
+        <!-- Village -->
+        <div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">
+            Village <span class="text-red-500">*</span>
+          </label>
+          <p-dropdown
+            [(ngModel)]="user.villageId"
+            name="villageId"
+            [options]="villages"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select Village"
+            [loading]="loadingVillages"
+            [disabled]="!user.cellId"
+            [showClear]="true"
+            [filter]="true"
+            filterBy="label"
+            [virtualScroll]="false"
+            scrollHeight="200px"
+            class="w-full"
+            panelStyleClass="!text-sm"
+            [style]="{'width': '100%'}"
+            [panelStyle]="{'width': '100%'}"
+          >
+            <ng-template pTemplate="selectedItem" let-selectedOption>
+              <div class="flex align-items-center" *ngIf="selectedOption">
+                <span class="text-sm">{{ selectedOption.label }}</span>
+              </div>
+            </ng-template>
+            <ng-template pTemplate="item" let-option>
+              <div class="flex align-items-center">
+                <span class="text-sm">{{ option.label }}</span>
+              </div>
+            </ng-template>
+          </p-dropdown>
+          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.villageId">
+            Village is required.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+      <p-button 
+        label="Cancel" 
+        [outlined]="true"
+        severity="secondary"
+        size="small"
+        (click)="hideDialog()" 
+        class="px-6 py-2"
+      />
+      <p-button 
+        [label]="isEditMode ? 'Update User' : 'Create User'" 
+        icon="pi pi-check"
+        size="small"
+        (click)="saveUser()" 
+        [loading]="saving"
+        [disabled]="!isFormValid() || saving"
+        class="px-6 py-2"
+      />
+    </div>
+  </form>
+</p-dialog>
+
+<!-- Import Dialog -->
+<p-dialog 
+  [(visible)]="showImportDialog" 
+  header="Import Users"
+  [style]="{ width: '400px', background: 'white' }"
+  [modal]="true"
+  styleClass="w-full z-50"
+  [appendTo]="'body'"
+>
+  <ng-template pTemplate="content">
+    <div class="p-4">
+      <div class="mb-4 p-3 bg-surface-50 border border-primary-200 rounded-lg">
+        <div class="flex items-start">
+          <i class="pi pi-info-circle text-primary mr-2 mt-1"></i>
+          <div>
+            <p class="text-s text-primary-700">
+              Upload a CSV or Excel file containing user data. Ensure your file includes the required columns.
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <p-fileUpload 
+        mode="basic" 
+        name="users"
+        accept=".csv,.xlsx"
+        maxFileSize="10000000"
+        (onSelect)="importUsers($event)"
+        chooseLabel="Choose File"
+        class="w-full"
+      ></p-fileUpload>
+      
+      <div class="mt-3 text-s text-gray-500">
+        <strong>Supported formats:</strong> CSV, Excel (.xlsx)<br>
+        <strong>Maximum file size:</strong> 10MB
+      </div>
+    </div>
+  </ng-template>
+  
+  <ng-template pTemplate="footer">
+    <div class="flex justify-end gap-2">
+      <p-button 
+        label="Cancel" 
+        [outlined]="true"
+        (click)="showImportDialog = false"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
+
+<!-- Confirmation Dialog -->
+<p-confirmDialog 
+  [style]="{ width: '350px', background: 'white' }"
+  styleClass="w-full z-50"
+  [appendTo]="'body'"
+></p-confirmDialog>
+
+<!-- Toast Notifications -->
+<p-toast position="top-right"></p-toast>

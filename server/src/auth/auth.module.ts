@@ -7,11 +7,12 @@ import { AuthGuard } from '../common/guards/auth.guard';
 import { PrivilegeGuard } from '../common/guards/privilege.guard';
 import { MobileGuard } from '../common/guards/mobile.guard';
 import { PrismaService } from '../prisma/prisma.service';
-import { EmailService } from '../email/email.service';
+import { EmailModule } from '../email/email.module';
 
 @Global()
 @Module({
   imports: [
+    EmailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -24,7 +25,7 @@ import { EmailService } from '../email/email.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthGuard, PrivilegeGuard, MobileGuard, PrismaService, EmailService],
+  providers: [AuthService, AuthGuard, PrivilegeGuard, MobileGuard, PrismaService],
   exports: [AuthService, AuthGuard, PrivilegeGuard, MobileGuard, JwtModule],
 })
 export class AuthModule {}

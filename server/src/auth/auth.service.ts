@@ -442,13 +442,49 @@ export class AuthService {
       },
     });
 
-    // Send 2FA setup email
-    await this.emailService.send2FASetupEmail(
-      account.user.email,
-      account.user.firstName,
-    );
+    // NAPPYHOOD: No 2FA email; allow login immediately
+    return { message: 'Password set successfully. You can now log in.' };
+  }
 
-    return { message: 'Password set successfully. Please check your email for 2FA setup instructions.' };
+  async createUser(dto: { firstName: string; lastName: string; email: string; roleCode?: string }): Promise<{ message: string }> {
+    const { firstName, lastName, email } = dto;
+
+    // Find or create user and account
+    let user = await this.prisma.user.findUnique({
+      where: { email },
+      include: { account: true },
+    }).catch(() => null as any);
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          firstName,
+          lastName,
+          account: { create: { accountVerified: false, is2FAEnabled: false } },
+        },
+        include: { account: true },
+      });
+    } else if (!user.account) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { account: { create: { accountVerified: false, is2FAEnabled: false } } },
+        include: { account: true },
+      });
+    }
+
+    // Generate verification token and expiry
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.prisma.account.update({
+      where: { userId: user.id },
+      data: { resetToken: token, resetTokenExpiry: expiresAt },
+    });
+
+    await this.emailService.sendUserCreationEmail(email, firstName || 'there', token);
+
+    return { message: 'User created (or already existed). Set-password email sent.' };
   }
 
   async setup2FA(userId: string): Promise<Setup2FAResponseDto> {

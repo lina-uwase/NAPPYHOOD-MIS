@@ -1,0 +1,564 @@
+<div class="container  min-h-screen p-4 ">
+    <!-- Header Section -->
+    <div class="mb-6">
+      <h1 class="text-2xl font-bold text-blue-400 mb-1">My Profile</h1>
+      <p class="text-sm text-gray-600">Manage your personal information and account settings</p>
+    </div>
+  
+    <!-- Loading State -->
+    <div *ngIf="loading" class="flex justify-center items-center h-64">
+      <i class="pi pi-spinner pi-spin text-2xl text-blue-400"></i>
+      <span class="ml-2 text-gray-600">Loading profile...</span>
+    </div>
+  
+    <!-- Profile Content -->
+    <div *ngIf="!loading" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Profile Overview Card -->
+      <div class="lg:col-span-1">
+        <p-card styleClass="h-fit shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+          <ng-template pTemplate="header">
+            <div class="flex flex-col items-center p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <p-avatar 
+                [label]="getInitials()" 
+                size="xlarge" 
+                styleClass="bg-blue-400 text-white text-2xl font-bold mb-4 border-4 border-white shadow-lg"
+              ></p-avatar>
+              <h3 class="text-xl font-semibold text-gray-800 text-center">
+                {{ userProfile.firstName }} {{ userProfile.lastName }}
+              </h3>
+              <p class="text-sm text-gray-600 text-center">{{ userProfile.email }}</p>
+              <p-tag 
+                [value]="userProfile.role.name" 
+                severity="info" 
+                styleClass="mt-2 !px-3 !py-1 !text-sm !font-medium"
+              ></p-tag>
+            </div>
+          </ng-template>
+  
+          <div class="space-y-4 p-6">
+            <!-- Account Status -->
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-700">Account Status</span>
+              <p-tag 
+                [value]="userProfile.accountVerified ? 'Verified' : 'Unverified'" 
+                [severity]="getAccountStatusSeverity()"
+                styleClass="!text-xs !px-2 !py-1"
+              ></p-tag>
+            </div>
+  
+            <!-- 2FA Status -->
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-700">Two-Factor Auth</span>
+              <p-tag 
+                [value]="userProfile.is2FAEnabled ? 'Enabled' : 'Disabled'" 
+                [severity]="get2FAStatusSeverity()"
+                styleClass="!text-xs !px-2 !py-1"
+              ></p-tag>
+            </div>
+  
+            
+  
+            <!-- Location -->
+            <div>
+              <span class="text-sm font-medium text-gray-700 block mb-1">Location</span>
+              <p class="text-sm text-gray-600">{{ getLocationDisplay() }}</p>
+            </div>
+  
+            <!-- Member Since -->
+            
+          </div>
+  
+          <ng-template pTemplate="footer">
+            <div class="flex justify-center p-4 bg-gray-50 border-t border-gray-200">
+              <p-button 
+                *ngIf="!editMode"
+                label="Edit Profile" 
+                icon="pi pi-pencil"
+                (onClick)="enableEditMode()"
+                styleClass="w-full !rounded-md !font-medium"
+              ></p-button>
+            </div>
+          </ng-template>
+        </p-card>
+      </div>
+  
+      <!-- Profile Edit Form -->
+      <div class="lg:col-span-2">
+        <p-card styleClass="shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+          <ng-template pTemplate="header">
+            <div class="flex items-center justify-between p-4 border-b border-gray-200">
+              <div>
+                <h2 class="text-lg font-semibold text-gray-800">
+                  {{ editMode ? 'Edit Profile Information' : 'Profile Information' }}
+                </h2>
+                <p class="text-sm text-gray-600">
+                  {{ editMode ? 'Update your personal details below' : 'View your current profile information' }}
+                </p>
+              </div>
+              <div *ngIf="!editMode" class="flex gap-2">
+                <p-button 
+                  icon="pi pi-pencil" 
+                  severity="secondary"
+                  [outlined]="true"
+                  [rounded]="true"
+                  size="small"
+                  (click)="enableEditMode()"
+                  pTooltip="Edit Profile"
+                  tooltipPosition="top"
+                  styleClass="!w-10 !h-10"
+                ></p-button>
+              </div>
+            </div>
+          </ng-template>
+  
+          <form class="space-y-6 p-6">
+            <!-- Personal Information Section -->
+            <div>
+    
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">
+                    First Name <span class="text-red-500" *ngIf="editMode">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    pInputText 
+                    [(ngModel)]="userProfile.firstName" 
+                    name="firstName"
+                    [required]="editMode"
+                    [readonly]="!editMode"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                    [class.bg-gray-50]="!editMode"
+                    [class.text-gray-600]="!editMode"
+                    [class.border-red-500]="submitted && !userProfile.firstName && editMode"
+                    placeholder="Enter first name"
+                  />
+                  <small class="text-red-500 text-xs mt-1 block" *ngIf="submitted && !userProfile.firstName && editMode">
+                    First name is required.
+                  </small>
+                </div>
+                
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">
+                    Last Name <span class="text-red-500" *ngIf="editMode">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    pInputText 
+                    [(ngModel)]="userProfile.lastName" 
+                    name="lastName"
+                    [required]="editMode"
+                    [readonly]="!editMode"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                    [class.bg-gray-50]="!editMode"
+                    [class.text-gray-600]="!editMode"
+                    [class.border-red-500]="submitted && !userProfile.lastName && editMode"
+                    placeholder="Enter last name"
+                  />
+                  <small class="text-red-500 text-xs mt-1 block" *ngIf="submitted && !userProfile.lastName && editMode">
+                    Last name is required.
+                  </small>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Contact Information Section -->
+            <div>
+      
+              <div class="space-y-4">
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">
+                    Email Address
+                  </label>
+                  <input 
+                    type="email" 
+                    pInputText 
+                    [(ngModel)]="userProfile.email" 
+                    name="email"
+                    readonly
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm bg-gray-50 text-gray-600 cursor-not-allowed"
+                    placeholder="Email address (read-only)"
+                  />
+                  <small class="text-gray-500 text-xs mt-1 block">
+                    Email address cannot be changed for security reasons.
+                  </small>
+                </div>
+  
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">
+                    Phone Number <span class="text-red-500" *ngIf="editMode">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    [(ngModel)]="userProfile.telephoneNumber" 
+                    pInputText
+                    name="telephoneNumber"
+                    [required]="editMode"
+                    [readonly]="!editMode"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200"
+                    [class.bg-gray-50]="!editMode"
+                    [class.text-gray-600]="!editMode"
+                    [class.border-red-500]="submitted && !userProfile.telephoneNumber && editMode"
+                    placeholder="Enter phone number"
+                  />
+                  <small class="text-red-500 text-xs mt-1 block" *ngIf="submitted && !userProfile.telephoneNumber && editMode">
+                    Phone number is required.
+                  </small>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Location Information Section -->
+            <div *ngIf="editMode">
+            
+              <div class="space-y-4">
+                <!-- Province + District -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block font-medium text-sm text-gray-700 mb-2">Province</label>
+                    <p-dropdown
+                      [(ngModel)]="userProfile.provinceId" 
+                      name="provinceId"
+                      [options]="provinces"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select Province"
+                      [loading]="loadingProvinces"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="label"
+                      (onChange)="onProvinceChange()"
+                      styleClass="w-full !border-gray-300 !rounded-md"
+                      panelStyleClass="!text-sm !border-gray-300 !rounded-md !shadow-lg"
+                    ></p-dropdown>
+                  </div>
+  
+                  <div>
+                    <label class="block font-medium text-sm text-gray-700 mb-2">District</label>
+                    <p-dropdown
+                      [(ngModel)]="userProfile.districtId"
+                      name="districtId"
+                      [options]="districts"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select District"
+                      [loading]="loadingDistricts"
+                      [disabled]="!userProfile.provinceId"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="label"
+                      (onChange)="onDistrictChange()"
+                      styleClass="w-full !border-gray-300 !rounded-md"
+                      panelStyleClass="!text-sm !border-gray-300 !rounded-md !shadow-lg"
+                    ></p-dropdown>
+                  </div>
+                </div>
+  
+                <!-- Sector + Cell -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block font-medium text-sm text-gray-700 mb-2">Sector</label>
+                    <p-dropdown
+                      [(ngModel)]="userProfile.sectorId"
+                      name="sectorId"
+                      [options]="sectors"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select Sector"
+                      [loading]="loadingSectors"
+                      [disabled]="!userProfile.districtId"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="label"
+                      (onChange)="onSectorChange()"
+                      styleClass="w-full !border-gray-300 !rounded-md"
+                      panelStyleClass="!text-sm !border-gray-300 !rounded-md !shadow-lg"
+                    ></p-dropdown>
+                  </div>
+  
+                  <div>
+                    <label class="block font-medium text-sm text-gray-700 mb-2">Cell</label>
+                    <p-dropdown
+                      [(ngModel)]="userProfile.cellId"
+                      name="cellId"
+                      [options]="cells"
+                      optionLabel="label"
+                      optionValue="value"
+                      placeholder="Select Cell"
+                      [loading]="loadingCells"
+                      [disabled]="!userProfile.sectorId"
+                      [showClear]="true"
+                      [filter]="true"
+                      filterBy="label"
+                      (onChange)="onCellChange()"
+                      styleClass="w-full !border-gray-300 !rounded-md"
+                      panelStyleClass="!text-sm !border-gray-300 !rounded-md !shadow-lg"
+                    ></p-dropdown>
+                  </div>
+                </div>
+  
+                <!-- Village -->
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">Village</label>
+                  <p-dropdown
+                    [(ngModel)]="userProfile.villageId"
+                    name="villageId"
+                    [options]="villages"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Select Village"
+                    [loading]="loadingVillages"
+                    [disabled]="!userProfile.cellId"
+                    [showClear]="true"
+                    [filter]="true"
+                    filterBy="label"
+                    styleClass="w-full !border-gray-300 !rounded-md"
+                    panelStyleClass="!text-sm !border-gray-300 !rounded-md !shadow-lg"
+                  ></p-dropdown>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Role Information Section (Read-only) -->
+            <div *ngIf="!editMode">
+          
+              
+              <div class="space-y-4">
+                <div>
+                  <label class="block font-medium text-sm text-gray-700 mb-2">Role</label>
+                  <p-tag 
+                    [value]="userProfile.role.name" 
+                    severity="info"
+                    styleClass="!px-3 !py-2 !text-sm !font-medium"
+                  ></p-tag>
+                </div>
+                
+                <div *ngIf="userProfile.role.privileges && userProfile.role.privileges.length > 0">
+                  <label class="block font-medium text-sm text-gray-700 mb-2">Privileges</label>
+                  <div class="flex flex-wrap gap-2">
+                    <p-tag 
+                      *ngFor="let privilege of userProfile.role.privileges" 
+                      [value]="privilege" 
+                      severity="secondary"
+                      styleClass="!text-xs !px-2 !py-1 !font-medium"
+                    ></p-tag>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Security Information Section (Read-only) -->
+            <div *ngIf="!editMode">
+          
+              
+              <div class="space-y-4">
+                
+  
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div>
+                    <p class="text-sm font-medium text-gray-700">Two-Factor Authentication</p>
+                    <p class="text-xs text-gray-500">Additional security for your account</p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <p-tag 
+                      [value]="userProfile.is2FAEnabled ? 'Enabled' : 'Disabled'" 
+                      [severity]="get2FAStatusSeverity()"
+                      styleClass="!text-xs !px-2 !py-1"
+                    ></p-tag>
+                    <p-button 
+                      [label]="userProfile.is2FAEnabled ? 'Disable' : 'Enable'"
+                      [icon]="userProfile.is2FAEnabled ? 'pi pi-times' : 'pi pi-check'"
+                      [severity]="userProfile.is2FAEnabled ? 'danger' : 'success'"
+                      [outlined]="true"
+                      [loading]="processing2FA"
+                      [disabled]="processing2FA"
+                      size="small"
+                      styleClass="!text-xs !px-2 !py-1"
+                      (onClick)="toggle2FA()"
+                    ></p-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+  
+            <!-- Action Buttons for Edit Mode -->
+            <div *ngIf="editMode" class="flex justify-end gap-3 pt-6 border-t border-gray-200">
+              <p-button 
+                label="Cancel" 
+                [outlined]="true"
+                severity="secondary"
+                icon="pi pi-times"
+                (click)="cancelEdit()" 
+                [disabled]="saving"
+                styleClass="!px-6 !py-2 !rounded-md !font-medium"
+              ></p-button>
+              <p-button 
+                label="Save Changes" 
+                icon="pi pi-save"
+                (click)="saveProfile()" 
+                [loading]="saving"
+                [disabled]="!isFormValid() || saving"
+                styleClass="!px-6 !py-2 !rounded-md !font-medium"
+              ></p-button>
+            </div>
+          </form>
+        </p-card>
+      </div>
+    </div>
+  
+  
+  </div>
+  <!-- Single 2FA Dialog (for both enabling and disabling 2FA) -->
+<p-dialog 
+[(visible)]="show2FADialog" 
+[header]="twoFAAction === 'enable' ? 'Enable Two-Factor Authentication' : 'Disable Two-Factor Authentication'"
+[style]="{ width: '500px', background: 'white' }"
+[modal]="true"
+styleClass="w-full z-50 !rounded-lg !border !border-gray-200 !shadow-xl"
+[closable]="!processing2FA"
+[appendTo]="'body'"
+>
+<div class="p-6">
+  <!-- Enable 2FA Instructions -->
+  <div *ngIf="twoFAAction === 'enable'" class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+    <div class="flex items-start">
+      <i class="pi pi-shield text-green-600 mr-3 mt-1 text-lg"></i>
+      <div>
+        <p class="text-sm text-green-800 font-semibold mb-2">Enable Two-Factor Authentication</p>
+        <p class="text-sm text-green-700">
+          Enter the 6-digit verification code from your authenticator app to enable 2FA. 
+          Make sure you have already set up your authenticator app with this account.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disable 2FA Warning -->
+  <div *ngIf="twoFAAction === 'disable'" class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+    <div class="flex items-start">
+      <i class="pi pi-exclamation-triangle text-amber-600 mr-3 mt-1 text-lg"></i>
+      <div>
+        <p class="text-sm text-amber-800 font-semibold mb-2">Security Warning</p>
+        <p class="text-sm text-amber-700">
+          Disabling two-factor authentication will make your account less secure. 
+          You will only need your password to sign in.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time Sensitive Code Info -->
+  <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+    <div class="flex items-start">
+      <i class="pi pi-clock text-blue-600 mr-3 mt-1 text-lg"></i>
+      <div>
+        <p class="text-sm text-blue-800 font-semibold mb-2">Time Sensitive Code</p>
+        <p class="text-sm text-blue-700">
+          TOTP codes change every 30 seconds. Please open your authenticator app and enter the <strong>current</strong> 6-digit code below.
+        </p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- TOTP Code Input -->
+  <div class="bg-white border-2 border-gray-200 rounded-lg p-6">
+    <label class="block font-semibold text-base text-gray-800 mb-4 text-center">
+      <i class="pi pi-mobile mr-2 text-blue-500"></i>
+      Enter TOTP Code
+    </label>
+    
+    <div class="text-center mb-4">
+      <input 
+        type="text" 
+        pInputText 
+        [(ngModel)]="totpCode" 
+        name="totpCode"
+        maxlength="6"
+        [disabled]="processing2FA"
+        class="w-48 h-16 border-2 border-gray-300 rounded-lg px-4 py-2 text-center font-mono text-2xl tracking-[0.5em] focus:ring-4 focus:ring-blue-400 focus:border-blue-400 transition-all duration-200 bg-gray-50"
+        placeholder="000000"
+        (input)="onTotpInput($event)"
+        (keypress)="$event.charCode >= 48 && $event.charCode <= 57 || $event.preventDefault()"
+        autocomplete="off"
+        inputmode="numeric"
+        pattern="[0-9]{6}"
+        autofocus
+      />
+    </div>
+    
+    <div class="text-center mb-4">
+      <div class="flex justify-center items-center gap-2">
+        <small class="text-gray-600 text-sm">
+          <i class="pi pi-info-circle mr-1"></i>
+          Enter the 6-digit code from your authenticator app
+        </small>
+        <small class="text-sm font-mono px-2 py-1 bg-gray-100 rounded" 
+               [class.text-green-600]="isTotpCodeValid()" 
+               [class.text-gray-500]="!isTotpCodeValid()">
+          {{ (totpCode || '').length }}/6
+        </small>
+      </div>
+    </div>
+    
+    <!-- Real-time validation feedback -->
+    <div class="text-center">
+      <div *ngIf="totpCode && totpCode.length > 0 && totpCode.length < 6" class="mb-2">
+        <small class="text-orange-600 text-sm">
+          <i class="pi pi-exclamation-triangle mr-1"></i>
+          Please enter all 6 digits ({{ totpCode.length }}/6 entered)
+        </small>
+      </div>
+      
+      <div *ngIf="totpCode && totpCode.length === 6 && isTotpCodeValid()" class="mb-2">
+        <small class="text-green-600 text-sm font-medium">
+          <i class="pi pi-check-circle mr-1"></i>
+          Code format is valid - Ready to {{ twoFAAction === 'enable' ? 'enable' : 'disable' }} 2FA
+        </small>
+      </div>
+
+      <div *ngIf="totpCode && totpCode.length === 6 && !isTotpCodeValid()" class="mb-2">
+        <small class="text-red-600 text-sm">
+          <i class="pi pi-times-circle mr-1"></i>
+          Code must contain only numbers
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ng-template pTemplate="footer">
+  <div class="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
+    <div class="flex gap-3">
+      <p-button 
+        label="Cancel" 
+        [outlined]="true"
+        severity="secondary"
+        icon="pi pi-times"
+        (click)="cancel2FADialog()" 
+        [disabled]="processing2FA"
+        styleClass="!px-6 !py-2 !rounded-md !font-medium"
+      ></p-button>
+      <p-button 
+        [label]="twoFAAction === 'enable' ? 'Enable 2FA' : 'Disable 2FA'"
+        icon="pi pi-shield"
+        [severity]="twoFAAction === 'enable' ? 'success' : 'danger'"
+        (click)="confirm2FAAction()" 
+        [loading]="processing2FA"
+        [disabled]="!isTotpCodeValid() || processing2FA"
+        styleClass="!px-6 !py-2 !rounded-md !font-medium"
+      ></p-button>
+    </div>
+  </div>
+</ng-template>
+</p-dialog>
+
+
+<!-- Keep your existing confirmation dialog and toast notifications -->
+<p-confirmDialog 
+  [style]="{ width: '350px', background: 'white' }"
+  styleClass="w-full z-50 !rounded-lg !border !border-gray-200 !shadow-xl"
+  [appendTo]="'body'"
+></p-confirmDialog>
+
+<p-toast position="top-right" styleClass="!rounded-lg"></p-toast>

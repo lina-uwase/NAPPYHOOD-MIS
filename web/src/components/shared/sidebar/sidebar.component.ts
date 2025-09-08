@@ -30,9 +30,9 @@ export class SidebarComponent implements OnInit {
   currentNavItems: NavigationItem[] = [
     { label: 'Dashboard', icon: 'pi pi-th-large', routerLink: '/app/dashboard' },
     { label: 'Users', icon: 'pi pi-users', routerLink: '/app/all-users' },
-    { label: 'Facilities', icon: 'pi pi-building', routerLink: '/facilities' },
+    { label: 'Services', icon: 'pi pi-briefcase', routerLink: '/app/services' },
     { label: 'Roles & Permissions', icon: 'pi pi-shield', routerLink: '/app/roles' },
-    { label: 'System Logs', icon: 'pi pi-cog', routerLink: '/system-logs' },
+    { label: 'Customers', icon: 'pi pi-users', routerLink: '/app/customers' },
     { label: 'Reports', icon: 'pi pi-chart-bar', routerLink: '/app/reports' },
     { label: 'Settings', icon: 'pi pi-sliders-h', routerLink: '/settings' }
   ];

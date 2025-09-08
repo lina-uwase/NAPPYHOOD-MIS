@@ -1,11 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-</head>
-<body>
-  Dashboard works!
-</body>
-</html>
+<div class="space-y-6">
+  <!-- Filters -->
+  <div class="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-3 sm:space-y-0">
+      <div class="flex items-center space-x-2">
+        <label class="text-sm font-medium text-gray-700">Period</label>
+        <p-dropdown [options]="periodOptions"
+                    [(ngModel)]="period"
+                    (onChange)="onPeriodChange()"
+                    styleClass="w-48">
+        </p-dropdown>
+      </div>
+      <p-button label="Refresh" icon="pi pi-refresh" (click)="onPeriodChange()" size="small"></p-button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Total Customers</div>
+      <div class="text-3xl font-bold text-gray-900 mt-1">{{ totalCustomers | number }}</div>
+      <div class="text-xs text-gray-500 mt-2">in selected period</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Total Appointments</div>
+      <div class="text-3xl font-bold text-gray-900 mt-1">{{ totalAppointments | number }}</div>
+      <div class="text-xs text-gray-500 mt-2">completed</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Returning Customers</div>
+      <div class="text-3xl font-bold text-green-700 mt-1">{{ returningRate }}%</div>
+      <div class="text-xs text-gray-500 mt-2">repeat visits</div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="text-sm text-gray-500">Total Revenue</div>
+      <div class="text-3xl font-bold text-gray-900 mt-1">${{ totalRevenue | number:'1.0-0' }}</div>
+      <div class="text-xs text-gray-500 mt-2">estimated</div>
+    </div>
+  </div>
+
+  <!-- Charts Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-gray-800">{{ visitsChart.title }}</h3>
+      </div>
+      <div class="h-72">
+        <p-chart [type]="visitsChart.chartType" [data]="visitsChart.data" [options]="getChartOptions()"></p-chart>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-gray-800">{{ revenueChart.title }}</h3>
+      </div>
+      <div class="h-72">
+        <p-chart [type]="revenueChart.chartType" [data]="revenueChart.data" [options]="getChartOptions()"></p-chart>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-gray-800">{{ servicesPieChart.title }}</h3>
+      </div>
+      <div class="h-72">
+        <p-chart [type]="servicesPieChart.chartType" [data]="servicesPieChart.data" [options]="getChartOptions()"></p-chart>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold text-gray-800">{{ topServicesChart.title }}</h3>
+      </div>
+      <div class="h-72">
+        <p-chart [type]="topServicesChart.chartType" [data]="topServicesChart.data" [options]="getChartOptions()"></p-chart>
+      </div>
+    </div>
+  </div>
+</div>

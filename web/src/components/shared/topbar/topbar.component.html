@@ -25,8 +25,8 @@
 
       <div class="flex items-center space-x-2">
         <div class="hidden md:block ">
-          <p class="text-sm font-medium text-gray-900">{{ currentUser.name }}</p>
-          <p class="text-xs text-gray-900">{{ currentUser.role }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ currentUser?.name || 'Guest' }}</p>
+          <p class="text-xs text-gray-900">{{ currentUser?.role || 'User' }}</p>
         </div>
         <!-- <img 
           [src]="currentUser.avatar || '/images/default-avatar.png'" 

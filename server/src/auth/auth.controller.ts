@@ -74,6 +74,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request password reset' })
   @ApiResponse({ status: 200, description: 'Password reset email sent' })
+  @ApiResponse({ status: 400, description: 'Invalid email payload' })
   async requestPasswordReset(@Body() requestPasswordResetDto: RequestPasswordResetDto) {
     return this.authService.requestPasswordReset(requestPasswordResetDto);
   }
@@ -83,6 +84,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Reset password with token' })
   @ApiResponse({ status: 200, description: 'Password reset successful' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  @ApiResponse({ status: 500, description: 'Server error' })
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(resetPasswordDto);
   }
@@ -92,6 +94,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Set initial password for new user' })
   @ApiResponse({ status: 200, description: 'Password set successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  @ApiResponse({ status: 500, description: 'Server error' })
   async setInitialPassword(@Body() setInitialPasswordDto: SetInitialPasswordDto) {
     return this.authService.setInitialPassword(setInitialPasswordDto);
   }

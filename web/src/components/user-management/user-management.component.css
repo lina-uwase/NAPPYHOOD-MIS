@@ -1,0 +1,65 @@
+/* Add User dialog visual polish for clarity */
+.user-dialog .p-dialog-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.user-dialog .p-dialog-title {
+  font-weight: 700;
+  color: #334155; /* slate-700 */
+}
+
+.user-dialog .p-dialog-content {
+  padding: 1rem 1.25rem 1.25rem 1.25rem;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.user-dialog h3 {
+  margin: 0 0 0.75rem 0;
+}
+
+.user-dialog label {
+  color: #374151; /* gray-700 */
+  font-weight: 600;
+}
+
+.user-dialog .p-inputtext,
+.user-dialog .p-dropdown .p-inputtext,
+.user-dialog .p-dropdown,
+.user-dialog .p-inputnumber-input {
+  height: 40px;
+  font-size: 14px;
+}
+
+.user-dialog .p-dropdown {
+  width: 100%;
+}
+
+.user-dialog .p-button {
+  border-radius: 6px;
+}
+
+.user-dialog .p-button:disabled {
+  opacity: 0.7;
+}
+
+/* Light card polish for sections */
+.user-dialog .section-card,
+.user-dialog .bg-gray-50 {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  background: #f9fafb; /* gray-50 */
+}
+
+/* Success banner tone */
+.user-dialog .helper-banner {
+  background: #eef6e7;
+  border: 1px solid #c9dfb3;
+  color: #3f6212; /* primary-ish text */
+}
+
+/* Header action buttons spacing */
+.users-table .p-paginator {
+  border-top: 1px solid #e5e7eb;
+}
+

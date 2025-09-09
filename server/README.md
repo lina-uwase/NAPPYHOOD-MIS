@@ -1,3 +1,14 @@
+Environment variables (copy to `.env`):
+
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASS=
+SMTP_FROM="NAPPYHOOD <no-reply@nappyhood.rw>"
+FRONTEND_URL=http://localhost:4200
+NODE_ENV=development
+EMAIL_FORCE_SEND=false
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>

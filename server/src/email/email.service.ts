@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { HttpService } from "@nestjs/axios";
-import { firstValueFrom } from "rxjs";
 import { TemplateService } from "./template.service";
+import nodemailer, { Transporter } from 'nodemailer';
 
 interface EmailApiRequest {
   sender_name: string;
@@ -16,12 +15,29 @@ interface EmailApiRequest {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter | null = null;
 
   constructor(
-    private readonly httpService: HttpService,
     private readonly configService: ConfigService,
     private readonly templateService: TemplateService
   ) { }
+
+  private getSmtpConfig() {
+    const host = this.configService.getOrThrow<string>('SMTP_HOST');
+    const port = Number(this.configService.getOrThrow<string>('SMTP_PORT'));
+    const user = this.configService.getOrThrow<string>('SMTP_USER');
+    const pass = this.configService.getOrThrow<string>('SMTP_PASS');
+    const from = this.configService.getOrThrow<string>('SMTP_FROM');
+    const secure = port === 465; // true for 465, false for other ports
+    return { host, port, secure, auth: { user, pass }, from };
+  }
+
+  private getTransporter(): Transporter {
+    if (this.transporter) return this.transporter;
+    const { host, port, secure, auth } = this.getSmtpConfig();
+    this.transporter = nodemailer.createTransport({ host, port, secure, auth });
+    return this.transporter;
+  }
 
   private async sendEmail(
     to: string,
@@ -32,20 +48,26 @@ export class EmailService {
   ): Promise<void> {
     try {
       const body = await this.templateService.renderTemplate(templateName, templateContext);
-
-      const requestData: EmailApiRequest = {
-        sender_name: this.configService.getOrThrow<string>('EMAIL_SENDER_NAME'),
-        sender_email: this.configService.getOrThrow<string>('EMAIL_SENDER'),
-        receiver_name: receiverName,
-        receiver_email: to,
-        subject: subject,
-        message: body,
+      const { from } = this.getSmtpConfig();
+      const mailOptions = {
+        from,
+        to,
+        subject,
+        html: body,
       };
 
-      await firstValueFrom(
-        this.httpService.post(this.configService.getOrThrow<string>('EMAIL_API_URL'), requestData),
-      );
+      const forceSend = this.configService.get<string>('EMAIL_FORCE_SEND') === 'true';
+      const isProd = this.configService.get<string>('NODE_ENV') === 'production';
+      if (!isProd && !forceSend) {
+        this.logger.log(
+          `DEV EMAIL (Nodemailer) → To: ${to}\nSubject: ${subject}\nBody: ${body.substring(0, 500)}...`,
+          'EmailService',
+        );
+        return;
+      }
 
+      const transporter = this.getTransporter();
+      await transporter.sendMail(mailOptions);
       this.logger.log(`Email sent to ${to}`, 'EmailService');
     } catch (error) {
       this.logger.error(`Failed to send email to ${to}:`, error);
@@ -85,21 +107,5 @@ export class EmailService {
     );
   }
 
-  // 2FA is not used in NAPPYHOOD
-
-  async sendAccountVerificationEmail(email: string, firstName: string, verificationToken: string): Promise<void> {
-    const verificationUrl = `${this.configService.getOrThrow<string>('FRONTEND_URL')}/auth/verify-account?token=${verificationToken}`;
-
-    await this.sendEmail(
-      email,
-      firstName,
-      'Verify your account',
-      'account-verification',
-      {
-        firstName,
-        verificationUrl,
-        verificationToken,
-      }
-    );
-  }
+  // 2FA and legacy verification emails removed for NAPPYHOOD
 }

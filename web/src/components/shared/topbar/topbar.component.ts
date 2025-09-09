@@ -19,7 +19,7 @@ import { AuthService } from '../../../services/auth.service';
 export class TopbarComponent implements OnInit {
   @Input() isSidebarCollapsed = false;
 
-  currentUser!: {
+  currentUser?: {
     name: string;
     role: string;
     avatar?: string;
@@ -31,17 +31,13 @@ export class TopbarComponent implements OnInit {
 
   ngOnInit(): void {
     const user = this.authService.currentUserValue;
-
-if (!user) {
-  this.authService.logout();
-  return;
-}
-
-this.currentUser = {
-  name: `${user.firstName} ${user.lastName}`,
-  role: user.role.name,
-  avatar: '/assets/default-avatar.png'
-};
+    if (user) {
+      this.currentUser = {
+        name: `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Guest',
+        role: user.role?.name ?? 'User',
+        avatar: '/assets/default-avatar.png'
+      };
+    }
 
     this.loadNotifications();
   }

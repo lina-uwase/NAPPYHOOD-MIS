@@ -2,7 +2,7 @@
   <!-- Header Section -->
   <div class="mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-blue-400 mb-1">All Users</h1>
+      <h1 class="text-2xl font-bold mb-1" style="color:#5A8621">All Users</h1>
       <p class="text-sm text-gray-600">Manage all users in the system with their roles and permissions</p>
     </div>
   </div>
@@ -17,9 +17,10 @@
         <button
           class="px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ease-in-out"
           [ngClass]="{
-            'bg-blue-400 text-white shadow-md transform scale-105': activeTab === 'all',
+            'text-white shadow-md transform scale-105': activeTab === 'all',
             'text-gray-600 hover:text-primary hover:bg-white': activeTab !== 'all'
           }"
+          [ngStyle]="activeTab === 'all' ? {'background-color':'#5A8621'} : {}"
           (click)="switchTab('all')"
         >
           <i class="pi pi-users mr-1 text-sm"></i>
@@ -28,9 +29,10 @@
         <button
           class="px-4 py-2 text-sm font-semibold rounded-md transition-all duration-200 ease-in-out"
           [ngClass]="{
-            'bg-blue-400 text-white shadow-md transform scale-105': activeTab === 'inactive',
+            'text-white shadow-md transform scale-105': activeTab === 'inactive',
             'text-gray-600 hover:text-primary hover:bg-white': activeTab !== 'inactive'
           }"
+          [ngStyle]="activeTab === 'inactive' ? {'background-color':'#5A8621'} : {}"
           (click)="switchTab('inactive')"
         >
           <i class="pi pi-user-minus mr-1 text-sm"></i>
@@ -41,11 +43,14 @@
 
       <!-- Action Buttons -->
       <div class="flex flex-wrap gap-2 items-center">
-        <p-button 
-          label="Add User" 
-          icon="pi pi-plus" 
-          (onClick)="openNew()" 
-        />
+        <button
+          type="button"
+          (click)="openNew()"
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-[#5A8621] hover:bg-[#4b6f1b] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#5A8621] shadow"
+        >
+          <i class="pi pi-plus text-sm"></i>
+          <span class="text-sm font-semibold">Add User</span>
+        </button>
         <p-button 
           label="Import" 
           icon="pi pi-upload" 
@@ -170,7 +175,7 @@
           <th class="p-3 text-left text-s font-semibold text-gray-700">Role</th>
           <th class="p-3 text-left text-s font-semibold text-gray-700">Telephone</th>
           <th class="p-3 text-left text-s font-semibold text-gray-700">Location</th>
-          <th class="p-3 text-left text-s font-semibold text-gray-700">Status</th>
+          <th class="p-3 text-left text-s font-semibold text-gray-700">Activity</th>
           <th class="p-3 text-left text-s font-semibold text-gray-700">Actions</th>
         </tr>
       </ng-template>
@@ -207,11 +212,7 @@
             </div>
           </td>
           <td class="p-3">
-            <p-tag
-              [value]="user.status"
-              [severity]="getStatusSeverity(user.status)"
-              styleClass="status-tag !px-2 !py-1 !text-s !font-semibold"
-            />
+            <button type="button" class="text-xs font-medium" style="color:#5A8621">{{ user.status || 'Active' }}</button>
           </td>
           <td class="p-3">
             <div class="flex gap-1">
@@ -288,7 +289,7 @@
   </div>
 
   <!-- Enhanced Bulk Actions -->
-  <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 flex items-center justify-between shadow-sm" *ngIf="selectedUsers.length > 0">    <div class="flex items-center gap-2">
+  <div class="rounded-lg p-3 mt-4 flex items-center justify-between shadow-sm" *ngIf="selectedUsers.length > 0" style="background-color:#eef6e7;border:1px solid #c9dfb3">    <div class="flex items-center gap-2">
       <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
         <span class="text-black text-s font-semibold">{{ selectedUsers.length }}</span>
       </div>
@@ -311,7 +312,7 @@
 <!-- User Dialog -->
 <p-dialog 
   [(visible)]="userDialog" 
-  [style]="{ width: '45%', maxWidth: '650px', background:'white' }" 
+  [style]="{ width: '600px', maxWidth: '90vw', background:'white' }" 
   header="{{ dialogTitle }}"
   [modal]="true"
   styleClass="user-dialog w-full z-50"
@@ -320,8 +321,8 @@
   [resizable]="false"
   [appendTo]="'body'"
 >
-  <div class="text-s text-gray-600 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-    <i class="pi pi-info-circle mr-2 text-primary"></i>
+  <div class="text-s mb-4 p-3 rounded-lg bg-[#eef6e7] border border-[#c9dfb3] text-[#3f6212]">
+    <i class="pi pi-info-circle mr-2" style="color:#5A8621"></i>
     Fill in the details to {{ isEditMode ? 'update the' : 'create a new' }} user account
   </div>
 
@@ -340,7 +341,7 @@
             [(ngModel)]="user.firstName" 
             name="firstName"
             required 
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] transition-all duration-200"
             placeholder="Enter first name"
           />
           <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.firstName">
@@ -358,7 +359,7 @@
             [(ngModel)]="user.lastName" 
             name="lastName"
             required 
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] transition-all duration-200"
             placeholder="Enter last name"
           />
           <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.lastName">
@@ -382,7 +383,7 @@
             [(ngModel)]="user.email" 
             name="email"
             required 
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] transition-all duration-200"
             placeholder="Enter email address"
           />
           <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.email">
@@ -392,7 +393,7 @@
 
         <div>
           <label class="block font-medium text-sm text-gray-700 mb-2">
-            Phone Number <span class="text-red-500">*</span>
+            Phone Number
           </label>
           <input
             type="tel"
@@ -401,8 +402,8 @@
             name="telephoneNumber"
             inputId="phone"
             required 
-            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
-            placeholder="Enter phone number"
+            class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] transition-all duration-200"
+            placeholder="07xxxxxxxx or +2507xxxxxxxx"
           />
           <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.telephoneNumber">
             Phone number is required.
@@ -437,7 +438,7 @@
           [panelStyle]="{'width': '100%'}"
         >
           <ng-template pTemplate="selectedItem" let-selectedOption>
-            <div class="flex align-items-center" *ngIf="selectedOption">
+            <div class="flex items-center" *ngIf="selectedOption">
               <span class="text-sm">{{ selectedOption.label }}</span>
             </div>
           </ng-template>
@@ -453,214 +454,17 @@
       </div>
     </div>
 
-    <!-- Location Information Section -->
+    <!-- Location (Country & District only) -->
     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-      <h3 class="text-sm font-semibold text-gray-800 mb-3">Location Information</h3>
-      
-      <div class="space-y-4">
-        <!-- Province + District -->
+      <h3 class="text-sm font-semibold text-gray-800 mb-3">Location</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block font-medium text-sm text-gray-700 mb-2">
-              Province <span class="text-red-500">*</span>
-            </label>
-            <p-dropdown
-              [(ngModel)]="user.provinceId" 
-              name="provinceId"
-              [options]="provinces"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Province"
-              [loading]="loadingProvinces"
-              [showClear]="true"
-              [filter]="true"
-              filterBy="label"
-              (onChange)="onProvinceChange()"
-              [virtualScroll]="false"
-              scrollHeight="200px"
-              class="w-full"
-              panelStyleClass="!text-sm"
-              [style]="{'width': '100%'}"
-              [panelStyle]="{'width': '100%'}"
-            >
-              <ng-template pTemplate="selectedItem" let-selectedOption>
-                <div class="flex align-items-center" *ngIf="selectedOption">
-                  <span class="text-sm">{{ selectedOption.label }}</span>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="item" let-option>
-                <div class="flex align-items-center">
-                  <span class="text-sm">{{ option.label }}</span>
-                </div>
-              </ng-template>
-            </p-dropdown>
-            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.provinceId">
-              Province is required.
-            </small>
-          </div>
-
-          <div>
-            <label class="block font-medium text-sm text-gray-700 mb-2">
-              District <span class="text-red-500">*</span>
-            </label>
-            <p-dropdown
-              [(ngModel)]="user.districtId"
-              name="districtId"
-              [options]="districts"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select District"
-              [loading]="loadingDistricts"
-              [disabled]="!user.provinceId"
-              [showClear]="true"
-              [filter]="true"
-              filterBy="label"
-              (onChange)="onDistrictChange()"
-              [virtualScroll]="false"
-              scrollHeight="200px"
-              class="w-full"
-              panelStyleClass="!text-sm"
-              [style]="{'width': '100%'}"
-              [panelStyle]="{'width': '100%'}"
-            >
-              <ng-template pTemplate="selectedItem" let-selectedOption>
-                <div class="flex align-items-center" *ngIf="selectedOption">
-                  <span class="text-sm">{{ selectedOption.label }}</span>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="item" let-option>
-                <div class="flex align-items-center">
-                  <span class="text-sm">{{ option.label }}</span>
-                </div>
-              </ng-template>
-            </p-dropdown>
-            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.districtId">
-              District is required.
-            </small>
-          </div>
+          <label class="block font-medium text-sm text-gray-700 mb-2">Country</label>
+          <input type="text" pInputText [(ngModel)]="user.country" name="country" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]" placeholder="Rwanda" />
         </div>
-
-        <!-- Sector + Cell -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label class="block font-medium text-sm text-gray-700 mb-2">
-              Sector <span class="text-red-500">*</span>
-            </label>
-            <p-dropdown
-              [(ngModel)]="user.sectorId"
-              name="sectorId"
-              [options]="sectors"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Sector"
-              [loading]="loadingSectors"
-              [disabled]="!user.districtId"
-              [showClear]="true"
-              [filter]="true"
-              filterBy="label"
-              (onChange)="onSectorChange()"
-              [virtualScroll]="false"
-              scrollHeight="200px"
-              class="w-full"
-              panelStyleClass="!text-sm"
-              [style]="{'width': '100%'}"
-              [panelStyle]="{'width': '100%'}"
-            >
-              <ng-template pTemplate="selectedItem" let-selectedOption>
-                <div class="flex align-items-center" *ngIf="selectedOption">
-                  <span class="text-sm">{{ selectedOption.label }}</span>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="item" let-option>
-                <div class="flex align-items-center">
-                  <span class="text-sm">{{ option.label }}</span>
-                </div>
-              </ng-template>
-            </p-dropdown>
-            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.sectorId">
-              Sector is required.
-            </small>
-          </div>
-
-          <div>
-            <label class="block font-medium text-sm text-gray-700 mb-2">
-              Cell <span class="text-red-500">*</span>
-            </label>
-            <p-dropdown
-              [(ngModel)]="user.cellId"
-              name="cellId"
-              [options]="cells"
-              optionLabel="label"
-              optionValue="value"
-              placeholder="Select Cell"
-              [loading]="loadingCells"
-              [disabled]="!user.sectorId"
-              [showClear]="true"
-              [filter]="true"
-              filterBy="label"
-              (onChange)="onCellChange()"
-              [virtualScroll]="false"
-              scrollHeight="200px"
-              class="w-full"
-              panelStyleClass="!text-sm"
-              [style]="{'width': '100%'}"
-              [panelStyle]="{'width': '100%'}"
-            >
-              <ng-template pTemplate="selectedItem" let-selectedOption>
-                <div class="flex align-items-center" *ngIf="selectedOption">
-                  <span class="text-sm">{{ selectedOption.label }}</span>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="item" let-option>
-                <div class="flex align-items-center">
-                  <span class="text-sm">{{ option.label }}</span>
-                </div>
-              </ng-template>
-            </p-dropdown>
-            <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.cellId">
-              Cell is required.
-            </small>
-          </div>
-        </div>
-
-        <!-- Village -->
         <div>
-          <label class="block font-medium text-sm text-gray-700 mb-2">
-            Village <span class="text-red-500">*</span>
-          </label>
-          <p-dropdown
-            [(ngModel)]="user.villageId"
-            name="villageId"
-            [options]="villages"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select Village"
-            [loading]="loadingVillages"
-            [disabled]="!user.cellId"
-            [showClear]="true"
-            [filter]="true"
-            filterBy="label"
-            [virtualScroll]="false"
-            scrollHeight="200px"
-            class="w-full"
-            panelStyleClass="!text-sm"
-            [style]="{'width': '100%'}"
-            [panelStyle]="{'width': '100%'}"
-          >
-            <ng-template pTemplate="selectedItem" let-selectedOption>
-              <div class="flex align-items-center" *ngIf="selectedOption">
-                <span class="text-sm">{{ selectedOption.label }}</span>
-              </div>
-            </ng-template>
-            <ng-template pTemplate="item" let-option>
-              <div class="flex align-items-center">
-                <span class="text-sm">{{ option.label }}</span>
-              </div>
-            </ng-template>
-          </p-dropdown>
-          <small class="text-red-500 text-s mt-1 block" *ngIf="submitted && !user.villageId">
-            Village is required.
-          </small>
+          <label class="block font-medium text-sm text-gray-700 mb-2">District <span class="text-red-500">*</span></label>
+          <input type="text" pInputText [(ngModel)]="user.district" name="district" class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]" placeholder="Gasabo" />
         </div>
       </div>
     </div>
@@ -683,6 +487,7 @@
         [loading]="saving"
         [disabled]="!isFormValid() || saving"
         class="px-6 py-2"
+        styleClass="!bg-[#5A8621] !border-[#5A8621] !text-white"
       />
     </div>
   </form>

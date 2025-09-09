@@ -57,6 +57,10 @@ const API_BASE = environment.API_BASE_URL;
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
+  private get isBrowser(): boolean { return typeof window !== 'undefined' && typeof localStorage !== 'undefined'; }
+  private getItem(key: string): string | null { return this.isBrowser ? localStorage.getItem(key) : null; }
+  private setItem(key: string, value: string): void { if (this.isBrowser) localStorage.setItem(key, value); }
+  private removeItem(key: string): void { if (this.isBrowser) localStorage.removeItem(key); }
 
   login(payload: LoginPayload): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(`${API_BASE}/auth/login`, payload).pipe(
@@ -87,8 +91,8 @@ export class AuthService {
     if (!rt) return of(false);
     return this.http.post<{ accessToken: string; refreshToken: string }>(`${API_BASE}/auth/refresh`, { refreshToken: rt }).pipe(
       tap((res) => {
-        localStorage.setItem('accessToken', res.accessToken);
-        localStorage.setItem('refreshToken', res.refreshToken);
+        this.setItem('accessToken', res.accessToken);
+        this.setItem('refreshToken', res.refreshToken);
       }),
       map(() => true)
     );
@@ -109,11 +113,11 @@ export class AuthService {
   }
 
   storeRecoveryCodes(codes: string[]): void {
-    localStorage.setItem('recoveryCodes', JSON.stringify(codes));
+    this.setItem('recoveryCodes', JSON.stringify(codes));
   }
 
   updateCurrentUser(user: any): void {
-    localStorage.setItem('user', JSON.stringify(user));
+    this.setItem('user', JSON.stringify(user));
   }
 
   isAuthenticated(): boolean {
@@ -121,15 +125,15 @@ export class AuthService {
   }
 
   getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return this.getItem('accessToken');
   }
 
   getRefreshToken(): string | null {
-    return localStorage.getItem('refreshToken');
+    return this.getItem('refreshToken');
   }
 
   get currentUserValue(): any {
-    const raw = localStorage.getItem('user');
+    const raw = this.getItem('user');
     return raw ? JSON.parse(raw) : null;
   }
 
@@ -150,14 +154,14 @@ export class AuthService {
   }
 
   private storeTokens(res: LoginResponse): void {
-    if (res?.accessToken) localStorage.setItem('accessToken', res.accessToken);
-    if (res?.refreshToken) localStorage.setItem('refreshToken', res.refreshToken);
-    if (res?.user) localStorage.setItem('user', JSON.stringify(res.user));
+    if (res?.accessToken) this.setItem('accessToken', res.accessToken);
+    if (res?.refreshToken) this.setItem('refreshToken', res.refreshToken);
+    if (res?.user) this.setItem('user', JSON.stringify(res.user));
   }
 
   private clearTokens(): void {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    this.removeItem('accessToken');
+    this.removeItem('refreshToken');
+    this.removeItem('user');
   }
 }

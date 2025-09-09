@@ -1,0 +1,319 @@
+<div class="p-4">
+  <div class="flex justify-between items-center mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-blue-400 mb-1">Roles And Permissions</h1>
+      <p class="text-sm text-gray-500">List of all roles and their assigned privileges</p>
+    </div>
+    <p-button 
+      label="Add Role" 
+      icon="pi pi-plus"
+      size="small"
+      (click)="showAddRoleDialog = true"
+    />
+  </div>
+
+  <!-- Loading Spinner -->
+  <!-- <p-progressSpinner *ngIf="isLoading" styleClass="block mx-auto !stroke-blue-500" strokeWidth="4"></p-progressSpinner> -->
+
+  <!-- Roles List -->
+  <div *ngFor="let role of roles" class="bg-white shadow-lg rounded-lg p-6 mb-6 border border-gray-200 hover:shadow-xl transition-shadow duration-200">
+    <div class="flex justify-between items-start">
+      <div>
+        <h3 class="text-lg font-semibold text-gray-800">{{ role.name }}</h3>
+        <p class="text-sm text-gray-600 mt-1">System role for specific permissions</p>
+      </div>
+      <span class="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+        System Role
+      </span>
+    </div>
+
+    <div class="mt-6 text-sm text-gray-600">
+      <div class="mb-4 flex items-center">
+        <strong class="text-gray-800">Users Assigned:</strong> 
+        <span class="ml-2 px-2 py-1 bg-blue-50 text-blue-500 rounded-md text-xs font-medium">
+          {{ role.userCount }}
+        </span>
+      </div>
+      <div class="mb-4">
+        <div class="flex items-center gap-3 mb-2">
+          <strong class="text-gray-800">Key Permissions:</strong>
+          <div class="flex flex-wrap gap-2">
+            <span
+              *ngFor="let priv of role.privileges"
+              class="px-3 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-500 border border-blue-200 hover:bg-blue-100 transition-colors duration-150"
+            >
+              {{ priv.replace('_', ' ').toLowerCase() | titlecase }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-6 pt-4 border-t border-gray-100">
+      <p-button 
+        label="View Details" 
+        icon="pi pi-eye"
+        size="small"
+        [outlined]="true"
+        styleClass="!bg-transparent !text-blue-500 !border-blue-500 !hover:bg-blue-500 !hover:text-white !px-4 !py-2 !text-xs !font-semibold !shadow-md !transition-all !duration-200"
+        (click)="selectedRole = role; showDetailsDialog = true"
+      />
+    </div>
+  </div>
+
+  <!-- Add Role Dialog -->
+  <p-dialog 
+    header="Add New Role" 
+    [(visible)]="showAddRoleDialog" 
+    [modal]="true" 
+    [closable]="true" 
+    [style]="{ width: '500px' }" 
+    [contentStyle]="{ overflow: 'visible' }"
+  >
+    <div class="flex flex-col gap-6 p-2">
+      <div>
+        <label for="roleName" class="block text-sm font-medium text-gray-700 mb-2">
+          Role Name <span class="text-red-500">*</span>
+        </label>
+        <input 
+          id="roleName" 
+          type="text" 
+          pInputText 
+          placeholder="e.g. Data Collector" 
+          [(ngModel)]="newRole.name" 
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" 
+        />
+      </div>
+
+      <div>
+        <label for="roleCode" class="block text-sm font-medium text-gray-700 mb-2">
+          Role Code <span class="text-red-500">*</span>
+        </label>
+        <input 
+          id="roleCode" 
+          type="text" 
+          pInputText 
+          placeholder="e.g. DATA_COLLECTOR" 
+          [(ngModel)]="newRole.code" 
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" 
+        />
+      </div>
+
+      <div>
+        <label for="privileges" class="block text-sm font-medium text-gray-700 mb-2">
+          Privileges <span class="text-red-500">*</span>
+        </label>
+        <p-multiselect 
+          id="privileges"
+          [options]="allPrivileges" 
+          [(ngModel)]="newRole.privileges" 
+          placeholder="Select Privileges" 
+          optionLabel="label" 
+          display="chip" 
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          class="w-full"
+          [style]="{'width': '100%'}"
+          [panelStyle]="{'width': '100%'}"
+          panelStyleClass="!text-sm"
+        >
+          <ng-template pTemplate="selectedItems" let-selectedOptions>
+            <div class="flex flex-wrap gap-1" *ngIf="selectedOptions && selectedOptions.length > 0">
+              <span 
+                *ngFor="let option of selectedOptions" 
+                class="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-medium border border-blue-200"
+              >
+                {{ option.label }}
+              </span>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="flex align-items-center">
+              <span class="text-sm">{{ option.label }}</span>
+            </div>
+          </ng-template>
+        </p-multiselect>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <p-button 
+          label="Save Role" 
+          icon="pi pi-check"  
+          severity="secondary"
+          size="small"
+          styleClass="!bg-blue-500 !hover:bg-blue-700 !text-white !border-blue-500 !px-4 !py-2 !text-xs !font-semibold !shadow-md !transition-all !duration-200" 
+          (click)="addRole()"
+        />
+      </div>
+    </div>
+  </p-dialog>
+
+  <!-- Edit Role Dialog -->
+  <p-dialog 
+    header="Edit Role" 
+    [(visible)]="showEditRoleDialog" 
+    [modal]="true" 
+    [closable]="true" 
+    [style]="{ width: '500px' }" 
+    [contentStyle]="{ overflow: 'visible' }"
+  >
+    <div class="flex flex-col gap-6 p-2">
+      <div>
+        <label for="editRoleName" class="block text-sm font-medium text-gray-700 mb-2">
+          Role Name <span class="text-red-500">*</span>
+        </label>
+        <input 
+          id="editRoleName" 
+          type="text" 
+          pInputText 
+          placeholder="e.g. Data Collector" 
+          [(ngModel)]="newRole.name" 
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" 
+        />
+      </div>
+
+      <div>
+        <label for="editRoleCode" class="block text-sm font-medium text-gray-700 mb-2">
+          Role Code <span class="text-red-500">*</span>
+        </label>
+        <input 
+          id="editRoleCode" 
+          type="text" 
+          pInputText 
+          placeholder="e.g. DATA_COLLECTOR" 
+          [(ngModel)]="newRole.code" 
+          class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" 
+        />
+      </div>
+
+      <div>
+        <label for="editPrivileges" class="block text-sm font-medium text-gray-700 mb-2">
+          Privileges <span class="text-red-500">*</span>
+        </label>
+        <p-multiselect 
+          id="editPrivileges"
+          [options]="allPrivileges" 
+          [(ngModel)]="newRole.privileges" 
+          placeholder="Select Privileges" 
+          optionLabel="label" 
+          display="chip" 
+          [showClear]="true"
+          [filter]="true"
+          filterBy="label"
+          class="w-full"
+          [style]="{'width': '100%'}"
+          [panelStyle]="{'width': '100%'}"
+          panelStyleClass="!text-sm"
+        >
+          <ng-template pTemplate="selectedItems" let-selectedOptions>
+            <div class="flex flex-wrap gap-1" *ngIf="selectedOptions && selectedOptions.length > 0">
+              <span 
+                *ngFor="let option of selectedOptions" 
+                class="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs font-medium border border-blue-200"
+              >
+                {{ option.label }}
+              </span>
+            </div>
+          </ng-template>
+          <ng-template pTemplate="item" let-option>
+            <div class="flex align-items-center">
+              <span class="text-sm">{{ option.label }}</span>
+            </div>
+          </ng-template>
+        </p-multiselect>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <p-button 
+          label="Update Role" 
+          icon="pi pi-check"
+          size="small"
+          styleClass="!bg-blue-500 !hover:bg-blue-700 !text-white !border-blue-500 !px-4 !py-2 !text-xs !font-semibold !shadow-md !transition-all !duration-200" 
+          (click)="updateRole()"
+        />
+      </div>
+    </div>
+  </p-dialog>
+
+ <!-- View Role Details Dialog - CORRECTED -->
+<p-dialog 
+header="Role Details" 
+[(visible)]="showDetailsDialog" 
+[modal]="true" 
+[closable]="true" 
+[style]="{ width: '550px' }"
+>
+<!-- Main Content -->
+<ng-container *ngIf="selectedRole">
+  <div class="space-y-4 p-2">
+    <!-- Role Info -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Role Name</label>
+          <p class="text-sm text-gray-900 font-semibold">{{ selectedRole.name }}</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Role Code</label>
+          <p class="text-sm text-gray-900 font-mono bg-gray-100 px-2 py-1 rounded">{{ selectedRole.code }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+      <label class="block text-sm font-medium text-blue-800 mb-2">Users Assigned</label>
+      <div class="flex items-center">
+        <span class="text-2xl font-bold text-blue-600">{{ selectedRole.userCount }}</span>
+        <span class="ml-2 text-sm text-blue-600">active users</span>
+      </div>
+    </div>
+
+    <!-- Privileges -->
+    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+      <label class="block text-sm font-medium text-gray-700 mb-3">Assigned Privileges</label>
+      <div class="flex flex-wrap gap-2">
+        <span 
+          *ngFor="let priv of selectedRole.privileges"
+          class="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 border border-blue-200"
+        >
+          {{ priv.replace('_', ' ').toLowerCase() | titlecase }}
+        </span>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<ng-template pTemplate="footer">
+  <div class="flex justify-between w-full pt-4 border-t border-gray-200">
+    <div class="flex gap-2">
+      <p-button 
+        label="Edit Role"
+        icon="pi pi-pencil"
+        size="small" 
+        [outlined]="true"
+        styleClass="!bg-transparent !text-blue-500 !border-blue-500 !hover:bg-blue-500 !hover:text-white !px-4 !py-2 !text-xs !font-semibold !shadow-md !transition-all !duration-200" 
+        (click)="selectedRole && editRole(selectedRole)"
+      ></p-button>
+
+      <p-button 
+        label="Delete Role"
+        icon="pi pi-trash"
+        size="small"
+        [outlined]="true"
+        styleClass="!bg-transparent !text-red-500 !border-red-500 !hover:bg-red-500 !hover:text-white !px-4 !py-2 !text-xs !font-semibold !shadow-md !transition-all !duration-200"
+        (click)="selectedRole && deleteRole(selectedRole)"
+      ></p-button>
+    </div>
+  </div>
+</ng-template>
+</p-dialog>
+
+  <!-- Toast Messages -->
+  <p-toast></p-toast>
+
+  <!-- Confirmation Dialog -->
+  <p-confirmDialog></p-confirmDialog>
+
+</div>

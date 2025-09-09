@@ -35,6 +35,8 @@ interface User {
   };
   status: 'Active' | 'Inactive' | 'Pending';
   locations?: LocationResponse[];
+  country?: string;
+  district?: string;
   provinceId?: string;
   districtId?: string;
   sectorId?: string;
@@ -222,6 +224,13 @@ interface RolesApiResponse {
   totalPages: number;
 }
 
+// Fallback roles to ensure the UI always works even if API has no data yet
+const DEFAULT_ROLES: RolesApiResponse['roles'] = [
+  { id: 'r-manager', name: 'Manager', code: 'MANAGER', privileges: [], userCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'r-receptionist', name: 'Receptionist', code: 'RECEPTIONIST', privileges: [], userCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'r-employee', name: 'Employee', code: 'EMPLOYEE', privileges: [], userCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+];
+
 @Component({
   selector: 'app-user-management',
   standalone: true,
@@ -299,6 +308,7 @@ export class AllUsersComponent implements OnInit {
 
   // Dynamic dropdown data from APIs
   roles: SelectOption[] = [];
+  private rolesRaw: RolesApiResponse['roles'] = [];
   provinces: SelectOption[] = [];
   districts: SelectOption[] = [];
   sectors: SelectOption[] = [];
@@ -322,12 +332,29 @@ export class AllUsersComponent implements OnInit {
 
   ngOnInit(): void {
     console.log('AllUsersComponent: Initializing component');
-    console.log('AllUsersComponent: User authenticated:', this.authService.isAuthenticated());
-    console.log('AllUsersComponent: Token exists:', !!this.authService.getAccessToken());
-    
-    this.loadUsers();
-    this.fetchRoles();
-    this.fetchProvinces();
+    // Avoid SSR unauthenticated calls; wait for browser + token
+    this.initializeAfterHydration();
+    // Removed province cascade since we now collect only Country/District
+  }
+
+  private get isBrowser(): boolean {
+    return typeof window !== 'undefined';
+  }
+
+  private initializeAfterHydration(retries: number = 10): void {
+    if (!this.isBrowser) return; // don't run on server
+    const tokenExists = !!this.authService.getAccessToken();
+    if (tokenExists) {
+      console.log('AllUsersComponent: Token available, loading data');
+      this.loadUsers();
+      this.fetchRoles();
+      return;
+    }
+    if (retries <= 0) {
+      console.warn('AllUsersComponent: No token after hydration retries, skipping initial fetch');
+      return;
+    }
+    setTimeout(() => this.initializeAfterHydration(retries - 1), 300);
   }
 
   private createEmptyUser(): User {
@@ -339,6 +366,8 @@ export class AllUsersComponent implements OnInit {
       telephoneNumber: '',
       role: { id: '', name: '' },
       status: 'Active',
+      country: '',
+      district: '',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -351,13 +380,13 @@ export class AllUsersComponent implements OnInit {
     console.log('AllUsersComponent: Loading users from:', apiUrl);
     console.log('AllUsersComponent: Token will be added by interceptor:', !!this.authService.getAccessToken());
     
-    this.http.get<UsersApiResponse>(apiUrl).subscribe({
+    this.http.get<any>(apiUrl).subscribe({
       next: (response) => {
         console.log('AllUsersComponent: Raw API response:', response);
-        
-        if (response && response.users && Array.isArray(response.users)) {
-          this.users = this.mapApiResponseToUsers(response.users);
-          this.totalRecords = response.total || response.users.length;
+        const usersArray = Array.isArray(response) ? response : response?.users;
+        if (usersArray && Array.isArray(usersArray)) {
+          this.users = this.mapApiResponseToUsers(usersArray);
+          this.totalRecords = usersArray.length;
           this.applyFilters(); // Apply current filters after loading
           console.log('AllUsersComponent: Users mapped successfully:', this.users);
         } else {
@@ -395,12 +424,19 @@ export class AllUsersComponent implements OnInit {
       next: (response) => {
         console.log('AllUsersComponent: Raw roles response:', response);
   
-        if (response && Array.isArray(response.roles)) {
-          this.roles = response.roles.map((role) => ({
+        let rolesToUse = (response && Array.isArray(response.roles)) ? response.roles : [];
+        if (!rolesToUse || rolesToUse.length === 0) {
+          console.warn('AllUsersComponent: No roles from API. Using DEFAULT_ROLES to keep UI working');
+          rolesToUse = DEFAULT_ROLES;
+        }
+
+        if (Array.isArray(rolesToUse)) {
+          this.rolesRaw = rolesToUse;
+          this.roles = rolesToUse.map((role) => ({
             label: role.name,
             value: role.id
           }));
-          this.updateFilterOptions(response.roles);
+          this.updateFilterOptions(rolesToUse);
         } else {
           console.error('AllUsersComponent: Invalid roles response structure:', response);
           this.roles = [];
@@ -410,13 +446,14 @@ export class AllUsersComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error fetching roles:', error);
+        // Fall back to defaults on error as well, so user creation remains possible
+        this.rolesRaw = DEFAULT_ROLES;
+        this.roles = DEFAULT_ROLES.map((role) => ({ label: role.name, value: role.id }));
+        this.updateFilterOptions(DEFAULT_ROLES);
         this.messageService.add({
-          severity: 'error',
-          summary: 'Error',
-          detail:
-            error.status === 401
-              ? 'Unauthorized - Please login again'
-              : 'Failed to load roles'
+          severity: 'warn',
+          summary: 'Roles Loaded (Fallback)',
+          detail: 'Using default roles because roles API is unavailable.'
         });
         this.loadingRoles = false;
       }
@@ -831,12 +868,12 @@ export class AllUsersComponent implements OnInit {
       return;
     }
 
-    // Validate location selection
-    if (!this.user.provinceId || !this.user.districtId || !this.user.sectorId || !this.user.cellId || !this.user.villageId) {
+    // Validate location (lightweight): require at least a district
+    if (!this.user.district && !this.user.districtId) {
       this.messageService.add({
         severity: 'error',
         summary: 'Error',
-        detail: 'Please select complete location information'
+        detail: 'Please provide a district'
       });
       return;
     }
@@ -859,7 +896,7 @@ export class AllUsersComponent implements OnInit {
     if (this.isEditMode) {
       // Update existing user
       const apiUrl = `${environment.API_BASE_URL}/users/${this.user.id}`;
-      this.http.patch<ApiUserResponse>(apiUrl, userRequest).subscribe({
+      this.http.patch<any>(apiUrl, userRequest).subscribe({
         next: (response) => {
           const updatedUser = this.mapApiResponseToUsers([response])[0];
           const index = this.users.findIndex(u => u.id === this.user.id);
@@ -888,15 +925,16 @@ export class AllUsersComponent implements OnInit {
     } else {
       // Create new user
       const apiUrl = `${environment.API_BASE_URL}/users`;
-      this.http.post<ApiUserResponse>(apiUrl, userRequest).subscribe({
+      const payload = { firstName: userRequest.firstName, lastName: userRequest.lastName, email: userRequest.email, roleCode: this.getRoleCodeFromId(userRequest.roleId) } as any;
+      this.http.post<any>(apiUrl, payload).subscribe({
         next: (response) => {
-          const newUser = this.mapApiResponseToUsers([response])[0];
-          this.users = [newUser, ...this.users];
+          // Backend returns a message; we'll refresh list after creation
+          this.loadUsers();
           this.applyFilters(); // Reapply filters after creation
           this.messageService.add({
             severity: 'success',
             summary: 'Success',
-            detail: 'User created successfully'
+            detail: 'User created successfully (email sent)'
           });
           this.saving = false;
           this.hideDialog();
@@ -912,6 +950,11 @@ export class AllUsersComponent implements OnInit {
         }
       });
     }
+  }
+
+  private getRoleCodeFromId(roleId?: string | number): string | undefined {
+    const role = this.rolesRaw.find(r => String(r.id) === String(roleId));
+    return role?.code;
   }
 
   hideDialog(): void {
@@ -1358,6 +1401,13 @@ export class AllUsersComponent implements OnInit {
 
   // Utility Methods
   getLocationDisplay(user: User): string {
+    // Prefer simplified country/district if available
+    if (user.country || user.district) {
+      const parts = [] as string[];
+      if (user.country) parts.push(user.country);
+      if (user.district) parts.push(user.district);
+      return parts.join(', ');
+    }
     if (user.locations && user.locations.length > 0) {
       const location = user.locations[0];
       const parts = [];
@@ -1402,13 +1452,9 @@ export class AllUsersComponent implements OnInit {
       this.user.firstName &&
       this.user.lastName &&
       this.user.email &&
-      this.user.telephoneNumber &&
       this.user.roleId &&
-      this.user.provinceId &&
-      this.user.districtId &&
-      this.user.sectorId &&
-      this.user.cellId &&
-      this.user.villageId
+      // Only require lightweight location fields
+      (this.user.district || this.user.districtId)
     );
   }
 

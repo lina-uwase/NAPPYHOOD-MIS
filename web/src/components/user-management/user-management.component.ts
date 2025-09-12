@@ -346,8 +346,8 @@ export class AllUsersComponent implements OnInit {
     const tokenExists = !!this.authService.getAccessToken();
     if (tokenExists) {
       console.log('AllUsersComponent: Token available, loading data');
-      this.loadUsers();
-      this.fetchRoles();
+    this.loadUsers();
+    this.fetchRoles();
       return;
     }
     if (retries <= 0) {
@@ -698,7 +698,7 @@ export class AllUsersComponent implements OnInit {
     this.applyFilters();
   }
 
-  private applyFilters(): void {
+  applyFilters(): void {
     let filtered = [...this.users];
 
     // Apply search filter

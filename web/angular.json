@@ -27,7 +27,10 @@
               }
             ],
             "styles": [
-              "src/styles.css"
+              { "input": "@primeng/themes/lara-light-blue/theme.css" },
+              { "input": "primeng/resources/primeng.css" },
+              { "input": "primeicons/primeicons.css" },
+              { "input": "src/styles.css" }
             ],
             "scripts": [],
             "server": "src/main.server.ts",

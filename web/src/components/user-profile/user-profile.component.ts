@@ -157,6 +157,17 @@ export class UserProfileComponent implements OnInit {
 
   ngOnInit(): void {
     console.log('UserProfileComponent: Initializing component');
+    // Ensure we populate profile from signed-in user when available
+    const signedIn = this.authService.currentUserValue as any;
+    if (signedIn) {
+      this.userProfile.firstName = signedIn.firstName || this.userProfile.firstName;
+      this.userProfile.lastName = signedIn.lastName || this.userProfile.lastName;
+      this.userProfile.email = signedIn.email || this.userProfile.email;
+      this.userProfile.telephoneNumber = signedIn.telephoneNumber || this.userProfile.telephoneNumber;
+      if (signedIn.role && signedIn.role.name) {
+        this.userProfile.role.name = signedIn.role.name;
+      }
+    }
     console.log('UserProfileComponent: User authenticated:', this.authService.isAuthenticated());
     console.log('UserProfileComponent: Token exists:', !!this.authService.getAccessToken());
     

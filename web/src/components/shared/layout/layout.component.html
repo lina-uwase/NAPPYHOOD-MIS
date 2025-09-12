@@ -1,12 +1,12 @@
-<div class="layout-container">
+<div class="h-screen bg-gray-100">
     <app-topbar [isSidebarCollapsed]="isSidebarCollapsed"></app-topbar>
     <app-sidebar 
       [isCollapsed]="isSidebarCollapsed" 
       (toggleSidebar)="onSidebarToggle($event)">
     </app-sidebar>
-        <div class="main-content"
-         [ngClass]="isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'">
-      <div class="content-wrapper">
+        <div class="transition-[margin-left] duration-300 min-h-screen pt-[70px]"
+         [ngClass]="isSidebarCollapsed ? 'ml-[60px]' : 'ml-60'">
+      <div class="px-4 md:px-4 h-[calc(100vh-70px)] overflow-y-auto">
         <router-outlet></router-outlet>
       </div>
     </div>

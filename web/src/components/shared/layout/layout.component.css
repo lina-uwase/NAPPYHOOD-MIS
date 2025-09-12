@@ -3,11 +3,11 @@
     background-color: #f3f4f6;
   }
 .main-content.sidebar-expanded {
-  margin-left: 180px; /* Match new smaller width */
+  margin-left: 240px; /* Match sidebar width */
 }
 
 .main-content.sidebar-collapsed {
-  margin-left: 50px; /* Match new collapsed width */
+  margin-left: 240px; /* Sidebar stays fixed width on desktop */
 }
   .main-content {
     padding-top: 70px; /* Account for fixed topbar height */
@@ -16,15 +16,15 @@
   }
   
   .main-content.sidebar-expanded {
-    margin-left: 280px; /* Match sidebar width */
+    margin-left: 240px; /* Match sidebar width */
   }
   
   .main-content.sidebar-collapsed {
-    margin-left: 70px; /* Match collapsed sidebar width */
+    margin-left: 60px; /* Match collapsed sidebar width on mobile */
   }
   
   .content-wrapper {
-    padding: 1%;
+    padding: 1rem;
     height: calc(100vh - 70px);
     overflow-y: auto;
   }

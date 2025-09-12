@@ -56,9 +56,15 @@ export class DashboardComponent implements OnInit {
     this.chartOptions = {
       responsive: true,
       maintainAspectRatio: false,
+      layout: { padding: 0 },
       plugins: {
-        legend: { position: 'bottom', labels: { usePointStyle: true } },
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10 } },
         tooltip: { enabled: true }
+      },
+      elements: { line: { tension: 0.3 } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { drawBorder: false }, ticks: { precision: 0 } }
       }
     };
   }

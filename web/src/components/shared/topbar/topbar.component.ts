@@ -2,6 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
+import { AvatarModule } from 'primeng/avatar';
 import { TooltipModule } from 'primeng/tooltip';
 import { AuthService } from '../../../services/auth.service';
 
@@ -11,6 +12,7 @@ import { AuthService } from '../../../services/auth.service';
   imports: [
     CommonModule,
     ButtonModule,
+    AvatarModule,
     TooltipModule
   ],
   templateUrl: './topbar.component.html',

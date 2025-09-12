@@ -1,5 +1,5 @@
 .topbar-nav {
-  left: 240px; /* Match new sidebar width */
+  left: 240px; /* Match sidebar width */
   right: 0;
   transition: left 0.3s ease;
 }
@@ -44,7 +44,7 @@
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .topbar-nav {
-    left: 200px; /* When sidebar is expanded on mobile */
+    left: 240px; /* When sidebar is expanded on mobile */
     transition: left 0.3s ease;
   }
   

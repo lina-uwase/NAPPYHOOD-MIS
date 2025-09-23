@@ -1,0 +1,59 @@
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.table-header {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.body-text {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.small-text {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.button-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.input-text {
+  font-size: 0.875rem;
+}
+
+.sidebar-item {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

@@ -1,0 +1,448 @@
+"use client";
+import React, { useEffect, useState } from 'react';
+import { useTitle } from '../contexts/TitleContext';
+import { Users, Calendar, DollarSign, AlertTriangle, ShieldCheck, Scissors, Star, TrendingUp } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import visitsService from '../services/visitsService';
+import customersService from '../services/customersService';
+import servicesService from '../services/servicesService';
+
+interface SalonMetrics {
+  totalCustomers: number;
+  totalVisits: number;
+  totalRevenue: number;
+  totalServices: number;
+  activeCustomers: number;
+  averageVisitValue: number;
+  todayVisits: number;
+  monthlyGrowth: number;
+}
+
+export default function Dashboard() {
+  const { setTitle } = useTitle();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [metrics, setMetrics] = useState<SalonMetrics | null>(null);
+  const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
+  const [topServices, setTopServices] = useState<{ count: number; revenue: number; name: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setTitle("Dashboard");
+  }, [setTitle]);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+  }, [user, isAuthenticated, authLoading, router]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setError(null);
+
+      // Use the dashboard API instead of manual calculation
+      const dashboardRes = await fetch('http://localhost:5001/api/dashboard/stats', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!dashboardRes.ok) {
+        throw new Error('Failed to fetch dashboard data');
+      }
+
+      const dashboardData = await dashboardRes.json();
+      const data = dashboardData.data;
+
+      // Use the properly calculated metrics from the backend
+      const totalRevenue = data.overview.totalRevenue;
+      const todayVisits = data.overview.periodVisits;
+
+      // Use all data from the dashboard API
+      setMetrics({
+        totalCustomers: data.overview.totalCustomers,
+        totalVisits: data.overview.allTimeVisits,
+        totalRevenue,
+        totalServices: data.overview.totalServices,
+        activeCustomers: data.overview.totalCustomers, // Use total customers as active for now
+        averageVisitValue: data.overview.averageVisitValue,
+        todayVisits,
+        monthlyGrowth: 12.5 // This would be calculated from historical data
+      });
+
+      // Use revenue trend data from the API or generate sample data for the last 7 days
+      let revenueByDay = [];
+      if (data.revenueTrend.length > 0) {
+        // Get last 7 days of data
+        const today = new Date();
+        const last7Days = [];
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toISOString().split('T')[0];
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+          const dayData = data.revenueTrend.find((d: any) => d.date === dateStr);
+          last7Days.push({
+            day: dayName,
+            value: dayData ? dayData.revenue : 0
+          });
+        }
+        revenueByDay = last7Days;
+      } else {
+        revenueByDay = [
+          { day: 'Mon', value: 0 },
+          { day: 'Tue', value: 0 },
+          { day: 'Wed', value: 0 },
+          { day: 'Thu', value: 0 },
+          { day: 'Fri', value: 0 },
+          { day: 'Sat', value: 0 },
+          { day: 'Sun', value: 0 }
+        ];
+      }
+
+      setRevenueData(revenueByDay);
+
+      // Set top services from dashboard API - fix field mapping
+      const topServicesData = data.topServices.length > 0 ? data.topServices.map((service: any) => ({
+        name: service.service?.name || 'Unknown Service',
+        count: service.quantity || 0,
+        revenue: service.revenue || 0
+      })) : [
+        { name: 'No services yet', count: 0, revenue: 0 }
+      ];
+
+      setTopServices(topServicesData);
+
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setLoading(true);
+      fetchDashboardData();
+    }
+  }, [isAuthenticated]);
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <ShieldCheck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user?.role !== 'ADMIN') {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <ShieldCheck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+          <p className="text-gray-600">Redirecting to sales page...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
+          <p className="text-gray-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!metrics) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">No Data</h2>
+          <p className="text-gray-600">No salon data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Nappyhood Salon Dashboard</h1>
+        <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening at your salon today.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
+              <Users className="w-6 h-6 text-[#5A8621]" />
+            </div>
+            <div>
+              <p className="text-gray-700 text-sm">Total Customers</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalCustomers}</p>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            {metrics.activeCustomers} active customers
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <Calendar className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-gray-700 text-sm">Total Visits</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalVisits}</p>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            {metrics.todayVisits} visits today
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <DollarSign className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-gray-700 text-sm">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">RWF {metrics.totalRevenue.toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="flex items-center text-sm text-green-600">
+            <TrendingUp className="w-4 h-4 mr-1" />
+            +{metrics.monthlyGrowth}% this month
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <Scissors className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-gray-700 text-sm">Available Services</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalServices}</p>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            Avg. visit: RWF {metrics.averageVisitValue.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Daily Revenue (Last 7 Days)</h3>
+              <div className="text-sm text-gray-500">
+                This Week
+              </div>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData} margin={{ top: 16, right: 12, left: 12, bottom: 16 }}>
+                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(90,134,33,0.08)' }}
+                    formatter={(value: number) => [`RWF ${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Bar dataKey="value" fill="#5A8621" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Customers</h3>
+              <div className="space-y-4">
+                <div className="text-center text-gray-500 py-8">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p>Customer data will be displayed here once you start recording visits</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Visit Trends</h3>
+              <div className="text-sm text-gray-500">
+                Last 7 Days
+              </div>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={revenueData} margin={{ top: 16, right: 12, left: 12, bottom: 16 }}>
+                  <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    interval={0}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 12, fill: '#6B7280' }}
+                    tickFormatter={(value) => `${(value/1000).toFixed(0)}K`}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: 8, borderColor: '#E5E7EB' }}
+                    formatter={(value: number) => [`RWF ${value.toLocaleString()}`, 'Revenue']}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#5A8621"
+                    strokeWidth={2}
+                    dot={{ fill: '#5A8621', strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: '#5A8621', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">Top Services</h3>
+              <div className="text-sm text-gray-500">
+                By Revenue
+              </div>
+            </div>
+            <div className="h-64">
+              {topServices.length > 0 ? (
+                <div className="flex items-center h-full">
+                  <div className="w-3/5 h-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={topServices.map((service) => ({
+                            name: service.name,
+                            value: service.revenue,
+                            count: service.count
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={110}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {topServices.map((entry, serviceIndex) => (
+                            <Cell
+                              key={`cell-${serviceIndex}`}
+                              fill={serviceIndex === 0 ? '#5A8621' : serviceIndex === 1 ? '#7BA428' : serviceIndex === 2 ? '#9BC53D' : '#A78BFA'}
+                            />
+                          ))}
+                        </Pie>
+                        <text x="50%" y="45%" textAnchor="middle" dominantBaseline="middle" className="text-xs font-medium text-gray-500">
+                          Total
+                        </text>
+                        <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" className="text-sm font-bold text-gray-900">
+                          RWF {topServices.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}
+                        </text>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="w-2/5 pl-4">
+                    <div className="space-y-3">
+                      {topServices.map((service, serviceIdx) => (
+                        <div key={service.name} className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className="w-4 h-4 rounded-full"
+                              style={{
+                                backgroundColor: serviceIdx === 0 ? '#5A8621' : serviceIdx === 1 ? '#7BA428' : serviceIdx === 2 ? '#9BC53D' : '#A78BFA'
+                              }}
+                            ></div>
+                            <div>
+                              <div className="text-sm text-gray-900 font-medium">{service.name}</div>
+                              <div className="text-xs text-gray-500">{service.count} visits</div>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold text-gray-900">
+                            RWF {service.revenue.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <Star className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p>Service data will appear here once you start recording visits</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

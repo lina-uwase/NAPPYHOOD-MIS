@@ -1,0 +1,202 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #f5f7fb;
+  --foreground: #0f172a;
+  --primary-green: #009900;
+  --hover-bg: #F8FAFC;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Quicksand', ui-sans-serif, system-ui, -apple-system,
+    Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+input:focus,
+input:focus-visible,
+input:focus-within,
+input:active,
+input:focus-visible:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="url"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+input[type="month"]:focus,
+input[type="week"]:focus,
+input[type="color"]:focus,
+input[type="file"]:focus,
+input[type="range"]:focus,
+input[type="checkbox"]:focus,
+input[type="radio"]:focus,
+textarea:focus,
+textarea:focus-visible,
+textarea:focus-within,
+select:focus,
+select:focus-visible,
+select:focus-within {
+  outline: none !important;
+  border-color: #009900 !important;
+  box-shadow: 0 0 0 1px rgba(0, 153, 0, 0.3) !important;
+  ring-color: rgba(0, 153, 0, 0.3) !important;
+}
+
+input,
+textarea,
+select {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #009900 !important;
+  box-shadow: 0 0 0 1px rgba(0, 153, 0, 0.3) !important;
+}
+
+button:focus {
+  outline: none;
+}
+
+*:focus {
+  border-color: #009900 !important;
+}
+
+.focus\:border-green-600:focus {
+  border-color: #009900 !important;
+}
+
+.focus\:ring-green-600:focus {
+  ring-color: rgba(0, 153, 0, 0.3) !important;
+  box-shadow: 0 0 0 1px rgba(0, 153, 0, 0.3) !important;
+}
+
+input:focus:not([type="checkbox"]):not([type="radio"]) {
+  border-color: #009900 !important;
+  box-shadow: 0 0 0 1px rgba(0, 153, 0, 0.3) !important;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  accent-color: #009900 !important;
+}
+
+input[type="checkbox"]:focus,
+input[type="radio"]:focus {
+  accent-color: #009900 !important;
+  outline: 2px solid rgba(0, 153, 0, 0.4) !important;
+  outline-offset: 2px !important;
+}
+
+.hover-light:hover {
+  background-color: #F8FAFC;
+}
+
+select option {
+  padding: 4px 8px !important;
+  background-color: white !important;
+  color: #374151 !important;
+}
+
+select option:checked {
+  background-color: #F8FAFC !important;
+  color: #009900 !important;
+}
+
+select option:hover {
+  background-color: #F8FAFC !important;
+  color: #009900 !important;
+}
+
+select option:focus {
+  background-color: #F8FAFC !important;
+  color: #009900 !important;
+}
+
+select option:checked,
+select option[selected] {
+  background-color: #F8FAFC !important;
+  color: #009900 !important;
+}
+
+.dark {
+  --background: #111827;
+  --foreground: #F9FAFB;
+  --primary-green: #009900;
+  --hover-bg: #374151;
+}
+
+.dark body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.dark .bg-white {
+  background-color: #1F2937 !important;
+}
+
+.dark .text-gray-900 {
+  color: #F9FAFB !important;
+}
+
+.dark .text-gray-700 {
+  color: #D1D5DB !important;
+}
+
+.dark .text-gray-600 {
+  color: #9CA3AF !important;
+}
+
+.dark .text-gray-500 {
+  color: #6B7280 !important;
+}
+
+.dark .border-gray-200 {
+  border-color: #374151 !important;
+}
+
+.dark .bg-gray-50 {
+  background-color: #374151 !important;
+}
+
+.dark .hover\:bg-\[#F8FAFC\]:hover {
+  background-color: #374151 !important;
+}
+
+.dark .hover\:text-gray-900:hover {
+  color: #F9FAFB !important;
+}
+
+.dark select option {
+  background-color: #1F2937 !important;
+  color: #F9FAFB !important;
+}
+
+.dark select option:checked,
+.dark select option[selected] {
+  background-color: #374151 !important;
+  color: #009900 !important;
+}
+
+.dark select option:hover {
+  background-color: #374151 !important;
+  color: #009900 !important;
+}

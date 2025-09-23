@@ -1,0 +1,37 @@
+name: Deploy Nappyhood Salon to Production
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install sshpass
+        run: sudo apt-get update && sudo apt-get install -y sshpass
+
+      - name: Deploy to server
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
+
+        run: |
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p $SSH_PORT $SSH_USER@$SSH_HOST '
+            cd ~/nappyhood_deployment/nappyhood-salon-frontend &&
+            echo "Pulling latest changes..." &&
+            git pull &&
+            echo "Stopping frontend container..." &&
+            cd ~/nappyhood_deployment &&
+            docker-compose stop frontend &&
+            docker-compose rm -f frontend &&
+            echo "Building and starting container..." &&
+            docker-compose up --build -d frontend &&
+            echo "Deployment complete!" &&
+            docker ps
+          '

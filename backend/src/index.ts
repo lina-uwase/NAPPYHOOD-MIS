@@ -1,0 +1,153 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import swaggerUI from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+
+// Import routes
+import authRoutes from './routes/auth';
+import serviceRoutes from './routes/services';
+import customerRoutes from './routes/customers';
+import visitRoutes from './routes/visits';
+import staffRoutes from './routes/staff';
+import dashboardRoutes from './routes/dashboard';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Swagger configuration
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Nappyhood Salon Management System API',
+      version: '1.0.0',
+      description: 'API documentation for Nappyhood Salon Management System',
+      contact: {
+        name: 'Nappyhood Salon',
+        email: 'admin@nappyhood.com'
+      }
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: 'Development server'
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT'
+        }
+      }
+    },
+    security: [
+      {
+        bearerAuth: []
+      }
+    ]
+  },
+  apis: ['./dist/routes/*.js', './src/routes/*.ts']
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+// Security middleware
+app.use(helmet());
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003', 'https://your-frontend-domain.com']
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
+}));
+
+// Request logging
+app.use(morgan('combined'));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Nappyhood Salon API is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Swagger documentation
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/customers', customerRoutes);
+app.use('/api/visits', visitRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to Nappyhood Salon Management System API',
+    version: '1.0.0',
+    documentation: '/api-docs'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Endpoint not found',
+    path: req.originalUrl,
+    method: req.method
+  });
+});
+
+// Global error handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Global error handler:', err);
+
+  if (err.code === 'P2002') {
+    return res.status(400).json({
+      error: 'Duplicate entry',
+      field: err.meta?.target?.[0] || 'unknown'
+    });
+  }
+
+  if (err.code === 'P2025') {
+    return res.status(404).json({
+      error: 'Record not found'
+    });
+  }
+
+  res.status(500).json({
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+  });
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Nappyhood Salon API server running on port ${PORT}`);
+  console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+});
+
+export default app;

@@ -50,9 +50,7 @@ export const STORAGE_KEYS = {
   SERVICES: 'nappyhood_services',
   CUSTOMERS: 'nappyhood_customers',
   VISITS: 'nappyhood_visits',
-  PRODUCTS: 'nappyhood_products',
-  PURCHASES: 'nappyhood_purchases',
-  SALES: 'nappyhood_sales',
+  STAFF: 'nappyhood_staff',
   DARK_MODE: 'darkMode',
   USER_PREFERENCES: 'user_preferences'
 } as const;

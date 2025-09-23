@@ -30,6 +30,10 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [serviceSearch, setServiceSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const [showStaffDropdown, setShowStaffDropdown] = useState(false);
+  const [staffSearch, setStaffSearch] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -50,6 +54,21 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
       });
     }
   }, [editingVisit]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
+        setShowCustomerDropdown(false);
+        setShowServiceDropdown(false);
+        setShowStaffDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchCustomers = async () => {
     try {
@@ -172,6 +191,10 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
     service.category.toLowerCase().includes(serviceSearch.toLowerCase())
   );
 
+  const filteredStaff = staff.filter(member =>
+    member.name.toLowerCase().includes(staffSearch.toLowerCase())
+  );
+
   const selectedCustomer = customers.find(c => c.id === formData.customerId);
   const selectedServices = services.filter(s => formData.serviceIds.includes(s.id));
   const selectedStaff = staff.filter(s => formData.staffIds.includes(s.id));
@@ -203,35 +226,72 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Customer Selection */}
             <div className="space-y-4">
-              <div>
+              <div className="dropdown-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="inline h-4 w-4 mr-1" />
                   Select Customer *
                 </label>
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search customer by name or phone..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621]"
-                  />
-                </div>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md">
-                  {filteredCustomers.map(customer => (
-                    <div
-                      key={customer.id}
-                      onClick={() => setFormData(prev => ({ ...prev, customerId: customer.id }))}
-                      className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 ${
-                        formData.customerId === customer.id ? 'bg-[#5A8621] text-white' : ''
-                      }`}
-                    >
-                      <div className="font-medium">{customer.fullName || customer.name}</div>
-                      <div className="text-sm opacity-75">{customer.phone}</div>
+
+                {/* Selected Customer Display */}
+                {selectedCustomer ? (
+                  <div className="mb-3 p-3 bg-[#5A8621] text-white rounded-md flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">{selectedCustomer.fullName || selectedCustomer.name}</div>
+                      <div className="text-sm opacity-90">{selectedCustomer.phone}</div>
                     </div>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, customerId: '' }));
+                        setCustomerSearch('');
+                        setShowCustomerDropdown(true);
+                      }}
+                      className="text-white hover:text-gray-200 text-sm underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <input
+                        type="text"
+                        placeholder="Search customer by name or phone..."
+                        value={customerSearch}
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value);
+                          setShowCustomerDropdown(true);
+                        }}
+                        onFocus={() => setShowCustomerDropdown(true)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
+                      />
+                    </div>
+
+                    {showCustomerDropdown && (
+                      <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
+                        {filteredCustomers.length > 0 ? (
+                          filteredCustomers.map(customer => (
+                            <div
+                              key={customer.id}
+                              onClick={() => {
+                                setFormData(prev => ({ ...prev, customerId: customer.id }));
+                                setShowCustomerDropdown(false);
+                                setCustomerSearch('');
+                              }}
+                              className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            >
+                              <div className="font-medium">{customer.fullName || customer.name}</div>
+                              <div className="text-sm text-gray-600">{customer.phone}</div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-gray-500 text-center">No customers found</div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
                 {errors.customerId && <p className="mt-1 text-sm text-red-600">{errors.customerId}</p>}
               </div>
 
@@ -245,7 +305,13 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
                   type="datetime-local"
                   name="visitDate"
                   value={formData.visitDate}
-                  onChange={handleInputChange}
+                  onChange={(e) => {
+                    handleInputChange(e);
+                    // Close any open dropdowns when date changes
+                    setShowCustomerDropdown(false);
+                    setShowServiceDropdown(false);
+                    setShowStaffDropdown(false);
+                  }}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
                     errors.visitDate ? 'border-red-500' : 'border-gray-300'
                   }`}
@@ -272,68 +338,172 @@ const AddVisitModal: React.FC<AddVisitModalProps> = ({
             {/* Services and Staff Selection */}
             <div className="space-y-4">
               {/* Services */}
-              <div>
+              <div className="dropdown-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Scissors className="inline h-4 w-4 mr-1" />
                   Select Services *
                 </label>
+
+                {/* Selected Services Display */}
+                {selectedServices.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    <div className="text-sm text-gray-600">Selected Services:</div>
+                    {selectedServices.map(service => (
+                      <div key={service.id} className="flex justify-between items-center p-2 bg-[#5A8621] text-white rounded-md">
+                        <div>
+                          <div className="font-medium">{service.name}</div>
+                          <div className="text-sm opacity-90">{service.category}</div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="text-right">
+                            <div className="font-medium">{Number(service.singlePrice).toLocaleString()} RWF</div>
+                            <div className="text-sm opacity-90">{service.duration} min</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleServiceToggle(service.id)}
+                            className="text-white hover:text-gray-200 text-xs"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="relative mb-3">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="text"
                     placeholder="Search services..."
                     value={serviceSearch}
-                    onChange={(e) => setServiceSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621]"
+                    onChange={(e) => {
+                      setServiceSearch(e.target.value);
+                      setShowServiceDropdown(true);
+                    }}
+                    onFocus={() => setShowServiceDropdown(true)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
                   />
                 </div>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md">
-                  {filteredServices.map(service => (
-                    <div
-                      key={service.id}
-                      onClick={() => handleServiceToggle(service.id)}
-                      className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 ${
-                        formData.serviceIds.includes(service.id) ? 'bg-[#5A8621] text-white' : ''
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-medium">{service.name}</div>
-                          <div className="text-sm opacity-75">{service.category}</div>
+
+                {showServiceDropdown && (
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
+                    {filteredServices.length > 0 ? (
+                      filteredServices.map(service => (
+                        <div
+                          key={service.id}
+                          onClick={() => {
+                            handleServiceToggle(service.id);
+                            if (!formData.serviceIds.includes(service.id)) {
+                              setShowServiceDropdown(false);
+                              setServiceSearch('');
+                            }
+                          }}
+                          className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 ${
+                            formData.serviceIds.includes(service.id) ? 'bg-green-50 border-l-4 border-l-[#5A8621]' : ''
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-medium flex items-center">
+                                {formData.serviceIds.includes(service.id) && <span className="text-[#5A8621] mr-2">✓</span>}
+                                {service.name}
+                              </div>
+                              <div className="text-sm text-gray-600">{service.category}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-medium">{Number(service.singlePrice).toLocaleString()} RWF</div>
+                              <div className="text-sm text-gray-600">{service.duration} min</div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">{Number(service.singlePrice).toLocaleString()} RWF</div>
-                          <div className="text-sm opacity-75">{service.duration} min</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-gray-500 text-center">No services found</div>
+                    )}
+                  </div>
+                )}
                 {errors.serviceIds && <p className="mt-1 text-sm text-red-600">{errors.serviceIds}</p>}
               </div>
 
               {/* Staff */}
-              <div>
+              <div className="dropdown-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Users className="inline h-4 w-4 mr-1" />
                   Select Staff *
                 </label>
-                <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
-                  {staff.map(member => (
-                    <div
-                      key={member.id}
-                      onClick={() => handleStaffToggle(member.id)}
-                      className={`p-2 cursor-pointer rounded border ${
-                        formData.staffIds.includes(member.id)
-                          ? 'bg-[#5A8621] text-white border-[#5A8621]'
-                          : 'bg-white border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="font-medium">{member.name}</div>
-                      <div className="text-sm opacity-75">{member.role}</div>
-                    </div>
-                  ))}
+
+                {/* Selected Staff Display */}
+                {selectedStaff.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    <div className="text-sm text-gray-600">Selected Staff:</div>
+                    {selectedStaff.map(member => (
+                      <div key={member.id} className="flex justify-between items-center p-3 bg-[#5A8621] text-white rounded-md">
+                        <div>
+                          <div className="font-medium">{member.name}</div>
+                          <div className="text-sm opacity-90">{member.role}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleStaffToggle(member.id)}
+                          className="text-white hover:text-gray-200 text-lg font-bold"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Staff Search */}
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search staff by name..."
+                    value={staffSearch}
+                    onChange={(e) => {
+                      setStaffSearch(e.target.value);
+                      setShowStaffDropdown(true);
+                    }}
+                    onFocus={() => setShowStaffDropdown(true)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+                  />
                 </div>
+
+                {/* Staff Dropdown */}
+                {showStaffDropdown && (
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
+                    {filteredStaff.length > 0 ? (
+                      filteredStaff.map(member => (
+                        <div
+                          key={member.id}
+                          onClick={() => {
+                            handleStaffToggle(member.id);
+                            setStaffSearch('');
+                            if (formData.staffIds.length === 0) {
+                              setShowStaffDropdown(false);
+                            }
+                          }}
+                          className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium flex items-center">
+                                {formData.staffIds.includes(member.id) && <span className="text-[#5A8621] mr-2">✓</span>}
+                                {member.name}
+                              </div>
+                              <div className="text-sm text-gray-600">{member.role}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 text-gray-500 text-center">No staff found</div>
+                    )}
+                  </div>
+                )}
                 {errors.staffIds && <p className="mt-1 text-sm text-red-600">{errors.staffIds}</p>}
               </div>
             </div>

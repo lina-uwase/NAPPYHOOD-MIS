@@ -154,13 +154,8 @@ const CustomersPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-gray-600">
-              Manage your salon customers and track their information
-            </p>
-          </div>
+      <div className="mb-4">
+        <div className="flex items-center justify-end">
           <button
             onClick={() => {
               setEditingCustomer(null);

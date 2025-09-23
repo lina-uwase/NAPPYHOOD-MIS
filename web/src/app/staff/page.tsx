@@ -25,7 +25,7 @@ export default function StaffPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'MANAGER' | 'STYLIST' | ''>('');
+  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'MANAGER' | 'STAFF' | ''>('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,7 +167,7 @@ export default function StaffPage() {
     }
     return (
       <span className="text-base text-gray-900">
-        Stylist
+        Staff
       </span>
     );
   };
@@ -224,7 +224,7 @@ export default function StaffPage() {
         const name = (n['name'] || '') as string;
         const email = (n['email'] || '') as string;
         const phone = (n['phone'] || '') as string;
-        const role = (n['role'] || '') as 'ADMIN' | 'MANAGER' | 'STYLIST' | '';
+        const role = (n['role'] || '') as 'ADMIN' | 'MANAGER' | 'STAFF' | '';
 
         if (!name || !email) { fail += 1; continue; }
 
@@ -233,7 +233,7 @@ export default function StaffPage() {
             name: name.trim(),
             email: email.trim(),
             phone: phone?.trim() || undefined,
-            role: role || 'STYLIST',
+            role: role || 'STAFF',
             password: 'defaultpassword' // Default password
           });
           if (res.success) ok += 1; else fail += 1;
@@ -315,15 +315,15 @@ export default function StaffPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setRoleFilter('STYLIST');
+                    setRoleFilter('STAFF');
                     setShowFilterDropdown(false);
                     setCurrentPage(1);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] last:rounded-b-lg ${
-                    roleFilter === 'STYLIST' ? 'bg-[#F8FAFC] text-[#5A8621]' : ''
+                    roleFilter === 'STAFF' ? 'bg-[#F8FAFC] text-[#5A8621]' : ''
                   }`}
                 >
-                  Stylist
+                  Staff
                 </button>
               </div>
             )}
@@ -400,9 +400,9 @@ export default function StaffPage() {
                 </td>
               </tr>
             ) : (
-              Array.isArray(sortedStaff) && sortedStaff.map((staffMember) => (
+              Array.isArray(sortedStaff) && sortedStaff.map((staffMember, index) => (
                 <tr key={staffMember.id} className="hover:bg-gray-50">
-                  <td className="py-4 px-6 text-base text-gray-900">{staffMember.id}</td>
+                  <td className="py-4 px-6 text-base text-gray-900">{(currentPage - 1) * itemsPerPage + index + 1}</td>
                   <td className="py-4 px-6 text-base text-gray-900 font-medium">{staffMember.name}</td>
                   <td className="py-4 px-6 text-base">{getRoleBadge(staffMember.role)}</td>
                   <td className="py-4 px-6 text-base text-gray-600">{staffMember.email}</td>

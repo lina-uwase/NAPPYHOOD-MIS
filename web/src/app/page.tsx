@@ -8,6 +8,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, Cart
 import visitsService from '../services/visitsService';
 import customersService from '../services/customersService';
 import servicesService from '../services/servicesService';
+import api from '../config/api';
 
 interface SalonMetrics {
   totalCustomers: number;
@@ -20,6 +21,19 @@ interface SalonMetrics {
   monthlyGrowth: number;
 }
 
+interface Customer {
+  id: string;
+  fullName?: string;
+  name?: string;
+  phone: string;
+  visitCount?: number;
+  totalVisits?: number;
+  birthDay?: number;
+  birthMonth?: number;
+  lastVisit?: string;
+  createdAt?: string;
+}
+
 export default function Dashboard() {
   const { setTitle } = useTitle();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -27,6 +41,7 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<SalonMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
   const [topServices, setTopServices] = useState<{ count: number; revenue: number; name: string }[]>([]);
+  const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,19 +61,13 @@ export default function Dashboard() {
       setError(null);
 
       // Use the dashboard API instead of manual calculation
-      const dashboardRes = await fetch('http://localhost:5001/api/dashboard/stats', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!dashboardRes.ok) {
-        throw new Error('Failed to fetch dashboard data');
-      }
-
-      const dashboardData = await dashboardRes.json();
+      const dashboardRes = await api.get('/dashboard/stats');
+      const dashboardData = dashboardRes.data;
       const data = dashboardData.data;
+
+      // Debug logging
+      // console.log('🔍 Dashboard API Response:', dashboardData);
+      // console.log('🔍 Dashboard data:', data);
 
       // Use the properly calculated metrics from the backend
       const totalRevenue = data.overview.totalRevenue;
@@ -119,6 +128,25 @@ export default function Dashboard() {
       ];
 
       setTopServices(topServicesData);
+
+      // Set recent customers combining upcoming birthdays and 6th visit eligible
+      const combinedCustomers = [
+        ...(data.upcomingBirthdays || []).slice(0, 3),
+        ...(data.sixthVisitEligible || []).slice(0, 2)
+      ].slice(0, 5);
+
+      setRecentCustomers(combinedCustomers);
+
+      // Also try to get recent customers if no dashboard data
+      if (combinedCustomers.length === 0) {
+        try {
+          const customersRes = await customersService.getAll({ limit: 5, page: 1 });
+          // console.log('🔍 Recent customers response:', customersRes);
+          setRecentCustomers(customersRes.data || []);
+        } catch (error) {
+          console.error('Failed to fetch recent customers:', error);
+        }
+      }
 
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -208,7 +236,6 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Nappyhood Salon Dashboard</h1>
         <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening at your salon today.</p>
       </div>
 
@@ -314,10 +341,42 @@ export default function Dashboard() {
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Customers</h3>
               <div className="space-y-4">
-                <div className="text-center text-gray-500 py-8">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p>Customer data will be displayed here once you start recording visits</p>
-                </div>
+                {recentCustomers.length > 0 ? (
+                  recentCustomers.map((customer, index) => (
+                    <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-[#5A8621] rounded-full flex items-center justify-center">
+                          <span className="text-white font-medium text-sm">
+                            {(customer.fullName || customer.name)?.charAt(0) || 'C'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{customer.fullName || customer.name}</div>
+                          <div className="text-xs text-gray-500">{customer.phone}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {customer.birthDay && customer.birthMonth ? (
+                          <div className="text-xs text-blue-600">
+                            Birthday: {customer.birthDay}/{customer.birthMonth}
+                          </div>
+                        ) : customer.visitCount ? (
+                          <div className="text-xs text-green-600">
+                            {customer.visitCount + 1}th visit discount
+                          </div>
+                        ) : null}
+                        <div className="text-xs text-gray-500">
+                          {customer.visitCount || customer.totalVisits || 0} visits
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-gray-500 py-8">
+                    <Users className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                    <p>Customer data will be displayed here once you start recording visits</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

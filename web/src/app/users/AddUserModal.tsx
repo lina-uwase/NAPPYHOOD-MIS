@@ -242,7 +242,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                   onChange={handleInputChange}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009900] focus:border-transparent"
                 >
-                  <option value="STAFF">Shopkeeper</option>
+                  <option value="STAFF">Staff</option>
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>

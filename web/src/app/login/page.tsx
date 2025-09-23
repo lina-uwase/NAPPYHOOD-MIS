@@ -44,7 +44,6 @@ export default function LoginPage() {
           ></div>
         </div>
       </div>
-
      
       <div className="flex flex-col">
         <div className="flex-1 flex items-center justify-center px-8 py-12 " style={{ backgroundColor: '#F8FAFC' }}>

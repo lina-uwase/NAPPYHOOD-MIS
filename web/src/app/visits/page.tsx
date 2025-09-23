@@ -55,9 +55,13 @@ const VisitsPage: React.FC = () => {
       };
 
       const response = await visitsService.getAll(params);
-      const visitsData = Array.isArray(response.data) ? response.data : [];
-      setVisits(visitsData);
-      setTotalPages(response.meta?.totalPages || 1);
+      // Extract visits array from nested structure
+      const visitsData = response.data?.visits || response.data || [];
+      setVisits(Array.isArray(visitsData) ? visitsData : []);
+
+      // Get pagination from either nested or meta structure
+      const pagination = response.data?.pagination || response.meta;
+      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch visits:', error);
       setVisits([]);
@@ -145,17 +149,8 @@ const VisitsPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <Calendar className="mr-3 h-8 w-8 text-[#5A8621]" />
-              Visit Management
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Record and track customer visits with automatic discount calculation
-            </p>
-          </div>
+      <div className="mb-4">
+        <div className="flex items-center justify-end">
           <button
             onClick={() => {
               setEditingVisit(null);
@@ -251,6 +246,15 @@ const VisitsPage: React.FC = () => {
               <p className="mt-1 text-sm text-gray-500">
                 Start by recording your first customer visit.
               </p>
+              <button
+                onClick={() => {
+                  setIsModalOpen(true);
+                  setEditingVisit(null);
+                }}
+                className="mt-4 bg-[#5A8621] text-white px-4 py-2 rounded-lg hover:bg-[#4A7219] transition-colors"
+              >
+                Record New Visit
+              </button>
             </div>
           ) : (
             <div className="space-y-4 p-6">
@@ -263,7 +267,7 @@ const VisitsPage: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {visit.customerName}
+                          {visit.customer?.fullName || visit.customerName || 'Unknown Customer'}
                         </h3>
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                           visit.isCompleted
@@ -276,7 +280,7 @@ const VisitsPage: React.FC = () => {
                       <div className="flex items-center text-sm text-gray-600 space-x-4">
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-1" />
-                          {visit.customerPhone}
+                          {visit.customer?.phone || visit.customerPhone || 'No phone'}
                         </div>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />
@@ -332,11 +336,13 @@ const VisitsPage: React.FC = () => {
                     <div>
                       <h4 className="text-sm font-medium text-gray-700 mb-2">Staff</h4>
                       <div className="space-y-1">
-                        {visit.staff.map((staff, index) => (
+                        {visit.staff && visit.staff.length > 0 ? visit.staff.map((staffRecord, index) => (
                           <div key={index} className="text-sm text-gray-600">
-                            {staff.staffName}
+                            {staffRecord.staff?.name || staffRecord.staffName || staffRecord.name || 'Unknown Staff'}
                           </div>
-                        ))}
+                        )) : (
+                          <div className="text-sm text-gray-500">No staff assigned</div>
+                        )}
                       </div>
                     </div>
                   </div>

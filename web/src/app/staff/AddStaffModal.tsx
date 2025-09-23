@@ -15,7 +15,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     name: '',
     email: '',
     phone: '',
-    role: 'STYLIST' as 'ADMIN' | 'MANAGER' | 'STYLIST',
+    role: 'STAFF' as 'ADMIN' | 'MANAGER' | 'STAFF',
     password: '',
   });
 
@@ -27,7 +27,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         name: editingStaff.name || '',
         email: editingStaff.email || '',
         phone: editingStaff.phone || '',
-        role: editingStaff.role as 'ADMIN' | 'MANAGER' | 'STYLIST',
+        role: editingStaff.role as 'ADMIN' | 'MANAGER' | 'STAFF',
         password: '', // Password not needed for editing
       });
     } else {
@@ -35,7 +35,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         name: '',
         email: '',
         phone: '',
-        role: 'STYLIST',
+        role: 'STAFF',
         password: '',
       });
     }
@@ -126,11 +126,11 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ADMIN' | 'MANAGER' | 'STYLIST' }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ADMIN' | 'MANAGER' | 'STAFF' }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
               required
             >
-              <option value="STYLIST">Stylist</option>
+              <option value="STAFF">Staff</option>
               <option value="MANAGER">Manager</option>
               <option value="ADMIN">Admin</option>
             </select>

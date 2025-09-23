@@ -9,7 +9,12 @@
       "Read(//c/Users/ulina/OneDrive/Pictures/Screenshots 1/**)",
       "Bash(npm run build:*)",
       "Bash(curl:*)",
-      "Read(//Users/lina/Desktop/**)"
+      "Read(//Users/lina/Desktop/**)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git config:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

@@ -125,7 +125,7 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (id: number, name: string) => {
-    if (currentUser?.user_id === id) {
+    if (currentUser?.user_id === String(id)) {
       addToast({
         type: 'error',
         title: 'Cannot delete',
@@ -342,9 +342,9 @@ export default function UsersPage() {
                         onClick={() => handleDeleteUser(user.user_id, user.names)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         title="Delete user"
-                        disabled={currentUser?.user_id === user.user_id}
+                        disabled={currentUser?.user_id === String(user.user_id)}
                       >
-                        <Trash2 className={`h-5 w-5 ${currentUser?.user_id === user.user_id ? 'opacity-50 cursor-not-allowed' : ''}`} />
+                        <Trash2 className={`h-5 w-5 ${currentUser?.user_id === String(user.user_id) ? 'opacity-50 cursor-not-allowed' : ''}`} />
                       </button>
                       <button 
                         onClick={() => handleEditUser(user)}

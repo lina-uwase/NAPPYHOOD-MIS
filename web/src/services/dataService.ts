@@ -88,7 +88,7 @@ export const productsAPI = {
   getAll: async (): Promise<ApiResponse<Product[]>> => {
     await apiSimulator.delay(500);
     const products = loadFromLocalStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []) || [];
-    return apiSimulator.simulateResponse(products);
+    return { data: products, success: true, message: 'Products retrieved successfully' };
   },
 
   getById: async (id: number): Promise<ApiResponse<Product>> => {
@@ -96,7 +96,7 @@ export const productsAPI = {
     const products = loadFromLocalStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []) || [];
     const product = products.find((p: Product) => p.id === id);
     if (!product) throw new Error('Product not found');
-    return apiSimulator.simulateResponse(product);
+    return { data: product, success: true, message: 'Product retrieved successfully' };
   },
 
   create: async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApiResponse<Product>> => {
@@ -111,7 +111,7 @@ export const productsAPI = {
     
     const updatedProducts = [...products, newProduct];
     saveToLocalStorage(STORAGE_KEYS.PRODUCTS, updatedProducts);
-    return apiSimulator.simulateResponse(newProduct);
+    return { data: newProduct, success: true, message: 'Product created successfully' };
   },
 
   update: async (id: number, productData: Partial<Product>): Promise<ApiResponse<Product>> => {
@@ -129,7 +129,7 @@ export const productsAPI = {
     
     products[productIndex] = updatedProduct;
     saveToLocalStorage(STORAGE_KEYS.PRODUCTS, products);
-    return apiSimulator.simulateResponse(updatedProduct);
+    return { data: updatedProduct, success: true, message: 'Product updated successfully' };
   },
 
   delete: async (id: number): Promise<ApiResponse<null>> => {
@@ -137,7 +137,7 @@ export const productsAPI = {
     const products = loadFromLocalStorage<Product[]>(STORAGE_KEYS.PRODUCTS, []) || [];
     const filteredProducts = products.filter((p: Product) => p.id !== id);
     saveToLocalStorage(STORAGE_KEYS.PRODUCTS, filteredProducts);
-    return apiSimulator.simulateResponse(null);
+    return { data: null, success: true, message: 'Operation completed successfully' };
   }
 };
 
@@ -145,7 +145,7 @@ export const purchasesAPI = {
   getAll: async (): Promise<ApiResponse<Purchase[]>> => {
     await apiSimulator.delay(500);
     const purchases = loadFromLocalStorage<Purchase[]>(STORAGE_KEYS.PURCHASES, []) || [];
-    return apiSimulator.simulateResponse(purchases);
+    return { data: purchases, success: true, message: 'Purchases retrieved successfully' };
   },
 
   getById: async (id: number): Promise<ApiResponse<Purchase>> => {
@@ -153,7 +153,7 @@ export const purchasesAPI = {
     const purchases = loadFromLocalStorage<Purchase[]>(STORAGE_KEYS.PURCHASES, []) || [];
     const purchase = purchases.find((p: Purchase) => p.id === id);
     if (!purchase) throw new Error('Purchase not found');
-    return apiSimulator.simulateResponse(purchase);
+    return { data: purchase, success: true, message: 'Purchase retrieved successfully' };
   },
 
   create: async (purchaseData: Omit<Purchase, 'id' | 'createdAt' | 'updatedAt' | 'totalPrice' | 'status'>): Promise<ApiResponse<Purchase>> => {
@@ -170,7 +170,7 @@ export const purchasesAPI = {
     
     const updatedPurchases = [...purchases, newPurchase];
     saveToLocalStorage(STORAGE_KEYS.PURCHASES, updatedPurchases);
-    return apiSimulator.simulateResponse(newPurchase);
+    return { data: newPurchase, success: true, message: 'Purchase created successfully' };
   },
 
   update: async (id: number, purchaseData: Partial<Purchase>): Promise<ApiResponse<Purchase>> => {
@@ -192,7 +192,7 @@ export const purchasesAPI = {
     
     purchases[purchaseIndex] = updatedPurchase;
     saveToLocalStorage(STORAGE_KEYS.PURCHASES, purchases);
-    return apiSimulator.simulateResponse(updatedPurchase);
+    return { data: updatedPurchase, success: true, message: 'Purchase updated successfully' };
   },
 
   delete: async (id: number): Promise<ApiResponse<null>> => {
@@ -200,7 +200,7 @@ export const purchasesAPI = {
     const purchases = loadFromLocalStorage<Purchase[]>(STORAGE_KEYS.PURCHASES, []) || [];
     const filteredPurchases = purchases.filter((p: Purchase) => p.id !== id);
     saveToLocalStorage(STORAGE_KEYS.PURCHASES, filteredPurchases);
-    return apiSimulator.simulateResponse(null);
+    return { data: null, success: true, message: 'Operation completed successfully' };
   }
 };
 
@@ -208,7 +208,7 @@ export const salesAPI = {
   getAll: async (): Promise<ApiResponse<Sale[]>> => {
     await apiSimulator.delay(500);
     const sales = loadFromLocalStorage<Sale[]>(STORAGE_KEYS.SALES, []) || [];
-    return apiSimulator.simulateResponse(sales);
+    return { data: sales, success: true, message: 'Sales retrieved successfully' };
   },
 
   getById: async (id: number): Promise<ApiResponse<Sale>> => {
@@ -216,7 +216,7 @@ export const salesAPI = {
     const sales = loadFromLocalStorage<Sale[]>(STORAGE_KEYS.SALES, []) || [];
     const sale = sales.find((s: Sale) => s.id === id);
     if (!sale) throw new Error('Sale not found');
-    return apiSimulator.simulateResponse(sale);
+    return { data: sale, success: true, message: 'Sale retrieved successfully' };
   },
 
   create: async (saleData: Omit<Sale, 'id' | 'createdAt' | 'updatedAt' | 'totalPrice'>): Promise<ApiResponse<Sale>> => {
@@ -232,7 +232,7 @@ export const salesAPI = {
     
     const updatedSales = [...sales, newSale];
     saveToLocalStorage(STORAGE_KEYS.SALES, updatedSales);
-    return apiSimulator.simulateResponse(newSale);
+    return { data: newSale, success: true, message: 'Sale created successfully' };
   },
 
   update: async (id: number, saleData: Partial<Sale>): Promise<ApiResponse<Sale>> => {
@@ -252,7 +252,7 @@ export const salesAPI = {
     
     sales[saleIndex] = updatedSale;
     saveToLocalStorage(STORAGE_KEYS.SALES, sales);
-    return apiSimulator.simulateResponse(updatedSale);
+    return { data: updatedSale, success: true, message: 'Sale updated successfully' };
   },
 
   delete: async (id: number): Promise<ApiResponse<null>> => {
@@ -260,7 +260,7 @@ export const salesAPI = {
     const sales = loadFromLocalStorage<Sale[]>(STORAGE_KEYS.SALES, []) || [];
     const filteredSales = sales.filter((s: Sale) => s.id !== id);
     saveToLocalStorage(STORAGE_KEYS.SALES, filteredSales);
-    return apiSimulator.simulateResponse(null);
+    return { data: null, success: true, message: 'Operation completed successfully' };
   }
 };
 
@@ -278,13 +278,17 @@ export const dashboardAPI = {
     const totalRevenue = sales.reduce((sum: number, sale: Sale) => sum + sale.totalPrice, 0);
     const totalPurchaseValue = purchases.reduce((sum: number, purchase: Purchase) => sum + purchase.totalPrice, 0);
     
-    return apiSimulator.simulateResponse({
-      totalProducts,
-      totalPurchases,
-      totalSales,
-      totalRevenue,
-      totalPurchaseValue,
-      profit: totalRevenue - totalPurchaseValue
-    });
+    return {
+      data: {
+        totalProducts,
+        totalPurchases,
+        totalSales,
+        totalRevenue,
+        totalPurchaseValue,
+        profit: totalRevenue - totalPurchaseValue
+      },
+      success: true,
+      message: 'Analytics data retrieved successfully'
+    };
   }
 };

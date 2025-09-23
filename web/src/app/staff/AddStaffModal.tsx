@@ -15,7 +15,8 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     name: '',
     email: '',
     phone: '',
-    role: 'STAFF' as 'ADMIN' | 'MANAGER' | 'STAFF',
+    role: 'STYLIST' as 'ADMIN' | 'MANAGER' | 'STYLIST',
+    password: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -26,14 +27,16 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         name: editingStaff.name || '',
         email: editingStaff.email || '',
         phone: editingStaff.phone || '',
-        role: editingStaff.role as 'ADMIN' | 'MANAGER' | 'STAFF',
+        role: editingStaff.role as 'ADMIN' | 'MANAGER' | 'STYLIST',
+        password: '', // Password not needed for editing
       });
     } else {
       setFormData({
         name: '',
         email: '',
         phone: '',
-        role: 'STAFF',
+        role: 'STYLIST',
+        password: '',
       });
     }
   }, [editingStaff, isOpen]);
@@ -51,6 +54,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         role: formData.role,
+        password: formData.password,
       });
     } finally {
       setLoading(false);
@@ -122,14 +126,27 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ADMIN' | 'MANAGER' | 'STAFF' }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'ADMIN' | 'MANAGER' | 'STYLIST' }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
               required
             >
-              <option value="STAFF">Stylist</option>
+              <option value="STYLIST">Stylist</option>
               <option value="MANAGER">Manager</option>
               <option value="ADMIN">Admin</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+              required
+            />
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -143,7 +160,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.name.trim() || !formData.email.trim()}
+              disabled={loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim()}
               className="flex-1 px-4 py-2 bg-[#5A8621] text-white rounded-lg hover:bg-[#4A7219] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (

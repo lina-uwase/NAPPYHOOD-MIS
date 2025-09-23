@@ -67,7 +67,7 @@ const CustomersPage: React.FC = () => {
       const response = await customersService.getAll(params);
       const customersData = Array.isArray(response.data) ? response.data : [];
       setCustomers(customersData);
-      setTotalPages(response.meta?.pages || 1);
+      setTotalPages(response.meta?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       setCustomers([]);

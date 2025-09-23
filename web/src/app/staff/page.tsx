@@ -25,7 +25,7 @@ export default function StaffPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'MANAGER' | 'STAFF' | ''>('');
+  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'MANAGER' | 'STYLIST' | ''>('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,20 +40,13 @@ export default function StaffPage() {
     try {
       setLoading(true);
       setHasError(false);
-      const response = await staffService.getAll({
-        page: currentPage,
-        limit: itemsPerPage,
-        search: searchTerm,
-        role: roleFilter || undefined,
-      });
+      const response = await staffService.getAll();
 
       if (response.success) {
         const staffData = Array.isArray(response.data) ? response.data : [];
         setStaff(staffData);
-        if (response.meta) {
-          setTotalStaff(response.meta.total);
-          setTotalPages(response.meta.totalPages);
-        }
+        setTotalStaff(staffData.length);
+        setTotalPages(1);
       }
     } catch (error) {
       console.error('Error loading staff:', error);
@@ -231,7 +224,7 @@ export default function StaffPage() {
         const name = (n['name'] || '') as string;
         const email = (n['email'] || '') as string;
         const phone = (n['phone'] || '') as string;
-        const role = (n['role'] || '') as 'ADMIN' | 'MANAGER' | 'STAFF' | '';
+        const role = (n['role'] || '') as 'ADMIN' | 'MANAGER' | 'STYLIST' | '';
 
         if (!name || !email) { fail += 1; continue; }
 
@@ -240,7 +233,8 @@ export default function StaffPage() {
             name: name.trim(),
             email: email.trim(),
             phone: phone?.trim() || undefined,
-            role: role || 'STAFF'
+            role: role || 'STYLIST',
+            password: 'defaultpassword' // Default password
           });
           if (res.success) ok += 1; else fail += 1;
         } catch {
@@ -321,12 +315,12 @@ export default function StaffPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setRoleFilter('STAFF');
+                    setRoleFilter('STYLIST');
                     setShowFilterDropdown(false);
                     setCurrentPage(1);
                   }}
                   className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] last:rounded-b-lg ${
-                    roleFilter === 'STAFF' ? 'bg-[#F8FAFC] text-[#5A8621]' : ''
+                    roleFilter === 'STYLIST' ? 'bg-[#F8FAFC] text-[#5A8621]' : ''
                   }`}
                 >
                   Stylist

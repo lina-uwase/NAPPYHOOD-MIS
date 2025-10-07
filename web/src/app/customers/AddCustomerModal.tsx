@@ -20,7 +20,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     phone: '',
     email: '',
     birthday: '',
-    location: '',
     district: '',
     province: ''
   });
@@ -52,7 +51,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         phone: editingCustomer.phone,
         email: editingCustomer.email || '',
         birthday: editingCustomer.birthday ? editingCustomer.birthday.split('T')[0] : '',
-        location: editingCustomer.location,
         district: editingCustomer.district,
         province: editingCustomer.province
       });
@@ -101,19 +99,10 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
-    }
 
-    if (!formData.district) {
-      newErrors.district = 'District is required';
-    }
-
-    if (!formData.province) {
-      newErrors.province = 'Province is required';
-    }
-
-    if (formData.birthday) {
+    if (!formData.birthday) {
+      newErrors.birthday = 'Birthday (month and day) is required';
+    } else {
       const birthday = new Date(formData.birthday);
       const today = new Date();
       if (birthday > today) {
@@ -135,17 +124,11 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     setLoading(true);
 
     try {
-      // Parse birthday if provided
-      let birthDay: number | undefined;
-      let birthMonth: number | undefined;
-      let birthYear: number | undefined;
-
-      if (formData.birthday) {
-        const dateObj = new Date(formData.birthday);
-        birthDay = dateObj.getDate();
-        birthMonth = dateObj.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
-        birthYear = dateObj.getFullYear();
-      }
+      // Parse birthday - month and day required, year optional
+      const dateObj = new Date(formData.birthday);
+      const birthDay = dateObj.getDate();
+      const birthMonth = dateObj.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
+      const birthYear = dateObj.getFullYear() !== 1970 ? dateObj.getFullYear() : undefined; // 1970 means no year was entered
 
       const submitData = {
         fullName: formData.fullName.trim(),
@@ -155,7 +138,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthDay,
         birthMonth,
         birthYear,
-        location: formData.location.trim(),
+        location: '',
         district: formData.district,
         province: formData.province
       };
@@ -317,22 +300,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Specific Location *
-              </label>
-              <input
-                type="text"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.location ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., Kimisagara, Sector ABC"
-              />
-              {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
-            </div>
           </div>
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">

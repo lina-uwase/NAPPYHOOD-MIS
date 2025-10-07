@@ -208,6 +208,55 @@ router.get('/', auth_1.authenticateToken, customerController_1.getAllCustomers);
 router.post('/', auth_1.authenticateToken, customerController_1.createCustomer);
 /**
  * @swagger
+ * /api/customers/top:
+ *   get:
+ *     summary: Get top customers by visit count
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 5
+ *         description: Number of top customers to return
+ *     responses:
+ *       200:
+ *         description: Top customers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       fullName:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       saleCount:
+ *                         type: integer
+ *                       totalSpent:
+ *                         type: number
+ *                       lastSale:
+ *                         type: string
+ *                         format: date-time
+ *                       birthDay:
+ *                         type: integer
+ *                       birthMonth:
+ *                         type: integer
+ */
+router.get('/top', auth_1.authenticateToken, customerController_1.getTopCustomers);
+/**
+ * @swagger
  * /api/customers/{id}:
  *   get:
  *     summary: Get customer by ID with visit history

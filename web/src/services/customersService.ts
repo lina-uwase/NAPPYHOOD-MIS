@@ -15,8 +15,9 @@ export interface Customer {
   district: string;
   province: string;
   loyaltyPoints: number;
-  totalVisits: number;
+  totalSales: number;
   totalSpent: number;
+  lastSale?: string;
   lastVisit?: string;
   isActive: boolean;
   createdAt: string;
@@ -63,6 +64,19 @@ export interface ApiResponse<T = unknown> {
   };
 }
 
+interface BackendCustomersResponse {
+  success: boolean;
+  data: {
+    customers: Customer[];
+    pagination: {
+      total: number;
+      totalPages: number;
+      currentPage: number;
+      limit: number;
+    };
+  };
+}
+
 class CustomersService {
   async getAll(params: GetCustomersParams = {}): Promise<ApiResponse<Customer[]>> {
     const queryParams = new URLSearchParams();
@@ -75,7 +89,7 @@ class CustomersService {
     if (params.province) queryParams.append('province', params.province);
     if (params.isActive !== undefined) queryParams.append('isActive', params.isActive.toString());
 
-    const response = await api.get<any>(`/customers?${queryParams.toString()}`);
+    const response = await api.get<BackendCustomersResponse>(`/customers?${queryParams.toString()}`);
     // Backend returns { success: true, data: { customers: [...], pagination: {...} } }
     // But frontend expects { success: true, data: [...] }
     return {
@@ -117,6 +131,11 @@ class CustomersService {
 
   async getDistrictsByProvince(province: string): Promise<ApiResponse<string[]>> {
     const response = await api.get<ApiResponse<string[]>>(`/customers/locations/districts/${province}`);
+    return response.data;
+  }
+
+  async getTopCustomers(limit: number = 5): Promise<ApiResponse<Customer[]>> {
+    const response = await api.get<ApiResponse<Customer[]>>(`/customers/top?limit=${limit}`);
     return response.data;
   }
 }

@@ -11,8 +11,6 @@ const nappyhoodServices = [
     combinedPrice: null,
     childPrice: 9000,
     childCombinedPrice: null,
-    duration: 60,
-    isComboEligible: true
   },
   {
     name: "BRAIDS WASH",
@@ -22,8 +20,6 @@ const nappyhoodServices = [
     combinedPrice: null,
     childPrice: 12000,
     childCombinedPrice: null,
-    duration: 45,
-    isComboEligible: true
   },
   {
     name: "PROTEIN TREATMENT",
@@ -33,8 +29,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: 12000,
     childCombinedPrice: 17000,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "HYDRATION DEEP TREATMENT",
@@ -44,8 +38,6 @@ const nappyhoodServices = [
     combinedPrice: 17000,
     childPrice: 14000,
     childCombinedPrice: 19000,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "FENUGREEK",
@@ -55,8 +47,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: 12000,
     childCombinedPrice: 17000,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "NO MORE FALL",
@@ -66,8 +56,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: 14000,
     childCombinedPrice: 22000,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "BYE BYE DANDRUFF",
@@ -77,8 +65,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: 14000,
     childCombinedPrice: 22000,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "HOT OIL TREATMENT",
@@ -88,8 +74,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: 14000,
     childCombinedPrice: 22000,
-    duration: 75,
-    isComboEligible: true
   },
   {
     name: "HENNA TREATMENT",
@@ -99,8 +83,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: 14000,
     childCombinedPrice: 22000,
-    duration: 120,
-    isComboEligible: true
   },
   {
     name: "KANTA",
@@ -110,8 +92,6 @@ const nappyhoodServices = [
     combinedPrice: 12000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 60,
-    isComboEligible: true
   },
   {
     name: "CHEBE TWIST",
@@ -121,8 +101,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 120,
-    isComboEligible: true
   },
   {
     name: "HAIR COLORING (Teinture)",
@@ -132,8 +110,6 @@ const nappyhoodServices = [
     combinedPrice: null,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 150,
-    isComboEligible: false
   },
 
   // TWIST HAIRSTYLE
@@ -145,8 +121,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: 12000,
     childCombinedPrice: 17000,
-    duration: 120,
-    isComboEligible: true
   },
   {
     name: "SMALL SIZE TWIST",
@@ -156,8 +130,6 @@ const nappyhoodServices = [
     combinedPrice: 25000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 180,
-    isComboEligible: true
   },
   {
     name: "TWIST OUT",
@@ -167,8 +139,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "TWIST WITH EXTENSION",
@@ -178,8 +148,6 @@ const nappyhoodServices = [
     combinedPrice: 45000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 300,
-    isComboEligible: true
   },
   {
     name: "FLAT TWIST WITH EXTENSION",
@@ -189,8 +157,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 150,
-    isComboEligible: true
   },
 
   // CORNROWS BRAIDS
@@ -202,8 +168,6 @@ const nappyhoodServices = [
     combinedPrice: 12000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 60,
-    isComboEligible: true
   },
   {
     name: "THREE LINES CORNROWS",
@@ -213,8 +177,6 @@ const nappyhoodServices = [
     combinedPrice: 14000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 75,
-    isComboEligible: true
   },
   {
     name: "FOUR LINES CORNROWS",
@@ -224,8 +186,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "FIVE LINES CORNROWS",
@@ -235,8 +195,6 @@ const nappyhoodServices = [
     combinedPrice: 17000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 105,
-    isComboEligible: true
   },
   {
     name: "6 TO 8 LINES CORNROWS",
@@ -246,8 +204,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 120,
-    isComboEligible: true
   },
   {
     name: "9 TO 12 LINES CORNROWS",
@@ -257,8 +213,6 @@ const nappyhoodServices = [
     combinedPrice: 24000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 150,
-    isComboEligible: true
   },
   {
     name: "CORNROWS FOR WIG",
@@ -268,8 +222,6 @@ const nappyhoodServices = [
     combinedPrice: 16000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "MEN CORNROWS",
@@ -279,8 +231,6 @@ const nappyhoodServices = [
     combinedPrice: 14000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 75,
-    isComboEligible: true
   },
 
   // STRAWSET & CURLS
@@ -292,8 +242,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 180,
-    isComboEligible: true
   },
   {
     name: "SMALL CURLS",
@@ -303,8 +251,6 @@ const nappyhoodServices = [
     combinedPrice: 20000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 240,
-    isComboEligible: true
   },
   {
     name: "FLEXROAD/IMIHEHA",
@@ -314,8 +260,6 @@ const nappyhoodServices = [
     combinedPrice: 25000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 300,
-    isComboEligible: true
   },
   {
     name: "FINGERLOCS",
@@ -325,8 +269,6 @@ const nappyhoodServices = [
     combinedPrice: 25000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 240,
-    isComboEligible: true
   },
 
   // STYLING SERVICE
@@ -338,8 +280,6 @@ const nappyhoodServices = [
     combinedPrice: 12000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 60,
-    isComboEligible: true
   },
   {
     name: "STYLING WITH EXTENSION",
@@ -349,8 +289,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 90,
-    isComboEligible: true
   },
   {
     name: "BRAIDS & DREADLOCKS STYLING",
@@ -360,8 +298,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 75,
-    isComboEligible: true
   },
   {
     name: "BRIDE STYLING",
@@ -371,8 +307,6 @@ const nappyhoodServices = [
     combinedPrice: 25000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 120,
-    isComboEligible: false
   },
   {
     name: "SILKPRESS (FLAT, TRIM)",
@@ -382,8 +316,6 @@ const nappyhoodServices = [
     combinedPrice: 15000,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 120,
-    isComboEligible: true
   },
   {
     name: "BLOW DRYING",
@@ -393,8 +325,6 @@ const nappyhoodServices = [
     combinedPrice: null,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 30,
-    isComboEligible: true
   },
 
   // SPECIAL OFFERS
@@ -406,8 +336,6 @@ const nappyhoodServices = [
     combinedPrice: null,
     childPrice: null,
     childCombinedPrice: null,
-    duration: 90,
-    isComboEligible: false
   }
 ];
 

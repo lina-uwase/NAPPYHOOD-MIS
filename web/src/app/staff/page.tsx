@@ -63,7 +63,7 @@ export default function StaffPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, roleFilter]);
+  }, []);
 
   useEffect(() => {
     loadStaff();

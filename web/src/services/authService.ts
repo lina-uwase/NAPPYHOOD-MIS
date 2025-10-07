@@ -148,9 +148,9 @@ class AuthService {
   async updateProfilePicture(file: File): Promise<ApiResponse> {
     try {
       const formData = new FormData();
-      formData.append('profilePicture', file);
-      
-      const response = await api.put<ApiResponse>('/auth/profile-picture', formData, {
+      formData.append('picture', file);
+
+      const response = await api.post<ApiResponse>('/profile/picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

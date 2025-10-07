@@ -12,9 +12,10 @@ const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 // Import routes
 const auth_1 = __importDefault(require("./routes/auth"));
+const userProfile_1 = __importDefault(require("./routes/userProfile"));
 const services_1 = __importDefault(require("./routes/services"));
 const customers_1 = __importDefault(require("./routes/customers"));
-const visits_1 = __importDefault(require("./routes/visits"));
+const sales_1 = __importDefault(require("./routes/sales"));
 const staff_1 = __importDefault(require("./routes/staff"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
 // Load environment variables
@@ -76,6 +77,8 @@ app.use((0, morgan_1.default)('combined'));
 // Body parsing middleware
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));
+// Static files serving (for profile pictures)
+app.use('/uploads', express_1.default.static('uploads'));
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
@@ -89,9 +92,10 @@ app.get('/health', (req, res) => {
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swaggerSpec));
 // API routes
 app.use('/api/auth', auth_1.default);
+app.use('/api/profile', userProfile_1.default);
 app.use('/api/services', services_1.default);
 app.use('/api/customers', customers_1.default);
-app.use('/api/visits', visits_1.default);
+app.use('/api/sales', sales_1.default);
 app.use('/api/staff', staff_1.default);
 app.use('/api/dashboard', dashboard_1.default);
 // Root endpoint

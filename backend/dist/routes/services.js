@@ -34,7 +34,6 @@ const router = (0, express_1.Router)();
  *           type: integer
  *         isActive:
  *           type: boolean
- *         isComboEligible:
  *           type: boolean
  *         createdAt:
  *           type: string
@@ -65,7 +64,6 @@ const router = (0, express_1.Router)();
  *           type: number
  *         duration:
  *           type: integer
- *         isComboEligible:
  *           type: boolean
  */
 /**
@@ -158,7 +156,6 @@ router.get('/:id', auth_1.authenticateToken, serviceController_1.getServiceById)
  *             childPrice: 9000
  *             childCombinedPrice: 12000
  *             duration: 60
- *             isComboEligible: true
  *     responses:
  *       201:
  *         description: Service created successfully

@@ -64,13 +64,11 @@ export const createService = async (req: AuthenticatedRequest, res: Response): P
       singlePrice,
       combinedPrice,
       childPrice,
-      childCombinedPrice,
-      duration,
-      isComboEligible = false
+      childCombinedPrice
     } = req.body;
 
-    if (!name || !category || !description || !singlePrice || !duration) {
-      res.status(400).json({ error: 'Name, category, description, singlePrice, and duration are required' });
+    if (!name || !category || !singlePrice) {
+      res.status(400).json({ error: 'Name, category, and singlePrice are required' });
       return;
     }
 
@@ -88,13 +86,11 @@ export const createService = async (req: AuthenticatedRequest, res: Response): P
       data: {
         name,
         category,
-        description,
+        description: description || null,
         singlePrice: parseFloat(singlePrice),
         combinedPrice: combinedPrice ? parseFloat(combinedPrice) : null,
         childPrice: childPrice ? parseFloat(childPrice) : null,
-        childCombinedPrice: childCombinedPrice ? parseFloat(childCombinedPrice) : null,
-        duration: parseInt(duration),
-        isComboEligible
+        childCombinedPrice: childCombinedPrice ? parseFloat(childCombinedPrice) : null
       }
     });
 
@@ -120,8 +116,6 @@ export const updateService = async (req: AuthenticatedRequest, res: Response): P
       combinedPrice,
       childPrice,
       childCombinedPrice,
-      duration,
-      isComboEligible,
       isActive
     } = req.body;
 
@@ -148,13 +142,11 @@ export const updateService = async (req: AuthenticatedRequest, res: Response): P
     const updateData: any = {};
     if (name !== undefined) updateData.name = name;
     if (category !== undefined) updateData.category = category;
-    if (description !== undefined) updateData.description = description;
+    if (description !== undefined) updateData.description = description || null;
     if (singlePrice !== undefined) updateData.singlePrice = parseFloat(singlePrice);
     if (combinedPrice !== undefined) updateData.combinedPrice = combinedPrice ? parseFloat(combinedPrice) : null;
     if (childPrice !== undefined) updateData.childPrice = childPrice ? parseFloat(childPrice) : null;
     if (childCombinedPrice !== undefined) updateData.childCombinedPrice = childCombinedPrice ? parseFloat(childCombinedPrice) : null;
-    if (duration !== undefined) updateData.duration = parseInt(duration);
-    if (isComboEligible !== undefined) updateData.isComboEligible = isComboEligible;
     if (isActive !== undefined) updateData.isActive = isActive;
 
     const service = await prisma.service.update({

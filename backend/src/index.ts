@@ -8,9 +8,10 @@ import swaggerJsdoc from 'swagger-jsdoc';
 
 // Import routes
 import authRoutes from './routes/auth';
+import userProfileRoutes from './routes/userProfile';
 import serviceRoutes from './routes/services';
 import customerRoutes from './routes/customers';
-import visitRoutes from './routes/visits';
+import salesRoutes from './routes/sales';
 import staffRoutes from './routes/staff';
 import dashboardRoutes from './routes/dashboard';
 
@@ -81,6 +82,9 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Static files serving (for profile pictures)
+app.use('/uploads', express.static('uploads'));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -96,9 +100,10 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', userProfileRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/customers', customerRoutes);
-app.use('/api/visits', visitRoutes);
+app.use('/api/sales', salesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 

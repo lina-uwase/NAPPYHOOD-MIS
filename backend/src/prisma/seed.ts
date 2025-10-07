@@ -63,14 +63,14 @@ async function main() {
   // Create discount rules
   const discountRules = await Promise.all([
     prisma.discountRule.upsert({
-      where: { name: 'Sixth Visit Discount' },
+      where: { name: 'Sixth Sale Discount' },
       update: {},
       create: {
-        name: 'Sixth Visit Discount',
+        name: 'Sixth Sale Discount',
         type: 'SIXTH_VISIT',
         value: 20,
         isPercentage: true,
-        description: '20% discount on every 6th visit'
+        description: '20% discount on every 6th sale'
       }
     }),
     prisma.discountRule.upsert({
@@ -121,8 +121,6 @@ async function main() {
       combinedPrice: null,
       childPrice: 9000,
       childCombinedPrice: null,
-      duration: 60,
-      isComboEligible: true
     },
     {
       name: 'Braids Wash',
@@ -132,7 +130,6 @@ async function main() {
       combinedPrice: null,
       childPrice: 12000,
       childCombinedPrice: null,
-      duration: 45
     },
     {
       name: 'Protein Treatment',
@@ -142,7 +139,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: 12000,
       childCombinedPrice: 17000,
-      duration: 90
     },
     {
       name: 'Hydration Deep Treatment',
@@ -152,7 +148,6 @@ async function main() {
       combinedPrice: 17000,
       childPrice: 14000,
       childCombinedPrice: 19000,
-      duration: 90
     },
     {
       name: 'Fenugreek',
@@ -162,7 +157,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: 12000,
       childCombinedPrice: 17000,
-      duration: 75
     },
     {
       name: 'No More Fall',
@@ -172,7 +166,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: 14000,
       childCombinedPrice: 22000,
-      duration: 90
     },
     {
       name: 'Bye Bye Dandruff',
@@ -182,7 +175,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: 14000,
       childCombinedPrice: 22000,
-      duration: 75
     },
     {
       name: 'Hot Oil Treatment',
@@ -192,7 +184,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: 14000,
       childCombinedPrice: 22000,
-      duration: 60
     },
     {
       name: 'Henna Treatment',
@@ -202,7 +193,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: 14000,
       childCombinedPrice: 22000,
-      duration: 120
     },
     {
       name: 'Kanta',
@@ -212,7 +202,6 @@ async function main() {
       combinedPrice: 12000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 45
     },
     {
       name: 'Chebe Twist',
@@ -222,7 +211,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 90
     },
     {
       name: 'Hair Coloring (Teinture)',
@@ -232,7 +220,6 @@ async function main() {
       combinedPrice: null,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 120
     },
 
     // TWIST HAIRSTYLES
@@ -244,7 +231,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: 12000,
       childCombinedPrice: 17000,
-      duration: 120
     },
     {
       name: 'Small Size Twist',
@@ -254,7 +240,6 @@ async function main() {
       combinedPrice: 25000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 180
     },
     {
       name: 'Twist Out',
@@ -264,7 +249,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 90
     },
     {
       name: 'Twist with Extension',
@@ -274,7 +258,6 @@ async function main() {
       combinedPrice: 45000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 240
     },
     {
       name: 'Flat Twist with Extension',
@@ -284,7 +267,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 150
     },
 
     // CORNROWS BRAIDS
@@ -296,7 +278,6 @@ async function main() {
       combinedPrice: 12000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 30
     },
     {
       name: 'Three Lines Cornrows',
@@ -306,7 +287,6 @@ async function main() {
       combinedPrice: 14000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 45
     },
     {
       name: 'Four Lines Cornrows',
@@ -316,7 +296,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 60
     },
     {
       name: 'Five Lines Cornrows',
@@ -326,7 +305,6 @@ async function main() {
       combinedPrice: 17000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 75
     },
     {
       name: 'Six to Eight Lines Cornrows',
@@ -336,7 +314,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 90
     },
     {
       name: 'Nine to Twelve Lines Cornrows',
@@ -346,7 +323,6 @@ async function main() {
       combinedPrice: 24000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 120
     },
     {
       name: 'Cornrows for Wig',
@@ -356,7 +332,6 @@ async function main() {
       combinedPrice: 16000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 60
     },
     {
       name: 'Men Cornrows',
@@ -366,7 +341,6 @@ async function main() {
       combinedPrice: 14000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 45
     },
 
     // STRAWSET & CURLS
@@ -378,7 +352,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 90
     },
     {
       name: 'Small Strawset',
@@ -388,7 +361,6 @@ async function main() {
       combinedPrice: 20000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 120
     },
     {
       name: 'Flexroad/Imiheha',
@@ -398,7 +370,6 @@ async function main() {
       combinedPrice: 25000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 150
     },
     {
       name: 'Fingerlocs',
@@ -408,7 +379,6 @@ async function main() {
       combinedPrice: 25000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 180
     },
 
     // STYLING SERVICES
@@ -420,7 +390,6 @@ async function main() {
       combinedPrice: 12000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 45
     },
     {
       name: 'Styling with Extension',
@@ -430,7 +399,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 90
     },
     {
       name: 'Braids & Dreadlocks',
@@ -440,7 +408,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 120
     },
     {
       name: 'Bride Styling',
@@ -450,7 +417,6 @@ async function main() {
       combinedPrice: 25000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 180
     },
     {
       name: 'Silk Press (Flat, Trim)',
@@ -460,7 +426,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 120
     },
     {
       name: 'Blow Drying',
@@ -470,7 +435,6 @@ async function main() {
       combinedPrice: null,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 30
     },
 
     // SPECIAL OFFERS
@@ -482,7 +446,6 @@ async function main() {
       combinedPrice: null,
       childPrice: null,
       childCombinedPrice: null,
-      duration: 60
     }
   ];
 

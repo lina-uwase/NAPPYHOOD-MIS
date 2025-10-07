@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   Search,
@@ -38,21 +38,7 @@ const CustomersPage: React.FC = () => {
     setTitle('Customer Management');
   }, [setTitle]);
 
-  useEffect(() => {
-    fetchCustomers();
-    fetchProvinces();
-  }, [currentPage, searchTerm, genderFilter, provinceFilter, districtFilter]);
-
-  useEffect(() => {
-    if (provinceFilter) {
-      fetchDistricts(provinceFilter);
-    } else {
-      setDistricts([]);
-      setDistrictFilter('');
-    }
-  }, [provinceFilter]);
-
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       const params: GetCustomersParams = {
@@ -74,7 +60,21 @@ const CustomersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, searchTerm, genderFilter, provinceFilter, districtFilter]);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchProvinces();
+  }, [fetchCustomers]);
+
+  useEffect(() => {
+    if (provinceFilter) {
+      fetchDistricts(provinceFilter);
+    } else {
+      setDistricts([]);
+      setDistrictFilter('');
+    }
+  }, [provinceFilter]);
 
   const fetchProvinces = async () => {
     try {
@@ -315,8 +315,8 @@ const CustomersPage: React.FC = () => {
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500">Total Visits:</span>
-                        <div className="font-semibold">{customer.totalVisits}</div>
+                        <span className="text-gray-500">Total Sales:</span>
+                        <div className="font-semibold">{customer.totalSales}</div>
                       </div>
                       <div>
                         <span className="text-gray-500">Total Spent:</span>

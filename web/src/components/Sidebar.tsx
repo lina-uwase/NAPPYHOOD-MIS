@@ -17,6 +17,7 @@ const Sidebar = () => {
   const pathname = usePathname();
   const [darkMode, setDarkMode] = useState(false);
   const { user } = useAuth();
+  
 
   React.useEffect(() => {
     const savedDarkMode = localStorage.getItem('darkMode');
@@ -35,7 +36,7 @@ const Sidebar = () => {
     { name: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['ADMIN', 'MANAGER'] },
     { name: 'Services', icon: Scissors, href: '/services', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Customers', icon: Users2, href: '/customers', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
-    { name: 'Visits', icon: Calendar, href: '/visits', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
+    { name: 'Sales', icon: Calendar, href: '/sales', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Staff', icon: Users, href: '/staff', roles: ['ADMIN', 'MANAGER'] },
   ];
 
@@ -65,13 +66,13 @@ const Sidebar = () => {
                 key={item.name}
                 href={item.href}
                 prefetch={true}
-                className={`group flex items-center px-4 py-3 text-base font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:!bg-\[#F8FAFC\] focus-visible:!text-\[#5A8621\] ${
+                className={`group flex items-center px-4 py-3 text-base font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:!bg-[#F8FAFC] focus-visible:!text-[#5A8621] ${
                   isActive
                     ? 'bg-[#F8FAFC] text-[#5A8621]'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                 }`}
               >
-                <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-[#5A8621]' : 'text-gray-500'} group-focus-visible:!text-\[#5A8621\]`} />
+                <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-[#5A8621]' : 'text-gray-500'} group-focus-visible:!text-[#5A8621]`} />
                 {item.name}
               </Link>
             );

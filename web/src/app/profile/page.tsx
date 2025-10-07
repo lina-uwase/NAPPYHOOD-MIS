@@ -31,17 +31,19 @@ export default function ProfilePage() {
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    setEditNames(user?.name || '');
+    setEditPhone(user?.phone || '');
+
+    // Set profile picture from backend or localStorage fallback
+    if (user?.profilePicture) {
+      const fullUrl = user.profilePicture.startsWith('http')
+        ? user.profilePicture
+        : `http://localhost:5001${user.profilePicture}`;
+      setAvatarDataUrl(fullUrl);
+    } else if (typeof window !== "undefined") {
       const saved = localStorage.getItem("profileAvatar");
       if (saved) setAvatarDataUrl(saved);
     }
-    setEditNames(user?.name || '');
-    setEditPhone(user?.phone || '');
-    
-    // Profile picture handling would be implemented based on actual User interface
-    // if (user?.profile_picture) {
-    //   setAvatarDataUrl(user.profile_picture);
-    // }
   }, [user]);
 
   const handlePickImage = () => inputRef.current?.click();
@@ -65,7 +67,9 @@ export default function ProfilePage() {
       setErrors({});
       
       await updateProfilePicture(file);
-      
+
+      // Profile picture is updated through the user context,
+      // but we'll also update the local state immediately for better UX
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
@@ -76,7 +80,7 @@ export default function ProfilePage() {
         }
       };
       reader.readAsDataURL(file);
-      
+
       setSuccessMessage('Profile picture updated successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {

@@ -29,13 +29,13 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
         take: limitNum,
         orderBy: { createdAt: 'desc' },
         include: {
-          visits: {
+          sales: {
             select: {
               id: true,
-              visitDate: true,
+              saleDate: true,
               finalAmount: true
             },
-            orderBy: { visitDate: 'desc' },
+            orderBy: { saleDate: 'desc' },
             take: 3
           }
         }
@@ -46,12 +46,12 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
     // Transform customers to include calculated fields expected by frontend
     const transformedCustomers = customers.map(customer => ({
       ...customer,
-      totalVisits: customer.visitCount,
+      totalSales: customer.saleCount,
       totalSpent: Number(customer.totalSpent),
       // Convert decimal to number and format dates properly
       createdAt: customer.createdAt.toISOString(),
       updatedAt: customer.updatedAt.toISOString(),
-      lastVisit: customer.lastVisit?.toISOString(),
+      lastSale: customer.lastSale?.toISOString(),
     }));
 
     res.json({
@@ -79,7 +79,7 @@ export const getCustomerById = async (req: Request, res: Response): Promise<void
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
-        visits: {
+        sales: {
           include: {
             services: {
               include: {
@@ -102,7 +102,7 @@ export const getCustomerById = async (req: Request, res: Response): Promise<void
               }
             }
           },
-          orderBy: { visitDate: 'desc' }
+          orderBy: { saleDate: 'desc' }
         },
         discounts: {
           include: {
@@ -143,8 +143,8 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       birthYear
     } = req.body;
 
-    if (!fullName || !gender || !location || !district || !province || !phone || !birthDay || !birthMonth) {
-      res.status(400).json({ error: 'All required fields must be provided' });
+    if (!fullName || !gender || !phone) {
+      res.status(400).json({ error: 'Required fields: fullName, gender, phone' });
       return;
     }
 
@@ -280,6 +280,37 @@ export const toggleCustomerActive = async (req: AuthenticatedRequest, res: Respo
   }
 };
 
+export const getTopCustomers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { limit = '5' } = req.query;
+    const limitNum = parseInt(limit as string);
+
+    const topCustomers = await prisma.customer.findMany({
+      where: { isActive: true },
+      orderBy: { saleCount: 'desc' },
+      take: limitNum,
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        saleCount: true,
+        totalSpent: true,
+        lastSale: true,
+        birthDay: true,
+        birthMonth: true
+      }
+    });
+
+    res.json({
+      success: true,
+      data: topCustomers
+    });
+  } catch (error) {
+    console.error('Get top customers error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const getCustomerStats = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
@@ -287,10 +318,10 @@ export const getCustomerStats = async (req: Request, res: Response): Promise<voi
     const customer = await prisma.customer.findUnique({
       where: { id },
       include: {
-        visits: {
+        sales: {
           select: {
             finalAmount: true,
-            visitDate: true,
+            saleDate: true,
             loyaltyPointsEarned: true
           }
         }
@@ -304,18 +335,18 @@ export const getCustomerStats = async (req: Request, res: Response): Promise<voi
 
     const currentMonth = new Date().getMonth() + 1;
     const isBirthdayMonth = customer.birthMonth === currentMonth;
-    const isEligibleForSixthVisitDiscount = (customer.visitCount + 1) % 6 === 0;
+    const isEligibleForSixthSaleDiscount = (customer.saleCount + 1) % 6 === 0;
 
     const stats = {
-      totalVisits: customer.visitCount,
+      totalSales: customer.saleCount,
       totalSpent: customer.totalSpent,
       loyaltyPoints: customer.loyaltyPoints,
-      lastVisit: customer.lastVisit,
-      averageSpending: customer.visitCount > 0 ? Number(customer.totalSpent) / customer.visitCount : 0,
+      lastSale: customer.lastSale,
+      averageSpending: customer.saleCount > 0 ? Number(customer.totalSpent) / customer.saleCount : 0,
       isBirthdayMonth,
-      isEligibleForSixthVisitDiscount,
-      monthlyVisits: customer.visits.reduce((acc: any, visit) => {
-        const month = new Date(visit.visitDate).getMonth();
+      isEligibleForSixthSaleDiscount,
+      monthlySales: customer.sales.reduce((acc: any, sale) => {
+        const month = new Date(sale.saleDate).getMonth();
         acc[month] = (acc[month] || 0) + 1;
         return acc;
       }, {})

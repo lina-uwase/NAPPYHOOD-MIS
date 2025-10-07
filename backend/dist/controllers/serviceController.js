@@ -52,9 +52,9 @@ const getServiceById = async (req, res) => {
 exports.getServiceById = getServiceById;
 const createService = async (req, res) => {
     try {
-        const { name, category, description, singlePrice, combinedPrice, childPrice, childCombinedPrice, duration, isComboEligible = false } = req.body;
-        if (!name || !category || !description || !singlePrice || !duration) {
-            res.status(400).json({ error: 'Name, category, description, singlePrice, and duration are required' });
+        const { name, category, description, singlePrice, combinedPrice, childPrice, childCombinedPrice } = req.body;
+        if (!name || !category || !singlePrice) {
+            res.status(400).json({ error: 'Name, category, and singlePrice are required' });
             return;
         }
         // Check if service already exists
@@ -69,13 +69,11 @@ const createService = async (req, res) => {
             data: {
                 name,
                 category,
-                description,
+                description: description || null,
                 singlePrice: parseFloat(singlePrice),
                 combinedPrice: combinedPrice ? parseFloat(combinedPrice) : null,
                 childPrice: childPrice ? parseFloat(childPrice) : null,
-                childCombinedPrice: childCombinedPrice ? parseFloat(childCombinedPrice) : null,
-                duration: parseInt(duration),
-                isComboEligible
+                childCombinedPrice: childCombinedPrice ? parseFloat(childCombinedPrice) : null
             }
         });
         res.status(201).json({
@@ -93,7 +91,7 @@ exports.createService = createService;
 const updateService = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, category, description, singlePrice, combinedPrice, childPrice, childCombinedPrice, duration, isComboEligible, isActive } = req.body;
+        const { name, category, description, singlePrice, combinedPrice, childPrice, childCombinedPrice, isActive } = req.body;
         const existingService = await database_1.prisma.service.findUnique({
             where: { id }
         });
@@ -117,7 +115,7 @@ const updateService = async (req, res) => {
         if (category !== undefined)
             updateData.category = category;
         if (description !== undefined)
-            updateData.description = description;
+            updateData.description = description || null;
         if (singlePrice !== undefined)
             updateData.singlePrice = parseFloat(singlePrice);
         if (combinedPrice !== undefined)
@@ -126,10 +124,6 @@ const updateService = async (req, res) => {
             updateData.childPrice = childPrice ? parseFloat(childPrice) : null;
         if (childCombinedPrice !== undefined)
             updateData.childCombinedPrice = childCombinedPrice ? parseFloat(childCombinedPrice) : null;
-        if (duration !== undefined)
-            updateData.duration = parseInt(duration);
-        if (isComboEligible !== undefined)
-            updateData.isComboEligible = isComboEligible;
         if (isActive !== undefined)
             updateData.isActive = isActive;
         const service = await database_1.prisma.service.update({

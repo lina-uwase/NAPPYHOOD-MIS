@@ -23,7 +23,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
     childPrice: '',
     childCombinedPrice: '',
     duration: '',
-    isComboEligible: false,
     isActive: true
   });
 
@@ -50,7 +49,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
         childPrice: editingService.childPrice?.toString() || '',
         childCombinedPrice: editingService.childCombinedPrice?.toString() || '',
         duration: editingService.duration.toString(),
-        isComboEligible: editingService.isComboEligible || false,
         isActive: editingService.isActive
       });
     }
@@ -88,9 +86,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       newErrors.name = 'Service name is required';
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
 
     if (!formData.singlePrice || parseFloat(formData.singlePrice) <= 0) {
       newErrors.singlePrice = 'Single price must be greater than 0';
@@ -129,13 +124,12 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       const submitData = {
         name: formData.name.trim(),
         category: formData.category,
-        description: formData.description.trim(),
+        description: formData.description.trim() || undefined,
         singlePrice: parseFloat(formData.singlePrice),
         combinedPrice: formData.combinedPrice ? parseFloat(formData.combinedPrice) : undefined,
         childPrice: formData.childPrice ? parseFloat(formData.childPrice) : undefined,
         childCombinedPrice: formData.childCombinedPrice ? parseFloat(formData.childCombinedPrice) : undefined,
         duration: parseInt(formData.duration),
-        isComboEligible: formData.isComboEligible,
         isActive: formData.isActive
       };
 
@@ -295,7 +289,7 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description *
+                Description
               </label>
               <textarea
                 name="description"
@@ -311,19 +305,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
             </div>
 
             <div className="md:col-span-2 space-y-3">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isComboEligible"
-                  checked={formData.isComboEligible}
-                  onChange={handleInputChange}
-                  className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  Eligible for shampoo combo discount
-                </label>
-              </div>
-
               <div className="flex items-center">
                 <input
                   type="checkbox"

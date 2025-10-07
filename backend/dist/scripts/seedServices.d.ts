@@ -6,8 +6,6 @@ declare const nappyhoodServices: ({
     combinedPrice: null;
     childPrice: number;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "HAIR_TREATMENTS";
@@ -16,8 +14,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: number;
     childCombinedPrice: number;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "HAIR_TREATMENTS";
@@ -26,8 +22,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "HAIR_TREATMENTS";
@@ -36,8 +30,6 @@ declare const nappyhoodServices: ({
     combinedPrice: null;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "TWIST_HAIRSTYLE";
@@ -46,8 +38,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: number;
     childCombinedPrice: number;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "TWIST_HAIRSTYLE";
@@ -56,8 +46,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "CORNROWS_BRAIDS";
@@ -66,8 +54,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "STRAWSET_CURLS";
@@ -76,8 +62,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "STYLING_SERVICE";
@@ -86,8 +70,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "STYLING_SERVICE";
@@ -96,8 +78,6 @@ declare const nappyhoodServices: ({
     combinedPrice: null;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 } | {
     name: string;
     category: "SPECIAL_OFFERS";
@@ -106,8 +86,6 @@ declare const nappyhoodServices: ({
     combinedPrice: null;
     childPrice: null;
     childCombinedPrice: null;
-    duration: number;
-    isComboEligible: boolean;
 })[];
 declare function seedServices(): Promise<void>;
 export { seedServices, nappyhoodServices };

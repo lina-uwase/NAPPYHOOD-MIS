@@ -115,13 +115,13 @@ const getStaffPerformance = async (req, res) => {
                     dateFilter = { gte: defaultStart };
             }
         }
-        // Get staff visits and performance data
-        const visits = await database_1.prisma.visit.findMany({
+        // Get staff sales and performance data
+        const sales = await database_1.prisma.sale.findMany({
             where: {
                 staff: {
                     some: { staffId: id }
                 },
-                visitDate: dateFilter
+                saleDate: dateFilter
             },
             include: {
                 customer: {
@@ -141,34 +141,34 @@ const getStaffPerformance = async (req, res) => {
                     }
                 }
             },
-            orderBy: { visitDate: 'desc' }
+            orderBy: { saleDate: 'desc' }
         });
         // Calculate performance metrics
-        const totalVisits = visits.length;
-        const totalRevenue = visits.reduce((sum, visit) => sum + Number(visit.finalAmount), 0);
-        const averageRevenuePerVisit = totalVisits > 0 ? totalRevenue / totalVisits : 0;
-        const uniqueCustomers = new Set(visits.map(v => v.customerId)).size;
+        const totalSales = sales.length;
+        const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+        const averageRevenuePerSale = totalSales > 0 ? totalRevenue / totalSales : 0;
+        const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
         // Service categories served
         const serviceCategories = new Map();
-        visits.forEach(visit => {
-            visit.services.forEach(vs => {
+        sales.forEach(sale => {
+            sale.services.forEach(vs => {
                 const category = vs.service.category;
                 serviceCategories.set(category, (serviceCategories.get(category) || 0) + 1);
             });
         });
         // Daily performance (for charts)
-        const dailyPerformance = visits.reduce((acc, visit) => {
-            const date = visit.visitDate.toISOString().split('T')[0];
+        const dailyPerformance = sales.reduce((acc, sale) => {
+            const date = sale.saleDate.toISOString().split('T')[0];
             if (!acc[date]) {
-                acc[date] = { visits: 0, revenue: 0 };
+                acc[date] = { sales: 0, revenue: 0 };
             }
-            acc[date].visits += 1;
-            acc[date].revenue += Number(visit.finalAmount);
+            acc[date].sales += 1;
+            acc[date].revenue += Number(sale.finalAmount);
             return acc;
         }, {});
         const performanceData = Object.entries(dailyPerformance).map(([date, data]) => ({
             date,
-            visits: data.visits,
+            sales: data.sales,
             revenue: data.revenue
         })).sort((a, b) => a.date.localeCompare(b.date));
         res.json({
@@ -177,16 +177,16 @@ const getStaffPerformance = async (req, res) => {
                 staff,
                 period,
                 metrics: {
-                    totalVisits,
+                    totalSales,
                     totalRevenue,
-                    averageRevenuePerVisit,
+                    averageRevenuePerSale,
                     uniqueCustomers,
                     serviceCategories: Array.from(serviceCategories.entries()).map(([category, count]) => ({
                         category,
                         count
                     }))
                 },
-                visits,
+                sales,
                 performanceChart: performanceData
             }
         });
@@ -244,23 +244,23 @@ const getAllStaffPerformance = async (req, res) => {
         });
         // Get performance data for each staff member
         const staffPerformance = await Promise.all(allStaff.map(async (staff) => {
-            const visits = await database_1.prisma.visit.findMany({
+            const sales = await database_1.prisma.sale.findMany({
                 where: {
                     staff: {
                         some: { staffId: staff.id }
                     },
-                    visitDate: dateFilter
+                    saleDate: dateFilter
                 }
             });
-            const totalVisits = visits.length;
-            const totalRevenue = visits.reduce((sum, visit) => sum + Number(visit.finalAmount), 0);
-            const uniqueCustomers = new Set(visits.map(v => v.customerId)).size;
+            const totalSales = sales.length;
+            const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+            const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
             return {
                 staff,
                 metrics: {
-                    totalVisits,
+                    totalSales,
                     totalRevenue,
-                    averageRevenuePerVisit: totalVisits > 0 ? totalRevenue / totalVisits : 0,
+                    averageRevenuePerSale: totalSales > 0 ? totalRevenue / totalSales : 0,
                     uniqueCustomers
                 }
             };

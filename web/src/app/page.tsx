@@ -5,9 +5,7 @@ import { Users, Calendar, DollarSign, AlertTriangle, ShieldCheck, Scissors, Star
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import visitsService from '../services/visitsService';
 import customersService from '../services/customersService';
-import servicesService from '../services/servicesService';
 import api from '../config/api';
 
 interface SalonMetrics {
@@ -34,6 +32,19 @@ interface Customer {
   createdAt?: string;
 }
 
+interface RevenueTrendItem {
+  date: string;
+  revenue: number;
+}
+
+interface TopServiceItem {
+  service?: {
+    name: string;
+  };
+  quantity?: number;
+  revenue?: number;
+}
+
 export default function Dashboard() {
   const { setTitle } = useTitle();
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -41,9 +52,10 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<SalonMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
   const [topServices, setTopServices] = useState<{ count: number; revenue: number; name: string }[]>([]);
-  const [recentCustomers, setRecentCustomers] = useState<Customer[]>([]);
+  const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPeriod, setSelectedPeriod] = useState('month');
 
   useEffect(() => {
     setTitle("Dashboard");
@@ -56,12 +68,15 @@ export default function Dashboard() {
     }
   }, [user, isAuthenticated, authLoading, router]);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (period = selectedPeriod) => {
     try {
       setError(null);
+      console.log('🔍 Fetching dashboard data for period:', period);
+      console.log('🔍 Auth state:', { isAuthenticated, user: user?.name, role: user?.role });
 
-      // Use the dashboard API instead of manual calculation
-      const dashboardRes = await api.get('/dashboard/stats');
+      // Use the dashboard API with period parameter
+      const dashboardRes = await api.get(`/dashboard/stats?period=${period}`);
+      console.log('🔍 Dashboard API response:', dashboardRes.data);
       const dashboardData = dashboardRes.data;
       const data = dashboardData.data;
 
@@ -71,86 +86,63 @@ export default function Dashboard() {
 
       // Use the properly calculated metrics from the backend
       const totalRevenue = data.overview.totalRevenue;
-      const todayVisits = data.overview.periodVisits;
+      const todayVisits = data.overview.periodSales;
 
       // Use all data from the dashboard API
       setMetrics({
         totalCustomers: data.overview.totalCustomers,
-        totalVisits: data.overview.allTimeVisits,
+        totalVisits: data.overview.allTimeSales,
         totalRevenue,
         totalServices: data.overview.totalServices,
         activeCustomers: data.overview.totalCustomers, // Use total customers as active for now
-        averageVisitValue: data.overview.averageVisitValue,
+        averageVisitValue: data.overview.averageSaleValue,
         todayVisits,
         monthlyGrowth: 12.5 // This would be calculated from historical data
       });
 
-      // Use revenue trend data from the API or generate sample data for the last 7 days
+      // Use revenue trend data from the API directly
       let revenueByDay = [];
-      if (data.revenueTrend.length > 0) {
-        // Get last 7 days of data
+      if (data.revenueTrend && data.revenueTrend.length > 0) {
+        revenueByDay = data.revenueTrend.map((item: any) => ({
+          day: item.day,
+          value: item.revenue || 0
+        }));
+      } else {
+        // Generate empty data for the last 7 days if no data
         const today = new Date();
         const last7Days = [];
         for (let i = 6; i >= 0; i--) {
           const date = new Date(today);
           date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString().split('T')[0];
           const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-
-          const dayData = data.revenueTrend.find((d: any) => d.date === dateStr);
           last7Days.push({
             day: dayName,
-            value: dayData ? dayData.revenue : 0
+            value: 0
           });
         }
         revenueByDay = last7Days;
-      } else {
-        revenueByDay = [
-          { day: 'Mon', value: 0 },
-          { day: 'Tue', value: 0 },
-          { day: 'Wed', value: 0 },
-          { day: 'Thu', value: 0 },
-          { day: 'Fri', value: 0 },
-          { day: 'Sat', value: 0 },
-          { day: 'Sun', value: 0 }
-        ];
       }
 
       setRevenueData(revenueByDay);
 
-      // Set top services from dashboard API - fix field mapping
-      const topServicesData = data.topServices.length > 0 ? data.topServices.map((service: any) => ({
-        name: service.service?.name || 'Unknown Service',
-        count: service.quantity || 0,
-        revenue: service.revenue || 0
-      })) : [
-        { name: 'No services yet', count: 0, revenue: 0 }
-      ];
+      // Set top services from dashboard API
+      setTopServices(data.topServices || []);
 
-      setTopServices(topServicesData);
+      // Set top customers from dashboard API
+      setTopCustomers(data.topCustomers || []);
 
-      // Set recent customers combining upcoming birthdays and 6th visit eligible
-      const combinedCustomers = [
-        ...(data.upcomingBirthdays || []).slice(0, 3),
-        ...(data.sixthVisitEligible || []).slice(0, 2)
-      ].slice(0, 5);
-
-      setRecentCustomers(combinedCustomers);
-
-      // Also try to get recent customers if no dashboard data
-      if (combinedCustomers.length === 0) {
-        try {
-          const customersRes = await customersService.getAll({ limit: 5, page: 1 });
-          // console.log('🔍 Recent customers response:', customersRes);
-          setRecentCustomers(customersRes.data || []);
-        } catch (error) {
-          console.error('Failed to fetch recent customers:', error);
-        }
-      }
-
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data');
+      console.error('Error response:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+
+      if (err.response?.status === 401) {
+        setError('Authentication required. Please log in again.');
+      } else if (err.response?.status === 403) {
+        setError('Access denied. Admin privileges required.');
+      } else {
+        setError(`Failed to load dashboard data: ${err.response?.data?.error || err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -162,6 +154,11 @@ export default function Dashboard() {
       fetchDashboardData();
     }
   }, [isAuthenticated]);
+
+  const handlePeriodChange = (period: string) => {
+    setSelectedPeriod(period);
+    fetchDashboardData(period);
+  };
 
   if (authLoading) {
     return (
@@ -236,7 +233,21 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening at your salon today.</p>
+        <div className="flex items-center justify-between">
+          <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening at your salon today.</p>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">Period:</span>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => handlePeriodChange(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+            >
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -261,12 +272,12 @@ export default function Dashboard() {
               <Calendar className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-gray-700 text-sm">Total Visits</p>
+              <p className="text-gray-700 text-sm">Total Sales</p>
               <p className="text-2xl font-bold text-gray-900">{metrics.totalVisits}</p>
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            {metrics.todayVisits} visits today
+            {metrics.todayVisits} sales today
           </div>
         </div>
 
@@ -339,10 +350,10 @@ export default function Dashboard() {
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Customers</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Recent Customers</h3>
               <div className="space-y-4">
-                {recentCustomers.length > 0 ? (
-                  recentCustomers.map((customer, index) => (
+                {topCustomers.length > 0 ? (
+                  topCustomers.map((customer) => (
                     <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-[#5A8621] rounded-full flex items-center justify-center">
@@ -356,17 +367,11 @@ export default function Dashboard() {
                         </div>
                       </div>
                       <div className="text-right">
-                        {customer.birthDay && customer.birthMonth ? (
-                          <div className="text-xs text-blue-600">
-                            Birthday: {customer.birthDay}/{customer.birthMonth}
-                          </div>
-                        ) : customer.visitCount ? (
-                          <div className="text-xs text-green-600">
-                            {customer.visitCount + 1}th visit discount
-                          </div>
-                        ) : null}
+                        <div className="text-sm font-medium text-green-600">
+                          RWF {customer.totalSpent?.toLocaleString() || '0'}
+                        </div>
                         <div className="text-xs text-gray-500">
-                          {customer.visitCount || customer.totalVisits || 0} visits
+                          {customer.saleCount || customer.visitCount || customer.totalVisits || 0} sales
                         </div>
                       </div>
                     </div>
@@ -385,7 +390,7 @@ export default function Dashboard() {
         <div className="space-y-6">
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Visit Trends</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Sales Trends</h3>
               <div className="text-sm text-gray-500">
                 Last 7 Days
               </div>
@@ -409,7 +414,7 @@ export default function Dashboard() {
                   />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, borderColor: '#E5E7EB' }}
-                    formatter={(value: number) => [`RWF ${value.toLocaleString()}`, 'Revenue']}
+                    formatter={(value: number) => [`RWF ${value.toLocaleString()}`, 'Sales Revenue']}
                   />
                   <Line
                     type="monotone"

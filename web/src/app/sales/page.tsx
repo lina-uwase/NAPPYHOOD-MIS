@@ -47,12 +47,31 @@ const SalesPage: React.FC = () => {
 
       const response = await salesService.getAll(params);
       // Handle the nested data structure from backend
-      const salesData = response.data?.sales || response.data || [];
-      setSales(Array.isArray(salesData) ? salesData : []);
+      const salesData = response.data || [];
+
+      // Transform the backend data to match frontend expectations
+      const transformedSales = Array.isArray(salesData) ? salesData.map((sale: any) => ({
+        ...sale,
+        customerName: sale.customer?.fullName || 'Unknown Customer',
+        customerPhone: sale.customer?.phone || 'No phone',
+        subtotal: Number(sale.totalAmount || 0),
+        discountAmount: Number(sale.discountAmount || 0),
+        finalAmount: Number(sale.finalAmount || 0),
+        services: sale.services?.map((saleService: any) => ({
+          serviceName: saleService.service?.name || 'Unknown Service',
+          price: Number(saleService.totalPrice || 0),
+          serviceCategory: saleService.service?.category || 'UNKNOWN'
+        })) || [],
+        staff: sale.staff?.map((saleStaff: any) => ({
+          staffName: saleStaff.staff?.name || 'Unknown Staff'
+        })) || []
+      })) : [];
+
+      setSales(transformedSales);
 
       // Get pagination from backend structure
-      const pagination = response.data?.pagination || response.meta;
-      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
+      const pagination = response.meta;
+      setTotalPages(pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch sales:', error);
       setSales([]);
@@ -238,13 +257,13 @@ const SalesPage: React.FC = () => {
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {sale.customer?.fullName || sale.customerName || 'Unknown Customer'}
+                          {sale.customerName || 'Unknown Customer'}
                         </h3>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 space-x-4">
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-1" />
-                          {sale.customer?.phone || sale.customerPhone || 'No phone'}
+                          {sale.customerPhone || 'No phone'}
                         </div>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />
@@ -278,8 +297,8 @@ const SalesPage: React.FC = () => {
                       <div className="space-y-1">
                         {sale.services.map((service, index) => (
                           <div key={index} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{service.service?.name || service.serviceName}</span>
-                            <span className="font-medium">{formatCurrency(service.unitPrice || service.price)}</span>
+                            <span className="text-gray-600">{service.serviceName}</span>
+                            <span className="font-medium">{formatCurrency(service.price)}</span>
                           </div>
                         ))}
                       </div>
@@ -290,7 +309,7 @@ const SalesPage: React.FC = () => {
                       <div className="space-y-1">
                         {sale.staff && sale.staff.length > 0 ? sale.staff.map((staffRecord, index) => (
                           <div key={index} className="text-sm text-gray-600">
-                            {staffRecord.staff?.name || staffRecord.staffName || 'Unknown Staff'}
+                            {staffRecord.staffName || 'Unknown Staff'}
                           </div>
                         )) : (
                           <div className="text-sm text-gray-500">No staff assigned</div>

@@ -5,7 +5,7 @@ import { Users, Calendar, DollarSign, AlertTriangle, ShieldCheck, Scissors, Star
 import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import customersService from '../services/customersService';
+import customersService, { Customer } from '../services/customersService';
 import api from '../config/api';
 
 interface SalonMetrics {
@@ -19,18 +19,6 @@ interface SalonMetrics {
   monthlyGrowth: number;
 }
 
-interface Customer {
-  id: string;
-  fullName?: string;
-  name?: string;
-  phone: string;
-  visitCount?: number;
-  totalVisits?: number;
-  birthDay?: number;
-  birthMonth?: number;
-  lastVisit?: string;
-  createdAt?: string;
-}
 
 interface RevenueTrendItem {
   date: string;
@@ -371,7 +359,7 @@ export default function Dashboard() {
                           RWF {customer.totalSpent?.toLocaleString() || '0'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {customer.saleCount || customer.visitCount || customer.totalVisits || 0} sales
+                          {customer.totalSales || 0} sales
                         </div>
                       </div>
                     </div>

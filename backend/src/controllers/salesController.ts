@@ -314,7 +314,7 @@ async function calculateDiscounts(
   return discounts;
 }
 
-export const getAllSales = async (req: Request, res: Response): Promise<void> => {
+export const getAllSales = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { page = '1', limit = '10', customerId, staffId, startDate, endDate } = req.query;
     const pageNum = parseInt(page as string);
@@ -323,14 +323,22 @@ export const getAllSales = async (req: Request, res: Response): Promise<void> =>
 
     const whereClause: any = {};
 
-    if (customerId) {
-      whereClause.customerId = customerId;
-    }
-
-    if (staffId) {
+    // If user is STAFF, only show their own sales
+    if (req.user?.role === 'STAFF') {
       whereClause.staff = {
-        some: { staffId }
+        some: { staffId: req.user.id }
       };
+    } else {
+      // For ADMIN/MANAGER, allow filtering by customerId and staffId
+      if (customerId) {
+        whereClause.customerId = customerId;
+      }
+
+      if (staffId) {
+        whereClause.staff = {
+          some: { staffId }
+        };
+      }
     }
 
     if (startDate || endDate) {
@@ -620,10 +628,18 @@ export const completeSale = async (req: AuthenticatedRequest, res: Response): Pr
   }
 };
 
-export const getSalesSummary = async (req: Request, res: Response): Promise<void> => {
+export const getSalesSummary = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { startDate, endDate } = req.query;
     const where: any = {};
+
+    // If user is STAFF, only show their own sales summary
+    if (req.user?.role === 'STAFF') {
+      where.staff = {
+        some: { staffId: req.user.id }
+      };
+    }
+
     if (startDate || endDate) {
       where.saleDate = {};
       if (startDate) where.saleDate.gte = new Date(startDate as string);

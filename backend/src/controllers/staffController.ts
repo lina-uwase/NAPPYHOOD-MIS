@@ -317,13 +317,13 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
-    // Check if email is being changed and if new email already exists
-    if (email && email !== existingStaff.email) {
-      const emailExists = await prisma.user.findUnique({
-        where: { email }
+    // Check if phone is being changed and if new phone already exists
+    if (phone && phone !== existingStaff.phone) {
+      const phoneExists = await prisma.user.findUnique({
+        where: { phone }
       });
-      if (emailExists) {
-        res.status(400).json({ error: 'User with this email already exists' });
+      if (phoneExists) {
+        res.status(400).json({ error: 'User with this phone number already exists' });
         return;
       }
     }

@@ -13,10 +13,9 @@ export interface Staff {
 
 export interface CreateStaffDto {
   name: string;
-  email: string;
-  phone?: string;
+  email?: string;
+  phone: string;
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
-  password: string;
 }
 
 export interface UpdateStaffDto {

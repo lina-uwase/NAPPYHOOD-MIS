@@ -41,12 +41,11 @@ const router = Router();
  *     LoginRequest:
  *       type: object
  *       required:
- *         - email
+ *         - phone
  *         - password
  *       properties:
- *         email:
+ *         phone:
  *           type: string
- *           format: email
  *         password:
  *           type: string
  *     LoginResponse:
@@ -65,7 +64,7 @@ const router = Router();
  *       type: object
  *       required:
  *         - name
- *         - email
+ *         - phone
  *         - password
  *         - role
  *       properties:
@@ -73,10 +72,9 @@ const router = Router();
  *           type: string
  *         email:
  *           type: string
- *           format: email
- *         password:
- *           type: string
  *         phone:
+ *           type: string
+ *         password:
  *           type: string
  *         role:
  *           type: string
@@ -125,7 +123,7 @@ const router = Router();
  *           schema:
  *             $ref: '#/components/schemas/LoginRequest'
  *           example:
- *             email: admin@nappyhood.com
+ *             phone: "+250788123456"
  *             password: admin123
  *     responses:
  *       200:
@@ -159,9 +157,9 @@ router.post('/login', login);
  *             $ref: '#/components/schemas/RegisterRequest'
  *           example:
  *             name: New Staff Member
- *             email: staff@nappyhood.com
- *             password: password123
  *             phone: "+250788000000"
+ *             password: password123
+ *             email: staff@nappyhood.com
  *             role: STAFF
  *     responses:
  *       201:

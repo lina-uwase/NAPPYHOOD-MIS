@@ -1,7 +1,7 @@
 import api from '@/config/api';
 
 export interface LoginCredentials {
-  email: string;
+  phone: string;
   password: string;
 }
 
@@ -10,8 +10,8 @@ export interface User {
   user_id?: string; // For backward compatibility
   name: string;
   names?: string; // For backward compatibility with profile page
-  email: string;
-  phone?: string;
+  phone: string;
+  email?: string;
   role: 'ADMIN' | 'STAFF';
   profile_picture?: string;
 }

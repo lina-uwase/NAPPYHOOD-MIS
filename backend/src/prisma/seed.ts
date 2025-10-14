@@ -6,59 +6,22 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seeding...');
 
-  // Create default admin user
+  // Create default admin user only
   const hashedPassword = await bcrypt.hash('admin123', 10);
 
   const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@nappyhood.com' },
+    where: { phone: '+250791762689' },
     update: {},
     create: {
       name: 'Nappyhood Admin',
       email: 'admin@nappyhood.com',
       password: hashedPassword,
       role: 'ADMIN',
-      phone: '+250788000000'
+      phone: '+250791762689'
     }
   });
 
-  // Create staff users
-  const staffUsers = await Promise.all([
-    prisma.user.upsert({
-      where: { email: 'manager@nappyhood.com' },
-      update: {},
-      create: {
-        name: 'Salon Manager',
-        email: 'manager@nappyhood.com',
-        password: await bcrypt.hash('manager123', 10),
-        role: 'MANAGER',
-        phone: '+250788111111'
-      }
-    }),
-    prisma.user.upsert({
-      where: { email: 'stylist1@nappyhood.com' },
-      update: {},
-      create: {
-        name: 'Grace Uwimana',
-        email: 'stylist1@nappyhood.com',
-        password: await bcrypt.hash('staff123', 10),
-        role: 'STAFF',
-        phone: '+250788222222'
-      }
-    }),
-    prisma.user.upsert({
-      where: { email: 'stylist2@nappyhood.com' },
-      update: {},
-      create: {
-        name: 'Divine Mukamana',
-        email: 'stylist2@nappyhood.com',
-        password: await bcrypt.hash('staff123', 10),
-        role: 'STAFF',
-        phone: '+250788333333'
-      }
-    })
-  ]);
-
-  console.log('✅ Created users');
+  console.log('✅ Created admin user');
 
   // Create discount rules
   const discountRules = await Promise.all([
@@ -511,11 +474,9 @@ async function main() {
   console.log('✅ Created sample customers');
   console.log('🎉 Database seeding completed successfully!');
 
-  console.log('\n📋 Default Login Credentials:');
-  console.log('Admin: admin@nappyhood.com / admin123');
-  console.log('Manager: manager@nappyhood.com / manager123');
-  console.log('Staff: stylist1@nappyhood.com / staff123');
-  console.log('Staff: stylist2@nappyhood.com / staff123');
+  console.log('\n📋 Default Admin Login:');
+  console.log('Admin: +250791762689 / admin123');
+  console.log('\n💡 Other users can be created through the admin panel with custom phone numbers');
 }
 
 main()

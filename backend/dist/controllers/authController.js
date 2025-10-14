@@ -7,19 +7,21 @@ exports.deleteUser = exports.updateUser = exports.getUserById = exports.getAllUs
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../utils/database");
+const passwordGenerator_1 = require("../utils/passwordGenerator");
+const smsService_1 = require("../services/smsService");
 const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            res.status(400).json({ error: 'Email and password are required' });
+        const { phone, password } = req.body;
+        if (!phone || !password) {
+            res.status(400).json({ error: 'Phone number and password are required' });
             return;
         }
-        // Find user by email
+        // Find user by phone
         const user = await database_1.prisma.user.findUnique({
-            where: { email },
+            where: { phone },
             select: {
                 id: true,
-                email: true,
+                phone: true,
                 password: true,
                 name: true,
                 role: true,
@@ -37,7 +39,7 @@ const login = async (req, res) => {
             return;
         }
         // Generate JWT token
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        const token = jsonwebtoken_1.default.sign({ userId: user.id, phone: user.phone, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.json({
             success: true,
             data: {
@@ -45,7 +47,7 @@ const login = async (req, res) => {
                 user: {
                     id: user.id,
                     name: user.name,
-                    email: user.email,
+                    phone: user.phone,
                     role: user.role
                 }
             }
@@ -59,21 +61,30 @@ const login = async (req, res) => {
 exports.login = login;
 const register = async (req, res) => {
     try {
-        const { name, email, password, phone, role = 'STAFF' } = req.body;
-        if (!name || !email || !password) {
-            res.status(400).json({ error: 'Name, email, and password are required' });
+        console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
+        const { name, email, phone, role = 'STAFF' } = req.body;
+        if (!name || !phone) {
+            console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone);
+            res.status(400).json({ error: 'Name and phone number are required' });
+            return;
+        }
+        // Validate phone number format
+        if (!(0, passwordGenerator_1.isValidPhoneNumber)(phone)) {
+            res.status(400).json({ error: 'Invalid phone number format. Use +250XXXXXXXXX' });
             return;
         }
         // Check if user already exists
         const existingUser = await database_1.prisma.user.findUnique({
-            where: { email }
+            where: { phone }
         });
         if (existingUser) {
-            res.status(400).json({ error: 'User with this email already exists' });
+            res.status(400).json({ error: 'User with this phone number already exists' });
             return;
         }
+        // Generate random password
+        const randomPassword = (0, passwordGenerator_1.generateRandomPassword)(8);
         // Hash password
-        const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+        const hashedPassword = await bcryptjs_1.default.hash(randomPassword, 10);
         // Create user
         const user = await database_1.prisma.user.create({
             data: {
@@ -92,10 +103,15 @@ const register = async (req, res) => {
                 createdAt: true
             }
         });
+        // Send SMS with login credentials
+        const smsResult = await smsService_1.smsService.sendWelcomeMessage(phone, name, randomPassword);
+        if (!smsResult) {
+            console.warn(`Failed to send SMS to ${phone} for user ${name}`);
+        }
         res.status(201).json({
             success: true,
             data: { user },
-            message: 'User registered successfully'
+            message: `User registered successfully. ${smsResult ? 'SMS with login credentials sent.' : 'Please contact admin for login credentials.'}`
         });
     }
     catch (error) {

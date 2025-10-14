@@ -34,7 +34,6 @@ const router = (0, express_1.Router)();
  *           type: integer
  *         isActive:
  *           type: boolean
- *           type: boolean
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -64,7 +63,6 @@ const router = (0, express_1.Router)();
  *           type: number
  *         duration:
  *           type: integer
- *           type: boolean
  */
 /**
  * @swagger

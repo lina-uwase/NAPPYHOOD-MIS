@@ -16,7 +16,6 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     email: '',
     phone: '',
     role: 'STAFF' as 'ADMIN' | 'MANAGER' | 'STAFF',
-    password: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -28,7 +27,6 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         email: editingStaff.email || '',
         phone: editingStaff.phone || '',
         role: editingStaff.role as 'ADMIN' | 'MANAGER' | 'STAFF',
-        password: '', // Password not needed for editing
       });
     } else {
       setFormData({
@@ -36,14 +34,13 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
         email: '',
         phone: '',
         role: 'STAFF',
-        password: '',
       });
     }
   }, [editingStaff, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim()) {
+    if (!formData.name.trim() || !formData.phone.trim()) {
       return;
     }
 
@@ -51,10 +48,9 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     try {
       await onAddStaff({
         name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim() || undefined,
+        email: formData.email.trim() || undefined,
+        phone: formData.phone.trim(),
         role: formData.role,
-        password: formData.password,
       });
     } finally {
       setLoading(false);
@@ -95,28 +91,28 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-              placeholder="Enter email address"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
+              Phone Number *
             </label>
             <input
               type="tel"
               value={formData.phone}
               onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-              placeholder="+250 788 000 000"
+              placeholder="+250788123456"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email (Optional)
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+              placeholder="Enter email address (optional)"
             />
           </div>
 
@@ -136,17 +132,10 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-              required
-            />
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p className="text-sm text-yellow-800">
+              📱 <strong>Password will be auto-generated</strong> and sent via SMS to the phone number provided.
+            </p>
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -160,7 +149,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.name.trim() || !formData.email.trim() || !formData.password.trim()}
+              disabled={loading || !formData.name.trim() || !formData.phone.trim()}
               className="flex-1 px-4 py-2 bg-[#5A8621] text-white rounded-lg hover:bg-[#4A7219] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (

@@ -35,10 +35,10 @@ export default function ProfilePage() {
     setEditPhone(user?.phone || '');
 
     // Set profile picture from backend or localStorage fallback
-    if (user?.profilePicture) {
-      const fullUrl = user.profilePicture.startsWith('http')
-        ? user.profilePicture
-        : `http://localhost:5001${user.profilePicture}`;
+    if (user?.profile_picture) {
+      const fullUrl = user.profile_picture.startsWith('http')
+        ? user.profile_picture
+        : `http://localhost:5001${user.profile_picture}`;
       setAvatarDataUrl(fullUrl);
     } else if (typeof window !== "undefined") {
       const saved = localStorage.getItem("profileAvatar");

@@ -40,7 +40,6 @@ const router = Router();
  *           type: integer
  *         isActive:
  *           type: boolean
- *           type: boolean
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -70,7 +69,6 @@ const router = Router();
  *           type: number
  *         duration:
  *           type: integer
- *           type: boolean
  */
 
 /**

@@ -20,6 +20,10 @@ export interface Customer {
   lastSale?: string;
   lastVisit?: string;
   isActive: boolean;
+  isDependent: boolean;
+  parentId?: string;
+  parent?: Customer;
+  dependents?: Customer[];
   createdAt: string;
   updatedAt: string;
 }
@@ -27,7 +31,7 @@ export interface Customer {
 export interface CreateCustomerDto {
   fullName: string;
   gender: 'MALE' | 'FEMALE';
-  phone: string;
+  phone?: string;
   email?: string;
   birthday?: string;
   birthDay?: number;
@@ -36,6 +40,8 @@ export interface CreateCustomerDto {
   location: string;
   district: string;
   province: string;
+  isDependent?: boolean;
+  parentId?: string;
 }
 
 export interface UpdateCustomerDto extends Partial<CreateCustomerDto> {

@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, AlertCircle, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Phone, Lock } from 'lucide-react';
 import NappyhoodLogo from '@/components/NappyhoodLogo';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -21,9 +21,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login({ email, password });
+      await login({ phone, password });
     } catch (err: unknown) {
-      setError((err as Error).message || 'Invalid email or password');
+      setError((err as Error).message || 'Invalid phone number or password');
     } finally {
       setLoading(false);
     }
@@ -61,18 +61,26 @@ export default function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             <div>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
-                  type="email"
+                  key="phone-input-field-v2"
+                  type="text"
+                  name="userPhoneNumber"
+                  id="userPhoneNumber"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
+                  inputMode="tel"
+                  pattern="[+]?[0-9\s\-\(\)]+"
+                  title="Please enter a valid phone number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  autoComplete="off"
+                  data-form-type="other"
+                  data-lpignore="true"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all duration-200"
-                  placeholder="Enter your email address"
+                  placeholder="Enter your phone number (e.g., +250788123456)"
                   disabled={loading}
                 />
               </div>
@@ -82,10 +90,16 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <input
+                  key="password-field-v2"
                   type={showPassword ? 'text' : 'password'}
+                  name="userPassword"
+                  id="userPassword"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="off"
+                  data-form-type="other"
+                  data-lpignore="true"
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg transition-all duration-200"
                   placeholder="Enter your password"
                   disabled={loading}

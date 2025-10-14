@@ -3,22 +3,24 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../utils/database';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { generateRandomPassword, isValidPhoneNumber } from '../utils/passwordGenerator';
+import { smsService } from '../services/smsService';
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
+    if (!phone || !password) {
+      res.status(400).json({ error: 'Phone number and password are required' });
       return;
     }
 
-    // Find user by email
+    // Find user by phone
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { phone },
       select: {
         id: true,
-        email: true,
+        phone: true,
         password: true,
         name: true,
         role: true,
@@ -40,7 +42,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
+      { userId: user.id, phone: user.phone, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
@@ -52,7 +54,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         user: {
           id: user.id,
           name: user.name,
-          email: user.email,
+          phone: user.phone,
           role: user.role
         }
       }
@@ -65,25 +67,36 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, email, password, phone, role = 'STAFF' } = req.body;
+    console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
+    const { name, email, phone, role = 'STAFF' } = req.body;
 
-    if (!name || !email || !password) {
-      res.status(400).json({ error: 'Name, email, and password are required' });
+    if (!name || !phone) {
+      console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone);
+      res.status(400).json({ error: 'Name and phone number are required' });
+      return;
+    }
+
+    // Validate phone number format
+    if (!isValidPhoneNumber(phone)) {
+      res.status(400).json({ error: 'Invalid phone number format. Use +250XXXXXXXXX' });
       return;
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { phone }
     });
 
     if (existingUser) {
-      res.status(400).json({ error: 'User with this email already exists' });
+      res.status(400).json({ error: 'User with this phone number already exists' });
       return;
     }
 
+    // Generate random password
+    const randomPassword = generateRandomPassword(8);
+
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
     // Create user
     const user = await prisma.user.create({
@@ -104,10 +117,17 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
+    // Send SMS with login credentials
+    const smsResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
+
+    if (!smsResult) {
+      console.warn(`Failed to send SMS to ${phone} for user ${name}`);
+    }
+
     res.status(201).json({
       success: true,
       data: { user },
-      message: 'User registered successfully'
+      message: `User registered successfully. ${smsResult ? 'SMS with login credentials sent.' : 'Please contact admin for login credentials.'}`
     });
   } catch (error) {
     console.error('Registration error:', error);

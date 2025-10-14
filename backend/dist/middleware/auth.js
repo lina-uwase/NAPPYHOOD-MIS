@@ -18,7 +18,7 @@ const authenticateToken = async (req, res, next) => {
         // Verify user exists and is active
         const user = await database_1.prisma.user.findUnique({
             where: { id: decoded.userId },
-            select: { id: true, email: true, role: true, isActive: true }
+            select: { id: true, phone: true, role: true, isActive: true }
         });
         if (!user || !user.isActive) {
             res.status(401).json({ error: 'Invalid or inactive user' });

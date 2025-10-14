@@ -262,13 +262,22 @@ const getAllSales = async (req, res) => {
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
         const whereClause = {};
-        if (customerId) {
-            whereClause.customerId = customerId;
-        }
-        if (staffId) {
+        // If user is STAFF, only show their own sales
+        if (req.user?.role === 'STAFF') {
             whereClause.staff = {
-                some: { staffId }
+                some: { staffId: req.user.id }
             };
+        }
+        else {
+            // For ADMIN/MANAGER, allow filtering by customerId and staffId
+            if (customerId) {
+                whereClause.customerId = customerId;
+            }
+            if (staffId) {
+                whereClause.staff = {
+                    some: { staffId }
+                };
+            }
         }
         if (startDate || endDate) {
             whereClause.saleDate = {};
@@ -548,6 +557,12 @@ const getSalesSummary = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         const where = {};
+        // If user is STAFF, only show their own sales summary
+        if (req.user?.role === 'STAFF') {
+            where.staff = {
+                some: { staffId: req.user.id }
+            };
+        }
         if (startDate || endDate) {
             where.saleDate = {};
             if (startDate)

@@ -5,11 +5,15 @@ import { useTitle } from '../../contexts/TitleContext';
 import AddServiceModal from './AddServiceModal';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
+import { useAuth } from '../../contexts/AuthContext';
 import servicesService, { Service, CreateServiceDto, UpdateServiceDto } from '../../services/servicesService';
 
 export default function ServicesPage() {
   const { setTitle } = useTitle();
   const { addToast } = useToast();
+  const { user } = useAuth();
+
+  const canManageServices = user?.role === 'ADMIN' || user?.role === 'MANAGER';
 
   useEffect(() => {
     setTitle("Services");
@@ -218,17 +222,19 @@ export default function ServicesPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-4">
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="bg-[#5A8621] text-white px-4 py-2 rounded-lg hover:bg-[#4A7318] flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Service</span>
-          </button>
+      {canManageServices && (
+        <div className="mb-4">
+          <div className="flex items-center justify-end">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="bg-[#5A8621] text-white px-4 py-2 rounded-lg hover:bg-[#4A7318] flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Service</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
@@ -341,9 +347,11 @@ export default function ServicesPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                {canManageServices && (
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -397,22 +405,24 @@ export default function ServicesPage() {
                         {service.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => openEditModal(service)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteService(service.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {canManageServices && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => openEditModal(service)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteService(service.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -434,14 +444,14 @@ export default function ServicesPage() {
         )}
       </div>
 
-      {showAddModal && (
+      {canManageServices && showAddModal && (
         <AddServiceModal
           onClose={() => setShowAddModal(false)}
           onSubmit={handleAddService}
         />
       )}
 
-      {showEditModal && editingService && (
+      {canManageServices && showEditModal && editingService && (
         <AddServiceModal
           onClose={() => {
             setShowEditModal(false);

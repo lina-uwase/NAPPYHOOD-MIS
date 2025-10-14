@@ -10,10 +10,10 @@ datasource db {
 model User {
   id             String      @id @default(cuid())
   name           String
-  email          String      @unique
+  email          String?
   password       String
   role           Role        @default(STAFF)
-  phone          String?
+  phone          String      @unique
   isActive       Boolean     @default(true)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -31,7 +31,7 @@ model Customer {
   location      String
   district      String
   province      String
-  phone         String             @unique
+  phone         String?            @unique
   email         String?
   birthDay      Int
   birthMonth    Int
@@ -43,8 +43,12 @@ model Customer {
   isActive      Boolean            @default(true)
   lastSale      DateTime?
   saleCount     Int                @default(0)
+  parentId      String?
+  isDependent   Boolean            @default(false)
   discounts     CustomerDiscount[]
   sales         Sale[]
+  parent        Customer?          @relation("CustomerDependents", fields: [parentId], references: [id])
+  dependents    Customer[]         @relation("CustomerDependents")
 
   @@map("customers")
 }

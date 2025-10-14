@@ -22,7 +22,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     gender: 'FEMALE',
     phone: '',
     email: '',
-    birthday: '',
+    birthMonth: '',
+    birthDay: '',
+    birthYear: '',
     district: '',
     province: '',
     isDependent: false,
@@ -59,7 +61,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         gender: editingCustomer.gender,
         phone: editingCustomer.phone || '',
         email: editingCustomer.email || '',
-        birthday: editingCustomer.birthday ? editingCustomer.birthday.split('T')[0] : '',
+        birthMonth: editingCustomer.birthMonth ? editingCustomer.birthMonth.toString().padStart(2, '0') : '',
+        birthDay: editingCustomer.birthDay ? editingCustomer.birthDay.toString().padStart(2, '0') : '',
+        birthYear: editingCustomer.birthYear ? editingCustomer.birthYear.toString() : '',
         district: editingCustomer.district,
         province: editingCustomer.province,
         isDependent: editingCustomer.isDependent || false,
@@ -111,7 +115,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     if (name === 'isDependent' && !checked) {
       setFormData(prev => ({
         ...prev,
-        parentId: ''
+        parentId: '',
+        phone: '' // Clear phone when no longer dependent
       }));
     }
 
@@ -147,14 +152,34 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     }
 
 
-    if (!formData.birthday) {
-      newErrors.birthday = 'Birthday (month and day) is required';
+    if (!formData.birthMonth || !formData.birthDay) {
+      newErrors.birthday = 'Birthday month and day are required';
     } else {
-      const birthday = new Date(formData.birthday);
-      const today = new Date();
-      if (birthday > today) {
-        newErrors.birthday = 'Birthday cannot be in the future';
+      const month = parseInt(formData.birthMonth);
+      const day = parseInt(formData.birthDay);
+
+      if (isNaN(month) || month < 1 || month > 12) {
+        newErrors.birthday = 'Please enter a valid month (1-12)';
+      } else if (isNaN(day) || day < 1 || day > 31) {
+        newErrors.birthday = 'Please enter a valid day (1-31)';
       }
+
+      // Validate year if provided
+      if (formData.birthYear) {
+        const year = parseInt(formData.birthYear);
+        const currentYear = new Date().getFullYear();
+        if (isNaN(year) || year < 1900 || year > currentYear) {
+          newErrors.birthday = 'Please enter a valid birth year';
+        }
+      }
+    }
+
+    if (!formData.province) {
+      newErrors.province = 'Province is required';
+    }
+
+    if (!formData.district) {
+      newErrors.district = 'District is required';
     }
 
     setErrors(newErrors);
@@ -171,11 +196,16 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     setLoading(true);
 
     try {
-      // Parse birthday - month and day required, year optional
-      const dateObj = new Date(formData.birthday);
-      const birthDay = dateObj.getDate();
-      const birthMonth = dateObj.getMonth() + 1; // getMonth() returns 0-11, we need 1-12
-      const birthYear = dateObj.getFullYear() !== 1970 ? dateObj.getFullYear() : undefined; // 1970 means no year was entered
+      // Parse birthday fields
+      const birthDay = parseInt(formData.birthDay);
+      const birthMonth = parseInt(formData.birthMonth);
+      const birthYear = formData.birthYear ? parseInt(formData.birthYear) : undefined;
+
+      // Validate parsed numbers
+      if (isNaN(birthDay) || isNaN(birthMonth)) {
+        console.error('Invalid birthday fields:', { birthDay: formData.birthDay, birthMonth: formData.birthMonth });
+        return;
+      }
 
       const submitData = {
         fullName: formData.fullName.trim(),
@@ -185,13 +215,14 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthDay,
         birthMonth,
         birthYear,
-        location: '',
+        location: formData.district, // Use district as location for now
         district: formData.district,
         province: formData.province,
         isDependent: formData.isDependent,
         parentId: formData.isDependent ? formData.parentId : undefined
       };
 
+      console.log('Submitting customer data:', submitData); // Debug log
       await onSubmit(submitData);
     } catch (error) {
       console.error('Failed to submit customer:', error);
@@ -293,17 +324,64 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Birthday
+                Birthday *
               </label>
-              <input
-                type="date"
-                name="birthday"
-                value={formData.birthday}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.birthday ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <select
+                    name="birthMonth"
+                    value={formData.birthMonth}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
+                      errors.birthday ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Month</option>
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const month = i + 1;
+                      return (
+                        <option key={month} value={month.toString().padStart(2, '0')}>
+                          {new Date(2000, i).toLocaleDateString('en', { month: 'long' })}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <select
+                    name="birthDay"
+                    value={formData.birthDay}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
+                      errors.birthday ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Day</option>
+                    {Array.from({ length: 31 }, (_, i) => {
+                      const day = i + 1;
+                      return (
+                        <option key={day} value={day.toString().padStart(2, '0')}>
+                          {day}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <input
+                    type="number"
+                    name="birthYear"
+                    value={formData.birthYear}
+                    onChange={handleInputChange}
+                    placeholder="Year (optional)"
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
+                      errors.birthday ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  />
+                </div>
+              </div>
               {errors.birthday && <p className="mt-1 text-sm text-red-600">{errors.birthday}</p>}
             </div>
 
@@ -432,7 +510,11 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                               <div
                                 key={customer.id}
                                 onClick={() => {
-                                  setFormData(prev => ({ ...prev, parentId: customer.id }));
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    parentId: customer.id,
+                                    phone: customer.phone || '' // Auto-populate phone from parent
+                                  }));
                                   setShowParentDropdown(false);
                                   setParentSearch('');
                                 }}

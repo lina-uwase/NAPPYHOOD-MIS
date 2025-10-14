@@ -43,7 +43,8 @@ export default function Dashboard() {
   const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const [revenuePeriod, setRevenuePeriod] = useState('week');
+  const [salesPeriod, setSalesPeriod] = useState('week');
 
   useEffect(() => {
     setTitle("Dashboard");
@@ -56,14 +57,14 @@ export default function Dashboard() {
     }
   }, [user, isAuthenticated, authLoading, router]);
 
-  const fetchDashboardData = async (period = selectedPeriod) => {
+  const fetchDashboardData = async () => {
     try {
       setError(null);
-      console.log('🔍 Fetching dashboard data for period:', period);
+      console.log('🔍 Fetching dashboard data');
       console.log('🔍 Auth state:', { isAuthenticated, user: user?.name, role: user?.role });
 
-      // Use the dashboard API with period parameter
-      const dashboardRes = await api.get(`/dashboard/stats?period=${period}`);
+      // Use the dashboard API without period parameter since we're showing daily new customers
+      const dashboardRes = await api.get('/dashboard/stats');
       console.log('🔍 Dashboard API response:', dashboardRes.data);
       const dashboardData = dashboardRes.data;
       const data = dashboardData.data;
@@ -78,11 +79,11 @@ export default function Dashboard() {
 
       // Use all data from the dashboard API
       setMetrics({
-        totalCustomers: data.overview.totalCustomers,
+        totalCustomers: data.overview.newCustomers, // Now showing new customers for selected period
         totalVisits: data.overview.allTimeSales,
         totalRevenue,
         totalServices: data.overview.totalServices,
-        activeCustomers: data.overview.totalCustomers, // Use total customers as active for now
+        activeCustomers: data.overview.totalCustomers, // Total customers for reference
         averageVisitValue: data.overview.averageSaleValue,
         todayVisits,
         monthlyGrowth: 12.5 // This would be calculated from historical data
@@ -136,17 +137,37 @@ export default function Dashboard() {
     }
   };
 
+  const fetchRevenueData = async (period: string) => {
+    try {
+      const dashboardRes = await api.get(`/dashboard/stats?period=${period}`);
+      const data = dashboardRes.data.data;
+
+      let revenueByDay = [];
+      if (data.revenueTrend && data.revenueTrend.length > 0) {
+        revenueByDay = data.revenueTrend.map((item: any) => ({
+          day: item.day,
+          value: item.revenue || 0
+        }));
+      }
+      setRevenueData(revenueByDay);
+    } catch (error) {
+      console.error('Error fetching revenue data:', error);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       setLoading(true);
       fetchDashboardData();
+      fetchRevenueData(revenuePeriod);
     }
   }, [isAuthenticated]);
 
-  const handlePeriodChange = (period: string) => {
-    setSelectedPeriod(period);
-    fetchDashboardData(period);
-  };
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchRevenueData(revenuePeriod);
+    }
+  }, [revenuePeriod, isAuthenticated]);
 
   if (authLoading) {
     return (
@@ -221,20 +242,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <p className="text-gray-600">Welcome back! Here&apos;s what&apos;s happening at your salon today.</p>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Period:</span>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => handlePeriodChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-            >
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
-              <option value="year">This Year</option>
-            </select>
-          </div>
+        <div>
+          <p className="text-gray-600">Welcome back <span className="font-bold" style={{color: '#5A8621'}}>{user?.name}</span>! Here&apos;s what&apos;s happening at your salon today.</p>
         </div>
       </div>
 
@@ -245,19 +254,19 @@ export default function Dashboard() {
               <Users className="w-6 h-6 text-[#5A8621]" />
             </div>
             <div>
-              <p className="text-gray-700 text-sm">Total Customers</p>
+              <p className="text-gray-700 text-sm">New Customers</p>
               <p className="text-2xl font-bold text-gray-900">{metrics.totalCustomers}</p>
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            {metrics.activeCustomers} active customers
+            {metrics.activeCustomers} total customers
           </div>
         </div>
 
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-              <Calendar className="w-6 h-6 text-blue-600" />
+            <div className="w-12 h-12 bg-[#BCF099] rounded-full flex items-center justify-center">
+              <Calendar className="w-6 h-6 text-[#166534]" />
             </div>
             <div>
               <p className="text-gray-700 text-sm">Total Sales</p>
@@ -305,10 +314,19 @@ export default function Dashboard() {
         <div className="space-y-6">
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Daily Revenue (Last 7 Days)</h3>
-              <div className="text-sm text-gray-500">
-                This Week
-              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Daily Revenue</h3>
+              <select
+                value={revenuePeriod}
+                onChange={(e) => {
+                  setRevenuePeriod(e.target.value);
+                  fetchRevenueData(e.target.value);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+              >
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -379,9 +397,15 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Sales Trends</h3>
-              <div className="text-sm text-gray-500">
-                Last 7 Days
-              </div>
+              <select
+                value={salesPeriod}
+                onChange={(e) => setSalesPeriod(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
+              >
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -443,7 +467,7 @@ export default function Dashboard() {
                           paddingAngle={2}
                           dataKey="value"
                         >
-                          {topServices.map((entry, serviceIndex) => (
+                          {topServices.map((_, serviceIndex) => (
                             <Cell
                               key={`cell-${serviceIndex}`}
                               fill={serviceIndex === 0 ? '#5A8621' : serviceIndex === 1 ? '#7BA428' : serviceIndex === 2 ? '#9BC53D' : '#A78BFA'}

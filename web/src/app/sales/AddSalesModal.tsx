@@ -275,7 +275,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Customer Selection */}
             <div className="space-y-4">
-              <div className="customer-dropdown-container">
+              <div className="customer-dropdown-container dropdown-container">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <User className="inline h-4 w-4 mr-1" />
                   Select Customer *
@@ -283,31 +283,34 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
                 {/* Selected Customer Display */}
                 {selectedCustomer ? (
-                  <div className="mb-3 p-3 bg-[#5A8621] text-white rounded-md flex justify-between items-center">
-                    <div>
-                      <div className="font-medium flex items-center">
-                        {selectedCustomer.fullName || selectedCustomer.name}
-                        {selectedCustomer.isDependent && (
-                          <span className="ml-2 px-2 py-1 text-xs bg-white bg-opacity-20 rounded-full">
-                            Dependent
-                          </span>
-                        )}
+                  <div className="mb-3">
+                    <div className="inline-flex items-center text-sm rounded-full px-4 py-2" style={{backgroundColor: '#BCF099', color: '#166534'}}>
+                      <div className="flex flex-col">
+                        <div className="font-medium flex items-center">
+                          {selectedCustomer.fullName || selectedCustomer.name}
+                          {selectedCustomer.isDependent && (
+                            <span className="ml-2 px-2 py-1 text-xs bg-white bg-opacity-30 rounded-full">
+                              Dependent
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs opacity-80">
+                          {selectedCustomer.phone || (selectedCustomer.isDependent ? 'Via parent' : 'No phone')}
+                        </div>
                       </div>
-                      <div className="text-sm opacity-90">
-                        {selectedCustomer.phone || (selectedCustomer.isDependent ? 'Via parent' : 'No phone')}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, customerId: '' }));
+                          setCustomerSearch('');
+                          setShowCustomerDropdown(true);
+                        }}
+                        className="ml-3 rounded-full p-1 hover:bg-white hover:bg-opacity-30 transition-colors"
+                        title="Change customer"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({ ...prev, customerId: '' }));
-                        setCustomerSearch('');
-                        setShowCustomerDropdown(true);
-                      }}
-                      className="text-white hover:text-gray-200 text-sm underline"
-                    >
-                      Change
-                    </button>
                   </div>
                 ) : (
                   <>
@@ -344,7 +347,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                                   <div className="font-medium flex items-center">
                                     {customer.fullName || customer.name}
                                     {customer.isDependent && (
-                                      <span className="ml-2 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                      <span className="ml-2 px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
                                         Dependent
                                       </span>
                                     )}

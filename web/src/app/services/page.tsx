@@ -246,7 +246,10 @@ export default function ServicesPage() {
                   type="text"
                   placeholder="Search services..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621] focus:border-transparent"
                 />
               </div>
@@ -270,7 +273,10 @@ export default function ServicesPage() {
                     </label>
                     <select
                       value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      onChange={(e) => {
+                        setCategoryFilter(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                     >
                       <option value="">All Categories</option>
@@ -285,6 +291,7 @@ export default function ServicesPage() {
                     <button
                       onClick={() => {
                         setCategoryFilter('');
+                        setCurrentPage(1);
                         setShowFilterDropdown(false);
                       }}
                       className="text-sm text-gray-600 hover:text-gray-900"
@@ -380,7 +387,7 @@ export default function ServicesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                      <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full" style={{backgroundColor: '#BCF099', color: '#166534'}}>
                         {getCategoryDisplayName(service.category)}
                       </span>
                     </td>
@@ -410,7 +417,7 @@ export default function ServicesPage() {
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => openEditModal(service)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-[#BCF099] hover:text-[#9ACD32]"
                           >
                             <Edit className="h-4 w-4" />
                           </button>

@@ -51,9 +51,15 @@ const CustomersPage: React.FC = () => {
       };
 
       const response = await customersService.getAll(params);
-      const customersData = Array.isArray(response.data) ? response.data : [];
-      setCustomers(customersData);
-      setTotalPages(response.meta?.totalPages || 1);
+      console.log('Customers API Response:', response); // Debug log
+
+      // Handle the nested data structure from backend
+      const customersData = response.data?.customers || response.data || [];
+      setCustomers(Array.isArray(customersData) ? customersData : []);
+
+      // Get pagination from backend structure
+      const pagination = response.data?.pagination || response.meta;
+      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       setCustomers([]);
@@ -273,7 +279,7 @@ const CustomersPage: React.FC = () => {
                           setEditingCustomer(customer);
                           setIsModalOpen(true);
                         }}
-                        className="p-2 text-gray-400 hover:text-blue-600"
+                        className="p-2 text-gray-400 hover:text-[#BCF099]"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
@@ -342,8 +348,9 @@ const CustomersPage: React.FC = () => {
                     <span className={`ml-2 inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                       customer.gender === 'FEMALE'
                         ? 'bg-pink-100 text-pink-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
+                        : 'text-[#166534]'
+                    } ${customer.gender === 'MALE' ? 'bg-[#BCF099]' : ''}
+                    `}>
                       {customer.gender}
                     </span>
                   </div>

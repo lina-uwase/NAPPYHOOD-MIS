@@ -41,7 +41,7 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onRemove }) => {
       case 'warning':
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;
       case 'info':
-        return <AlertCircle className="h-5 w-5 text-blue-500" />;
+        return <AlertCircle className="h-5 w-5" style={{color: '#BCF099'}} />;
       default:
         return <CheckCircle className="h-5 w-5 text-gray-500" />;
     }
@@ -56,7 +56,7 @@ const ToastComponent: React.FC<ToastProps> = ({ toast, onRemove }) => {
       case 'warning':
         return 'bg-yellow-50 border-yellow-200';
       case 'info':
-        return 'bg-blue-50 border-blue-200';
+        return 'border-[#BCF099]'; // Custom styling with BCF099 color
       default:
         return 'bg-gray-50 border-gray-200';
     }

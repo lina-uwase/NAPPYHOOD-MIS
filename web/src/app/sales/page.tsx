@@ -46,8 +46,10 @@ const SalesPage: React.FC = () => {
       };
 
       const response = await salesService.getAll(params);
+      console.log('Sales API Response:', response); // Debug log
+
       // Handle the nested data structure from backend
-      const salesData = response.data || [];
+      const salesData = response.data?.sales || response.data || [];
 
       // Transform the backend data to match frontend expectations
       const transformedSales = Array.isArray(salesData) ? salesData.map((sale: any) => ({
@@ -67,13 +69,21 @@ const SalesPage: React.FC = () => {
         })) || []
       })) : [];
 
+      console.log('Transformed Sales:', transformedSales); // Debug log
       setSales(transformedSales);
 
       // Get pagination from backend structure
-      const pagination = response.meta;
-      setTotalPages(pagination?.totalPages || 1);
+      const pagination = response.data?.pagination || response.meta;
+      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch sales:', error);
+      // More detailed error logging
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+      }
+      if (error && typeof error === 'object' && 'response' in error) {
+        console.error('Response error:', (error as any).response?.data);
+      }
       setSales([]);
     } finally {
       setLoading(false);
@@ -278,7 +288,7 @@ const SalesPage: React.FC = () => {
                           setEditingSale(sale);
                           setIsModalOpen(true);
                         }}
-                        className="p-2 text-gray-400 hover:text-blue-600"
+                        className="p-2 text-gray-400 hover:text-[#BCF099]"
                       >
                         <Edit className="h-4 w-4" />
                       </button>

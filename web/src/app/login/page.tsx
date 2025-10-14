@@ -80,7 +80,7 @@ export default function LoginPage() {
                   data-form-type="other"
                   data-lpignore="true"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all duration-200"
-                  placeholder="Enter your phone number (e.g., +250788123456)"
+                  placeholder="Enter your phone number "
                   disabled={loading}
                 />
               </div>

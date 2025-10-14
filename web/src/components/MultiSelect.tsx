@@ -94,7 +94,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
   );
 
   const defaultRenderSelectedChip = (option: MultiSelectOption, onRemove: () => void) => (
-    <div className="inline-flex items-center bg-blue-500 text-white text-sm rounded-full px-3 py-1.5 m-1">
+    <div className="inline-flex items-center text-sm rounded-full px-3 py-1.5 m-1" style={{backgroundColor: '#BCF099', color: '#166534'}}>
       <span className="max-w-32 truncate">{option.name}</span>
       <button
         type="button"
@@ -102,7 +102,7 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
           e.stopPropagation();
           onRemove();
         }}
-        className="ml-2 hover:bg-blue-600 rounded-full p-0.5"
+        className="ml-2 rounded-full p-0.5 hover:opacity-80"
       >
         <X className="h-3 w-3" />
       </button>
@@ -184,7 +184,8 @@ const MultiSelect: React.FC<MultiSelectProps> = ({
                       handleOptionToggle(option.id);
                     }}
                     className={`p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0 ${
-                      isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      isSelected ? 'border-l-4' : ''
+                    } ${isSelected ? 'bg-[#BCF099] bg-opacity-30 border-l-[#BCF099]' : ''}
                     }`}
                   >
                     {renderOption

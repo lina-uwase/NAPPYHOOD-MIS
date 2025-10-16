@@ -5,28 +5,49 @@ import { prisma } from '../utils/database';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { generateRandomPassword, isValidPhoneNumber } from '../utils/passwordGenerator';
 import { smsService } from '../services/smsService';
+import { emailService } from '../services/emailService';
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { phone, password } = req.body;
+    const { phone, email, password } = req.body;
+    const identifier = phone || email;
 
-    if (!phone || !password) {
-      res.status(400).json({ error: 'Phone number and password are required' });
+    if (!identifier || !password) {
+      res.status(400).json({ error: 'Email/phone number and password are required' });
       return;
     }
 
-    // Find user by phone
-    const user = await prisma.user.findUnique({
-      where: { phone },
-      select: {
-        id: true,
-        phone: true,
-        password: true,
-        name: true,
-        role: true,
-        isActive: true
-      }
-    });
+    // Find user by phone or email
+    let user;
+    if (identifier.includes('@')) {
+      // It's an email
+      user = await prisma.user.findUnique({
+        where: { email: identifier },
+        select: {
+          id: true,
+          phone: true,
+          email: true,
+          password: true,
+          name: true,
+          role: true,
+          isActive: true
+        }
+      });
+    } else {
+      // It's a phone number
+      user = await prisma.user.findUnique({
+        where: { phone: identifier },
+        select: {
+          id: true,
+          phone: true,
+          email: true,
+          password: true,
+          name: true,
+          role: true,
+          isActive: true
+        }
+      });
+    }
 
     if (!user || !user.isActive) {
       res.status(401).json({ error: 'Invalid credentials' });
@@ -42,7 +63,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user.id, phone: user.phone, role: user.role },
+      { userId: user.id, phone: user.phone, email: user.email, role: user.role },
       process.env.JWT_SECRET!,
       { expiresIn: '24h' }
     );
@@ -55,6 +76,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
           id: user.id,
           name: user.name,
           phone: user.phone,
+          email: user.email,
           role: user.role
         }
       }
@@ -70,25 +92,37 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
     const { name, email, phone, role = 'STAFF' } = req.body;
 
-    if (!name || !phone) {
-      console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone);
-      res.status(400).json({ error: 'Name and phone number are required' });
+    if (!name || (!phone && !email)) {
+      console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
+      res.status(400).json({ error: 'Name and either phone number or email are required' });
       return;
     }
 
-    // Validate phone number format
-    if (!isValidPhoneNumber(phone)) {
+    // Validate phone number format if provided
+    if (phone && !isValidPhoneNumber(phone)) {
       res.status(400).json({ error: 'Invalid phone number format. Use +250XXXXXXXXX' });
       return;
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { phone }
+    // Validate email format if provided
+    if (email && !email.includes('@')) {
+      res.status(400).json({ error: 'Invalid email format' });
+      return;
+    }
+
+    // Check if user already exists by phone or email
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          phone ? { phone } : {},
+          email ? { email } : {}
+        ].filter(condition => Object.keys(condition).length > 0)
+      }
     });
 
     if (existingUser) {
-      res.status(400).json({ error: 'User with this phone number already exists' });
+      const conflictField = existingUser.phone === phone ? 'phone number' : 'email';
+      res.status(400).json({ error: `User with this ${conflictField} already exists` });
       return;
     }
 
@@ -117,17 +151,33 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Send SMS with login credentials
-    const smsResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
+    // Try to send email first, fall back to SMS if no email provided
+    let notificationResult = false;
+    let notificationMethod = '';
 
-    if (!smsResult) {
-      console.warn(`Failed to send SMS to ${phone} for user ${name}`);
+    if (email) {
+      notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
+      notificationMethod = 'email';
+
+      if (!notificationResult) {
+        console.warn(`Failed to send email to ${email} for user ${name}`);
+      }
+    }
+
+    // If email failed or no email provided, try SMS as fallback
+    if (!notificationResult && phone) {
+      notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
+      notificationMethod = notificationResult ? 'SMS' : '';
+
+      if (!notificationResult) {
+        console.warn(`Failed to send SMS to ${phone} for user ${name}`);
+      }
     }
 
     res.status(201).json({
       success: true,
       data: { user },
-      message: `User registered successfully. ${smsResult ? 'SMS with login credentials sent.' : 'Please contact admin for login credentials.'}`
+      message: `User registered successfully. ${notificationResult ? `Login credentials sent via ${notificationMethod}.` : 'Please contact admin for login credentials.'}`
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -264,9 +314,40 @@ export const changePassword = async (req: AuthenticatedRequest, res: Response): 
 
 export const updateProfilePicture = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    // For now, just return success - file upload handling would need multer setup
+    const userId = req.user!.id;
+
+    // Check if file was uploaded
+    if (!req.file) {
+      res.status(400).json({ error: 'No profile picture file provided' });
+      return;
+    }
+
+    // Create the URL path for the uploaded file
+    const profilePictureUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { profilePicture: profilePictureUrl },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        profilePicture: true
+      }
+    });
+
     res.json({
       success: true,
+      data: {
+        user_id: updatedUser.id,
+        names: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        profile_picture: updatedUser.profilePicture
+      },
       message: 'Profile picture updated successfully'
     });
   } catch (error) {

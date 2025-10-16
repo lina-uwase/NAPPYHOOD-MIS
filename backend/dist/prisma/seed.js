@@ -15,7 +15,7 @@ async function main() {
         update: {},
         create: {
             name: 'Nappyhood Admin',
-            email: 'admin@nappyhood.com',
+            email: 'Nappyhood.boutique@gmail.com',
             password: hashedPassword,
             role: 'ADMIN',
             phone: '0788456312'
@@ -452,13 +452,138 @@ async function main() {
         }
     ];
     for (const customer of sampleCustomers) {
-        await prisma.customer.upsert({
-            where: { phone: customer.phone },
-            update: customer,
-            create: customer
+        await prisma.customer.create({
+            data: customer
         });
     }
     console.log('✅ Created sample customers');
+    // Create sample sales
+    const shampooService = await prisma.service.findUnique({
+        where: { name: 'Shampoo' }
+    });
+    const proteinTreatmentService = await prisma.service.findUnique({
+        where: { name: 'Protein Treatment' }
+    });
+    if (shampooService && proteinTreatmentService) {
+        // Get customers for creating sales
+        const customers = await prisma.customer.findMany({
+            take: 3
+        });
+        if (customers.length > 0) {
+            // Create sample sales
+            const sampleSales = [
+                {
+                    customerId: customers[0].id,
+                    totalAmount: 17000,
+                    discountAmount: 0,
+                    finalAmount: 17000,
+                    loyaltyPointsEarned: 17,
+                    notes: 'Regular customer visit',
+                    isCompleted: true,
+                    createdById: adminUser.id,
+                    services: [
+                        {
+                            serviceId: shampooService.id,
+                            quantity: 1,
+                            unitPrice: 7000,
+                            totalPrice: 7000,
+                            isChild: false,
+                            isCombined: false
+                        },
+                        {
+                            serviceId: proteinTreatmentService.id,
+                            quantity: 1,
+                            unitPrice: 10000,
+                            totalPrice: 10000,
+                            isChild: false,
+                            isCombined: false
+                        }
+                    ]
+                },
+                {
+                    customerId: customers[1].id,
+                    totalAmount: 7000,
+                    discountAmount: 1400, // 20% birthday discount
+                    finalAmount: 5600,
+                    loyaltyPointsEarned: 7,
+                    notes: 'Birthday month discount applied',
+                    isCompleted: true,
+                    createdById: adminUser.id,
+                    birthMonthDiscount: true,
+                    services: [
+                        {
+                            serviceId: shampooService.id,
+                            quantity: 1,
+                            unitPrice: 7000,
+                            totalPrice: 7000,
+                            isChild: false,
+                            isCombined: false
+                        }
+                    ]
+                },
+                {
+                    customerId: customers[2].id,
+                    totalAmount: 15000,
+                    discountAmount: 0,
+                    finalAmount: 15000,
+                    loyaltyPointsEarned: 15,
+                    notes: 'Protein treatment with combination pricing',
+                    isCompleted: true,
+                    createdById: adminUser.id,
+                    services: [
+                        {
+                            serviceId: proteinTreatmentService.id,
+                            quantity: 1,
+                            unitPrice: 15000,
+                            totalPrice: 15000,
+                            isChild: false,
+                            isCombined: true
+                        }
+                    ]
+                }
+            ];
+            for (const saleData of sampleSales) {
+                const { services, ...saleInfo } = saleData;
+                const sale = await prisma.sale.create({
+                    data: saleInfo
+                });
+                // Create sale services
+                for (const serviceData of services) {
+                    await prisma.saleService.create({
+                        data: {
+                            saleId: sale.id,
+                            ...serviceData
+                        }
+                    });
+                }
+                // Create sale staff assignment
+                await prisma.saleStaff.create({
+                    data: {
+                        saleId: sale.id,
+                        staffId: adminUser.id
+                    }
+                });
+            }
+            // Update customer stats
+            for (const customer of customers) {
+                const customerSales = await prisma.sale.findMany({
+                    where: { customerId: customer.id, isCompleted: true }
+                });
+                const totalSpent = customerSales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+                const saleCount = customerSales.length;
+                const lastSale = customerSales.length > 0 ? customerSales[customerSales.length - 1].saleDate : null;
+                await prisma.customer.update({
+                    where: { id: customer.id },
+                    data: {
+                        totalSpent,
+                        saleCount,
+                        lastSale
+                    }
+                });
+            }
+            console.log('✅ Created sample sales');
+        }
+    }
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📋 Default Admin Login:');
     console.log('Admin Phone: 0788456312');

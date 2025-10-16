@@ -10,7 +10,7 @@ datasource db {
 model User {
   id             String      @id @default(cuid())
   name           String
-  email          String?
+  email          String?     @unique
   password       String
   role           Role        @default(STAFF)
   phone          String      @unique
@@ -31,7 +31,7 @@ model Customer {
   location      String
   district      String
   province      String
-  phone         String?            @unique
+  phone         String?
   email         String?
   birthDay      Int
   birthMonth    Int

@@ -2,11 +2,11 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, AlertCircle, Phone, Lock } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, Phone, Lock, Mail } from 'lucide-react';
 import NappyhoodLogo from '@/components/NappyhoodLogo';
 
 export default function LoginPage() {
-  const [phone, setPhone] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,15 +15,21 @@ export default function LoginPage() {
 
   const { login } = useAuth();
 
+  const isEmail = identifier.includes('@');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await login({ phone, password });
+      const credentials = isEmail
+        ? { email: identifier, password }
+        : { phone: identifier, password };
+
+      await login(credentials);
     } catch (err: unknown) {
-      setError((err as Error).message || 'Invalid phone number or password');
+      setError((err as Error).message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
@@ -51,7 +57,7 @@ export default function LoginPage() {
             <div className="space-y-6">
               <div className="text-center space-y-2">
                 <h1 className="text-3xl font-bold text-gray-900">Welcome back!</h1>
-                <p className="text-gray-600">Enter your credentials to access your account</p>
+                <p className="text-gray-600">Enter your email or phone number to access your account</p>
           </div>
 
           {error && (
@@ -64,23 +70,26 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
             <div>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                {isEmail ? (
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                ) : (
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                )}
                 <input
-                  key="phone-input-field-v2"
+                  key="identifier-input-field-v3"
                   type="text"
-                  name="userPhoneNumber"
-                  id="userPhoneNumber"
+                  name="userIdentifier"
+                  id="userIdentifier"
                   required
-                  inputMode="tel"
-                  pattern="[+]?[0-9\s\-\(\)]+"
-                  title="Please enter a valid phone number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  inputMode={isEmail ? "email" : "tel"}
+                  title="Please enter a valid email or phone number"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   autoComplete="off"
                   data-form-type="other"
                   data-lpignore="true"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg transition-all duration-200"
-                  placeholder="Enter your phone number "
+                  placeholder="Enter your email or phone number"
                   disabled={loading}
                 />
               </div>

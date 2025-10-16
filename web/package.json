@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "export": "next build",
+    "build:export": "NODE_ENV=production next build",
     "lint": "eslint"
   },
   "dependencies": {

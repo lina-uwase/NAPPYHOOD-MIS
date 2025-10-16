@@ -9,9 +9,9 @@ export const metadata = {
   title: 'Nappyhood Salon Management System',
   description: 'Salon management system for Nappyhood',
   icons: {
-    icon: '/nappyhood-logo.png',
-    shortcut: '/nappyhood-logo.png',
-    apple: '/nappyhood-logo.png',
+    icon: '/nappyhood-logo.svg',
+    shortcut: '/nappyhood-logo.svg',
+    apple: '/nappyhood-logo.svg',
   },
 };
 

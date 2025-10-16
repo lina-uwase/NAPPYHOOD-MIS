@@ -53,13 +53,13 @@ const CustomersPage: React.FC = () => {
       const response = await customersService.getAll(params);
       console.log('Customers API Response:', response); // Debug log
 
-      // Handle the nested data structure from backend
-      const customersData = response.data?.customers || response.data || [];
+      // Handle the data structure from service (already transformed)
+      const customersData = response.data || [];
       setCustomers(Array.isArray(customersData) ? customersData : []);
 
-      // Get pagination from backend structure
-      const pagination = response.data?.pagination || response.meta;
-      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
+      // Get pagination from service response
+      const pagination = response.meta;
+      setTotalPages(pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       setCustomers([]);

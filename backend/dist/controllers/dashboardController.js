@@ -24,6 +24,19 @@ const getDashboardStats = async (req, res) => {
         }
         // Get basic counts
         const totalCustomers = await database_1.prisma.customer.count();
+        // Get new customers who came today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const newCustomers = await database_1.prisma.customer.count({
+            where: {
+                createdAt: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            }
+        });
         const totalServices = await database_1.prisma.service.count({ where: { isActive: true } });
         const activeStaff = await database_1.prisma.user.count({ where: { isActive: true } });
         const allTimeSales = await database_1.prisma.sale.count();
@@ -93,9 +106,12 @@ const getDashboardStats = async (req, res) => {
                 revenue: dayRevenue
             };
         });
-        // Get most recent customers
+        // Get most recent customers (by last sale date, then by creation date)
         const topCustomers = await database_1.prisma.customer.findMany({
-            orderBy: { createdAt: 'desc' },
+            orderBy: [
+                { lastSale: 'desc' },
+                { createdAt: 'desc' }
+            ],
             take: 5,
             select: {
                 id: true,
@@ -130,7 +146,8 @@ const getDashboardStats = async (req, res) => {
             success: true,
             data: {
                 overview: {
-                    totalCustomers,
+                    newCustomers, // Changed from totalCustomers to newCustomers for the selected period
+                    totalCustomers, // Keep total customers for reference if needed
                     totalServices,
                     activeStaff,
                     periodSales,

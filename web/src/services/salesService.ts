@@ -85,6 +85,20 @@ export interface ApiResponse<T = unknown> {
   };
 }
 
+// Backend response structure for sales
+interface BackendSalesResponse {
+  success: boolean;
+  data: {
+    sales: Sale[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
+}
+
 class SalesService {
   async getAll(params: GetSalesParams = {}): Promise<ApiResponse<Sale[]>> {
     const queryParams = new URLSearchParams();
@@ -98,8 +112,18 @@ class SalesService {
     if (params.endDate) queryParams.append('endDate', params.endDate);
     if (params.isCompleted !== undefined) queryParams.append('isCompleted', params.isCompleted.toString());
 
-    const response = await api.get<ApiResponse<Sale[]>>(`/sales?${queryParams.toString()}`);
-    return response.data;
+    const response = await api.get<BackendSalesResponse>(`/sales?${queryParams.toString()}`);
+    // Transform backend format to frontend format
+    return {
+      success: response.data.success,
+      data: response.data.data.sales,
+      meta: {
+        total: response.data.data.pagination.total,
+        totalPages: response.data.data.pagination.pages,
+        currentPage: response.data.data.pagination.page,
+        limit: response.data.data.pagination.limit
+      }
+    };
   }
 
   async getById(id: string): Promise<ApiResponse<Sale>> {

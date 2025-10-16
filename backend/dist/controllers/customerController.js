@@ -4,7 +4,7 @@ exports.getCustomerStats = exports.getTopCustomers = exports.toggleCustomerActiv
 const database_1 = require("../utils/database");
 const getAllCustomers = async (req, res) => {
     try {
-        const { page = '1', limit = '10', search, isActive } = req.query;
+        const { page = '1', limit = '10', search, isActive, gender, province, district } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
         const skip = (pageNum - 1) * limitNum;
@@ -18,6 +18,15 @@ const getAllCustomers = async (req, res) => {
                 { phone: { contains: search } },
                 { email: { contains: search, mode: 'insensitive' } }
             ];
+        }
+        if (gender && gender !== 'ALL') {
+            whereClause.gender = gender;
+        }
+        if (province) {
+            whereClause.province = province;
+        }
+        if (district) {
+            whereClause.district = district;
         }
         const [customers, total] = await Promise.all([
             database_1.prisma.customer.findMany({
@@ -124,18 +133,49 @@ const getCustomerById = async (req, res) => {
 exports.getCustomerById = getCustomerById;
 const createCustomer = async (req, res) => {
     try {
-        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear } = req.body;
-        if (!fullName || !gender || !phone) {
-            res.status(400).json({ error: 'Required fields: fullName, gender, phone' });
+        console.log('📝 Customer creation request received:', {
+            body: req.body,
+            user: req.user?.id,
+            headers: {
+                'content-type': req.headers['content-type'],
+                authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
+            }
+        });
+        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        if (!fullName || !gender) {
+            console.log('❌ Validation failed: Missing required fields', { fullName, gender });
+            res.status(400).json({ error: 'Required fields: fullName, gender' });
             return;
         }
-        // Check if customer with phone already exists
-        const existingCustomer = await database_1.prisma.customer.findUnique({
-            where: { phone }
-        });
-        if (existingCustomer) {
-            res.status(400).json({ error: 'Customer with this phone number already exists' });
+        // Phone is required for non-dependent customers
+        if (!isDependent && !phone) {
+            res.status(400).json({ error: 'Phone number is required for non-dependent customers' });
             return;
+        }
+        // Parent is required for dependent customers
+        if (isDependent && !parentId) {
+            res.status(400).json({ error: 'Parent customer is required for dependent customers' });
+            return;
+        }
+        // Check if customer with phone already exists (only if phone provided)
+        if (phone) {
+            const existingCustomer = await database_1.prisma.customer.findUnique({
+                where: { phone }
+            });
+            if (existingCustomer) {
+                res.status(400).json({ error: 'Customer with this phone number already exists' });
+                return;
+            }
+        }
+        // Verify parent exists for dependent customers
+        if (isDependent) {
+            const parentCustomer = await database_1.prisma.customer.findUnique({
+                where: { id: parentId }
+            });
+            if (!parentCustomer) {
+                res.status(400).json({ error: 'Parent customer not found' });
+                return;
+            }
         }
         const customer = await database_1.prisma.customer.create({
             data: {
@@ -144,11 +184,13 @@ const createCustomer = async (req, res) => {
                 location,
                 district,
                 province,
-                phone,
+                phone: phone || null,
                 email: email || null,
                 birthDay: parseInt(birthDay),
                 birthMonth: parseInt(birthMonth),
-                birthYear: birthYear ? parseInt(birthYear) : null
+                birthYear: birthYear ? parseInt(birthYear) : null,
+                isDependent: isDependent || false,
+                parentId: isDependent ? parentId : null
             }
         });
         res.status(201).json({
@@ -166,7 +208,7 @@ exports.createCustomer = createCustomer;
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
-        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear } = req.body;
+        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
         const existingCustomer = await database_1.prisma.customer.findUnique({
             where: { id }
         });
@@ -205,6 +247,10 @@ const updateCustomer = async (req, res) => {
             updateData.birthMonth = parseInt(birthMonth);
         if (birthYear !== undefined)
             updateData.birthYear = birthYear ? parseInt(birthYear) : null;
+        if (isDependent !== undefined)
+            updateData.isDependent = isDependent;
+        if (parentId !== undefined)
+            updateData.parentId = isDependent ? parentId : null;
         const customer = await database_1.prisma.customer.update({
             where: { id },
             data: updateData

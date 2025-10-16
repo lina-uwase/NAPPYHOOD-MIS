@@ -232,9 +232,8 @@ export default function StaffPage() {
           const res = await staffService.create({
             name: name.trim(),
             email: email.trim(),
-            phone: phone?.trim() || undefined,
-            role: role || 'STAFF',
-            password: 'defaultpassword' // Default password
+            phone: phone?.trim() || '',
+            role: role || 'STAFF'
           });
           if (res.success) ok += 1; else fail += 1;
         } catch {

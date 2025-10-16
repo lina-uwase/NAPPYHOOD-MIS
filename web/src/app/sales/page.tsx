@@ -48,8 +48,8 @@ const SalesPage: React.FC = () => {
       const response = await salesService.getAll(params);
       console.log('Sales API Response:', response); // Debug log
 
-      // Handle the nested data structure from backend
-      const salesData = response.data?.sales || response.data || [];
+      // Handle the data structure from service (already transformed)
+      const salesData = response.data || [];
 
       // Transform the backend data to match frontend expectations
       const transformedSales = Array.isArray(salesData) ? salesData.map((sale: any) => ({
@@ -72,9 +72,9 @@ const SalesPage: React.FC = () => {
       console.log('Transformed Sales:', transformedSales); // Debug log
       setSales(transformedSales);
 
-      // Get pagination from backend structure
-      const pagination = response.data?.pagination || response.meta;
-      setTotalPages(pagination?.pages || pagination?.totalPages || 1);
+      // Get pagination from service response
+      const pagination = response.meta;
+      setTotalPages(pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch sales:', error);
       // More detailed error logging

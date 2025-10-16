@@ -4,7 +4,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 
 export const getAllCustomers = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { page = '1', limit = '10', search, isActive } = req.query;
+    const { page = '1', limit = '10', search, isActive, gender, province, district } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
@@ -20,6 +20,18 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
         { phone: { contains: search as string } },
         { email: { contains: search as string, mode: 'insensitive' } }
       ];
+    }
+
+    if (gender && gender !== 'ALL') {
+      whereClause.gender = gender;
+    }
+
+    if (province) {
+      whereClause.province = province;
+    }
+
+    if (district) {
+      whereClause.district = district;
     }
 
     const [customers, total] = await Promise.all([
@@ -130,6 +142,15 @@ export const getCustomerById = async (req: Request, res: Response): Promise<void
 
 export const createCustomer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    console.log('📝 Customer creation request received:', {
+      body: req.body,
+      user: req.user?.id,
+      headers: {
+        'content-type': req.headers['content-type'],
+        authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
+      }
+    });
+
     const {
       fullName,
       gender,
@@ -140,22 +161,51 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       email,
       birthDay,
       birthMonth,
-      birthYear
+      birthYear,
+      isDependent,
+      parentId
     } = req.body;
 
-    if (!fullName || !gender || !phone) {
-      res.status(400).json({ error: 'Required fields: fullName, gender, phone' });
+    if (!fullName || !gender) {
+      console.log('❌ Validation failed: Missing required fields', { fullName, gender });
+      res.status(400).json({ error: 'Required fields: fullName, gender' });
       return;
     }
 
-    // Check if customer with phone already exists
-    const existingCustomer = await prisma.customer.findUnique({
-      where: { phone }
-    });
-
-    if (existingCustomer) {
-      res.status(400).json({ error: 'Customer with this phone number already exists' });
+    // Phone is required for non-dependent customers
+    if (!isDependent && !phone) {
+      res.status(400).json({ error: 'Phone number is required for non-dependent customers' });
       return;
+    }
+
+    // Parent is required for dependent customers
+    if (isDependent && !parentId) {
+      res.status(400).json({ error: 'Parent customer is required for dependent customers' });
+      return;
+    }
+
+    // Check if customer with phone already exists (only if phone provided)
+    if (phone) {
+      const existingCustomer = await prisma.customer.findUnique({
+        where: { phone }
+      });
+
+      if (existingCustomer) {
+        res.status(400).json({ error: 'Customer with this phone number already exists' });
+        return;
+      }
+    }
+
+    // Verify parent exists for dependent customers
+    if (isDependent) {
+      const parentCustomer = await prisma.customer.findUnique({
+        where: { id: parentId }
+      });
+
+      if (!parentCustomer) {
+        res.status(400).json({ error: 'Parent customer not found' });
+        return;
+      }
     }
 
     const customer = await prisma.customer.create({
@@ -165,11 +215,13 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         location,
         district,
         province,
-        phone,
+        phone: phone || null,
         email: email || null,
         birthDay: parseInt(birthDay),
         birthMonth: parseInt(birthMonth),
-        birthYear: birthYear ? parseInt(birthYear) : null
+        birthYear: birthYear ? parseInt(birthYear) : null,
+        isDependent: isDependent || false,
+        parentId: isDependent ? parentId : null
       }
     });
 
@@ -197,7 +249,9 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
       email,
       birthDay,
       birthMonth,
-      birthYear
+      birthYear,
+      isDependent,
+      parentId
     } = req.body;
 
     const existingCustomer = await prisma.customer.findUnique({
@@ -231,6 +285,8 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
     if (birthDay !== undefined) updateData.birthDay = parseInt(birthDay);
     if (birthMonth !== undefined) updateData.birthMonth = parseInt(birthMonth);
     if (birthYear !== undefined) updateData.birthYear = birthYear ? parseInt(birthYear) : null;
+    if (isDependent !== undefined) updateData.isDependent = isDependent;
+    if (parentId !== undefined) updateData.parentId = isDependent ? parentId : null;
 
     const customer = await prisma.customer.update({
       where: { id },

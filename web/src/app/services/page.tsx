@@ -13,7 +13,7 @@ export default function ServicesPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
 
-  const canManageServices = user?.role === 'ADMIN' || user?.role === 'MANAGER';
+  const canManageServices = user?.role === 'ADMIN';
 
   useEffect(() => {
     setTitle("Services");

@@ -111,8 +111,27 @@ class CustomersService {
   }
 
   async create(customerData: CreateCustomerDto): Promise<ApiResponse<Customer>> {
-    const response = await api.post<ApiResponse<Customer>>('/customers', customerData);
-    return response.data;
+    console.log('Creating customer with data:', customerData);
+    try {
+      const response = await api.post<ApiResponse<Customer>>('/customers', customerData);
+      console.log('Customer creation response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Customer creation error:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+          data: error.config?.data
+        }
+      });
+      throw error;
+    }
   }
 
   async update(id: string, customerData: UpdateCustomerDto): Promise<ApiResponse<Customer>> {

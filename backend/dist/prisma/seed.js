@@ -11,14 +11,14 @@ async function main() {
     // Create default admin user only
     const hashedPassword = await bcryptjs_1.default.hash('admin123', 10);
     const adminUser = await prisma.user.upsert({
-        where: { phone: '+250791762689' },
+        where: { phone: '0788456312' },
         update: {},
         create: {
             name: 'Nappyhood Admin',
             email: 'admin@nappyhood.com',
             password: hashedPassword,
             role: 'ADMIN',
-            phone: '+250791762689'
+            phone: '0788456312'
         }
     });
     console.log('✅ Created admin user');
@@ -461,7 +461,8 @@ async function main() {
     console.log('✅ Created sample customers');
     console.log('🎉 Database seeding completed successfully!');
     console.log('\n📋 Default Admin Login:');
-    console.log('Admin: +250791762689 / admin123');
+    console.log('Admin Phone: 0788456312');
+    console.log('Admin Password: admin123');
     console.log('\n💡 Other users can be created through the admin panel with custom phone numbers');
 }
 main()

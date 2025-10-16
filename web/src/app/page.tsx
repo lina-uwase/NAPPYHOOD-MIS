@@ -51,13 +51,19 @@ export default function Dashboard() {
   }, [setTitle]);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    // Only redirect on client side
+    if (typeof window !== 'undefined' && !authLoading && !isAuthenticated) {
       router.push('/login');
       return;
     }
   }, [user, isAuthenticated, authLoading, router]);
 
   const fetchDashboardData = async () => {
+    // Don't make API calls during build time
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       setError(null);
       console.log('🔍 Fetching dashboard data');
@@ -138,6 +144,11 @@ export default function Dashboard() {
   };
 
   const fetchRevenueData = async (period: string) => {
+    // Don't make API calls during build time
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       const dashboardRes = await api.get(`/dashboard/stats?period=${period}`);
       const data = dashboardRes.data.data;
@@ -156,7 +167,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only run on client side and when authenticated
+    if (typeof window !== 'undefined' && isAuthenticated) {
       setLoading(true);
       fetchDashboardData();
       fetchRevenueData(revenuePeriod);
@@ -164,7 +176,8 @@ export default function Dashboard() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only run on client side and when authenticated
+    if (typeof window !== 'undefined' && isAuthenticated) {
       fetchRevenueData(revenuePeriod);
     }
   }, [revenuePeriod, isAuthenticated]);

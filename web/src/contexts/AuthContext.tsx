@@ -25,9 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    // Only run authentication check on client side
+    if (typeof window === 'undefined') {
+      setLoading(false);
+      return;
+    }
+
     const currentUser = authService.getCurrentUser();
     const authStatus = authService.isAuthenticated();
-    
+
     if (currentUser && authStatus) {
       setUser(currentUser);
       setIsAuthenticated(true);

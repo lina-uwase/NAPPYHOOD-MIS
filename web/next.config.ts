@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // Conditionally enable static export only for build
   ...(process.env.NODE_ENV === 'production' && {
     output: 'export',
-    trailingSlash: true,
+    trailingSlash: false,
   }),
   images: {
     unoptimized: true,

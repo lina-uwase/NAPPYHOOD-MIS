@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const authController_1 = require("../controllers/authController");
 const auth_1 = require("../middleware/auth");
+const upload_1 = require("../middleware/upload");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -309,7 +310,7 @@ router.post('/register', auth_1.authenticateToken, (0, auth_1.requireRole)(['ADM
 router.get('/profile', auth_1.authenticateToken, authController_1.getProfile);
 router.put('/profile', auth_1.authenticateToken, authController_1.updateProfile);
 router.put('/change-password', auth_1.authenticateToken, authController_1.changePassword);
-router.put('/profile-picture', auth_1.authenticateToken, authController_1.updateProfilePicture);
+router.put('/profile-picture', auth_1.authenticateToken, upload_1.uploadProfilePicture.single('picture'), authController_1.updateProfilePicture);
 // User management (admin only)
 router.get('/users', auth_1.authenticateToken, (0, auth_1.requireRole)(['ADMIN']), authController_1.getAllUsers);
 router.get('/users/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['ADMIN']), authController_1.getUserById);

@@ -12,6 +12,7 @@ import {
   deleteUser
 } from '../controllers/authController';
 import { authenticateToken, requireRole } from '../middleware/auth';
+import { uploadProfilePicture } from '../middleware/upload';
 
 const router = Router();
 
@@ -325,7 +326,7 @@ router.post('/register', authenticateToken, requireRole(['ADMIN']), register);
 router.get('/profile', authenticateToken, getProfile);
 router.put('/profile', authenticateToken, updateProfile);
 router.put('/change-password', authenticateToken, changePassword);
-router.put('/profile-picture', authenticateToken, updateProfilePicture);
+router.put('/profile-picture', authenticateToken, uploadProfilePicture.single('picture'), updateProfilePicture);
 
 // User management (admin only)
 router.get('/users', authenticateToken, requireRole(['ADMIN']), getAllUsers);

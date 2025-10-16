@@ -141,7 +141,9 @@ const createCustomer = async (req, res) => {
                 authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
             }
         });
-        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let { fullName, gender, location, district, province, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let phone = req.body.phone;
+        let email = req.body.email;
         if (!fullName || !gender) {
             console.log('❌ Validation failed: Missing required fields', { fullName, gender });
             res.status(400).json({ error: 'Required fields: fullName, gender' });
@@ -157,26 +159,56 @@ const createCustomer = async (req, res) => {
             res.status(400).json({ error: 'Parent customer is required for dependent customers' });
             return;
         }
-        // Check if customer with phone already exists (only if phone provided)
-        if (phone) {
-            const existingCustomer = await database_1.prisma.customer.findUnique({
-                where: { phone }
+        // For dependent customers, inherit parent's phone and email if not provided
+        if (isDependent && parentId) {
+            const parentCustomer = await database_1.prisma.customer.findUnique({
+                where: { id: parentId },
+                select: { phone: true, email: true }
+            });
+            if (!parentCustomer) {
+                res.status(400).json({ error: 'Parent customer not found' });
+                return;
+            }
+            // If dependent doesn't have phone/email, inherit from parent
+            if (!phone)
+                phone = parentCustomer.phone;
+            if (!email)
+                email = parentCustomer.email;
+        }
+        // Check phone uniqueness only for non-dependent customers with phone
+        if (phone && !isDependent) {
+            const existingCustomer = await database_1.prisma.customer.findFirst({
+                where: {
+                    phone: phone,
+                    isDependent: false
+                }
             });
             if (existingCustomer) {
                 res.status(400).json({ error: 'Customer with this phone number already exists' });
                 return;
             }
         }
-        // Verify parent exists for dependent customers
-        if (isDependent) {
-            const parentCustomer = await database_1.prisma.customer.findUnique({
-                where: { id: parentId }
+        // Check if customer with email already exists (only for non-dependent customers or dependent customers with custom email)
+        if (email && !isDependent) {
+            const existingCustomer = await database_1.prisma.customer.findFirst({
+                where: { email }
             });
-            if (!parentCustomer) {
-                res.status(400).json({ error: 'Parent customer not found' });
+            if (existingCustomer) {
+                res.status(400).json({ error: 'Customer with this email already exists' });
                 return;
             }
         }
+        // For dependent customers with custom email (not inherited), check uniqueness
+        if (email && isDependent && req.body.email) {
+            const existingCustomer = await database_1.prisma.customer.findFirst({
+                where: { email }
+            });
+            if (existingCustomer) {
+                res.status(400).json({ error: 'Customer with this email already exists' });
+                return;
+            }
+        }
+        // Parent existence already verified above if isDependent
         const customer = await database_1.prisma.customer.create({
             data: {
                 fullName,
@@ -208,7 +240,7 @@ exports.createCustomer = createCustomer;
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
-        const { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
         const existingCustomer = await database_1.prisma.customer.findUnique({
             where: { id }
         });
@@ -216,10 +248,14 @@ const updateCustomer = async (req, res) => {
             res.status(404).json({ error: 'Customer not found' });
             return;
         }
-        // Check if phone is being changed and if new phone already exists
-        if (phone && phone !== existingCustomer.phone) {
-            const phoneExists = await database_1.prisma.customer.findUnique({
-                where: { phone }
+        // Check phone uniqueness only for non-dependent customers
+        if (phone && phone !== existingCustomer.phone && !existingCustomer.isDependent) {
+            const phoneExists = await database_1.prisma.customer.findFirst({
+                where: {
+                    phone: phone,
+                    isDependent: false,
+                    id: { not: id } // Exclude current customer
+                }
             });
             if (phoneExists) {
                 res.status(400).json({ error: 'Customer with this phone number already exists' });

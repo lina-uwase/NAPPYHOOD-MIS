@@ -1,0 +1,40 @@
+{
+  "redirects": [
+    {
+      "source": "/login/",
+      "destination": "/login",
+      "permanent": true
+    },
+    {
+      "source": "/customers/",
+      "destination": "/customers",
+      "permanent": true
+    },
+    {
+      "source": "/sales/",
+      "destination": "/sales",
+      "permanent": true
+    },
+    {
+      "source": "/services/",
+      "destination": "/services",
+      "permanent": true
+    },
+    {
+      "source": "/staff/",
+      "destination": "/staff",
+      "permanent": true
+    },
+    {
+      "source": "/users/",
+      "destination": "/users",
+      "permanent": true
+    },
+    {
+      "source": "/profile/",
+      "destination": "/profile",
+      "permanent": true
+    }
+  ],
+  "trailingSlash": false
+}

@@ -2,6 +2,4 @@
 builder = "dockerfile"
 
 [deploy]
-healthcheckPath = "/health"
-healthcheckTimeout = 600
-startCommand = "cd backend && npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"
+restartPolicyType = "ON_FAILURE"

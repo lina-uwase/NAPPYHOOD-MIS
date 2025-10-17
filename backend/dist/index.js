@@ -62,10 +62,13 @@ const swaggerSpec = (0, swagger_jsdoc_1.default)(swaggerOptions);
 // Security middleware
 app.use((0, helmet_1.default)());
 // CORS configuration
+const corsOrigins = process.env.NODE_ENV === 'production'
+    ? ['https://nappyhood.com', 'https://www.nappyhood.com', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003']
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'];
+console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔄 CORS Origins:', corsOrigins);
 app.use((0, cors_1.default)({
-    origin: process.env.NODE_ENV === 'production'
-        ? ['https://nappyhood.com', 'https://www.nappyhood.com', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003']
-        : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
+    origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'X-Requested-With', 'Accept'],

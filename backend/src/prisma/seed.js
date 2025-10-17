@@ -84,7 +84,6 @@ async function main() {
       combinedPrice: null,
       childPrice: 9000,
       childCombinedPrice: null,
-      duration: 120,
     },
     {
       name: 'Braids Wash',
@@ -94,7 +93,6 @@ async function main() {
       combinedPrice: null,
       childPrice: 12000,
       childCombinedPrice: null,
-      duration: 90,
     },
     {
       name: 'Protein Treatment',
@@ -104,7 +102,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: 12000,
       childCombinedPrice: 17000,
-      duration: 120,
     },
     {
       name: 'Hydration Deep Treatment',
@@ -114,7 +111,6 @@ async function main() {
       combinedPrice: 17000,
       childPrice: 14000,
       childCombinedPrice: 19000,
-      duration: 150,
     },
     {
       name: 'Fenugreek',
@@ -124,7 +120,6 @@ async function main() {
       combinedPrice: 15000,
       childPrice: 12000,
       childCombinedPrice: 17000,
-      duration: 120,
     },
     {
       name: 'No More Fall',

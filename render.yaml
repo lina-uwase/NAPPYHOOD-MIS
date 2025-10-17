@@ -4,7 +4,7 @@ services:
     name: nappyhood-backend
     runtime: node
     plan: free
-    buildCommand: cd backend && npm install && npm run build && npx prisma generate
+    buildCommand: cd backend && npm install && npm run build && npx prisma generate && npx prisma migrate deploy
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
@@ -13,20 +13,6 @@ services:
         fromDatabase:
           name: nappyhood-db
           property: connectionString
-    autoDeploy: false
-
-  # Frontend Web Service
-  - type: web
-    name: nappyhood-frontend
-    runtime: node
-    plan: free
-    buildCommand: cd web && npm install && npm run build
-    startCommand: cd web && npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_PUBLIC_API_URL
-        value: https://nappyhood-backend.onrender.com
     autoDeploy: false
 
 databases:

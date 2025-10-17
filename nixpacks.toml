@@ -2,10 +2,10 @@
     NODE_ENV = "production"
 
 [build]
-    cmd = "npm run build && npx prisma generate"
+    cmd = "cd backend && npm ci && npm run build && npx prisma generate"
 
 [start]
-    cmd = "npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"
+    cmd = "cd backend && npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"
 
 [phases.setup]
     nixPkgs = ["nodejs_20"]

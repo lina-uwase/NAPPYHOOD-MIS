@@ -67,6 +67,8 @@ const corsOrigins = process.env.NODE_ENV === 'production'
     : ['https://nappyhood.com', 'https://www.nappyhood.com', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'];
 console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
 console.log('🔄 CORS Origins:', corsOrigins);
+console.log('🗄️ DATABASE_URL:', process.env.DATABASE_URL ? 'Set' : 'Not set');
+console.log('🔑 JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 app.use((0, cors_1.default)({
     origin: corsOrigins,
     credentials: true,

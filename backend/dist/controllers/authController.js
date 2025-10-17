@@ -13,6 +13,7 @@ const emailService_1 = require("../services/emailService");
 const login = async (req, res) => {
     try {
         const { phone, email, password } = req.body;
+        console.log('🔐 Login attempt:', { phone, email: email ? 'provided' : 'not provided' });
         const identifier = phone || email;
         if (!identifier || !password) {
             res.status(400).json({ error: 'Email/phone number and password are required' });
@@ -77,8 +78,12 @@ const login = async (req, res) => {
         });
     }
     catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('❌ Login error details:', {
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : 'No stack trace',
+            error
+        });
+        res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' });
     }
 };
 exports.login = login;

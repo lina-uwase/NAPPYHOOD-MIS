@@ -1,4 +1,7 @@
 {
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://nappyhood-mis-production.up.railway.app/api"
+  },
   "redirects": [
     {
       "source": "/login/",

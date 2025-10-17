@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "cd backend && npm start"
+startCommand = "cd backend && npm run seed && npm start"
 
 [env]
 NODE_ENV = "production"

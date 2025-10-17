@@ -62,7 +62,17 @@
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_VQY876/**)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_1FxoF3/**)",
       "WebSearch",
-      "Bash(npm ci:*)"
+      "Bash(npm ci:*)",
+      "WebFetch(domain:nappyhood-mis-production.up.railway.app)",
+      "WebFetch(domain:nappyhood.com)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_YX1TRc/**)",
+      "Bash(cat:*)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_3eOVRP/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_dCU7It/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_mtA2QZ/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_bN2hqL/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_fsyHC7/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_VrKNtq/**)"
     ],
     "deny": [],
     "ask": []

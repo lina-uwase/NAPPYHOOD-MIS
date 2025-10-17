@@ -10,6 +10,7 @@ import { emailService } from '../services/emailService';
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { phone, email, password } = req.body;
+    console.log('🔐 Login attempt:', { phone, email: email ? 'provided' : 'not provided' });
     const identifier = phone || email;
 
     if (!identifier || !password) {
@@ -82,8 +83,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ Login error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace',
+      error
+    });
+    res.status(500).json({ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 

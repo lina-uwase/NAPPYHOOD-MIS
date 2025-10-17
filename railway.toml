@@ -1,7 +1,8 @@
 [build]
-builder = "RAILPACK"
-buildCommand = "cd backend && npm ci && npm run build && npx prisma generate"
+builder = "NIXPACKS"
 
 [deploy]
-startCommand = "cd backend && npx prisma migrate deploy && npm start"
-restartPolicyType = "never"
+startCommand = "cd backend && npm start"
+
+[env]
+NODE_ENV = "production"

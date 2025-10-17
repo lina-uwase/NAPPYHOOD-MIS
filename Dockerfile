@@ -19,8 +19,8 @@ RUN cd backend && npm run build
 # Generate Prisma client
 RUN cd backend && npx prisma generate
 
-# Expose port
-EXPOSE 5001
+# Expose port (Railway sets PORT automatically)
+EXPOSE $PORT
 
 # Start script
 CMD ["sh", "-c", "cd backend && npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"]

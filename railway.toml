@@ -3,4 +3,5 @@ builder = "dockerfile"
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 600
+startCommand = "cd backend && npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"

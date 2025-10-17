@@ -1,7 +1,15 @@
 #!/bin/bash
 set -e
 
-echo "🏗️ Installing Node.js dependencies..."
+echo "📦 Installing Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+
+echo "📋 Verifying installation..."
+node --version
+npm --version
+
+echo "🏗️ Installing dependencies..."
 cd backend
 npm ci
 

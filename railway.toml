@@ -2,7 +2,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "cd backend && npm run seed && npm start"
+startCommand = "cd backend && npx prisma migrate deploy && npm run seed && npm start"
 
 [env]
 NODE_ENV = "production"

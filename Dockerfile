@@ -19,8 +19,8 @@ RUN cd backend && npm run build
 # Generate Prisma client
 RUN cd backend && npx prisma generate
 
-# Expose port (Railway sets PORT automatically)
-EXPOSE $PORT
+# Create startup script
+RUN echo '#!/bin/sh\ncd backend\necho "🔧 Starting migrations..."\nnpx prisma migrate deploy || echo "⚠️ Migration failed"\necho "🌱 Starting seeding..."\nnpm run seed || echo "⚠️ Seeding failed"\necho "🚀 Starting server..."\nexec npm start' > /start.sh && chmod +x /start.sh
 
-# Start script
-CMD ["sh", "-c", "cd backend && npx prisma migrate deploy && (npm run seed || echo 'Seeding failed, continuing...') && npm start"]
+# Start with the script
+CMD ["/start.sh"]

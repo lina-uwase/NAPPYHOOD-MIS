@@ -66,7 +66,7 @@ app.use(helmet());
 // CORS configuration
 const corsOrigins = process.env.NODE_ENV === 'production'
   ? ['https://nappyhood.com', 'https://www.nappyhood.com', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003']
-  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'];
+  : ['https://nappyhood.com', 'https://www.nappyhood.com', 'http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'];
 
 console.log('🌍 NODE_ENV:', process.env.NODE_ENV);
 console.log('🔄 CORS Origins:', corsOrigins);

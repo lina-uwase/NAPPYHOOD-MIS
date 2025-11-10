@@ -299,7 +299,8 @@ const getAllSales = async (req, res) => {
                         select: {
                             id: true,
                             fullName: true,
-                            phone: true
+                            phone: true,
+                            saleCount: true
                         }
                     },
                     services: {

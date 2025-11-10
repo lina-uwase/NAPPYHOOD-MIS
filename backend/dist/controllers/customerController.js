@@ -141,7 +141,7 @@ const createCustomer = async (req, res) => {
                 authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
             }
         });
-        let { fullName, gender, location, district, province, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let { fullName, gender, location, district, province, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
         let phone = req.body.phone;
         let email = req.body.email;
         if (!fullName || !gender) {
@@ -222,7 +222,8 @@ const createCustomer = async (req, res) => {
                 birthMonth: parseInt(birthMonth),
                 birthYear: birthYear ? parseInt(birthYear) : null,
                 isDependent: isDependent || false,
-                parentId: isDependent ? parentId : null
+                parentId: isDependent ? parentId : null,
+                saleCount: saleCount ? parseInt(saleCount) : 0
             }
         });
         res.status(201).json({

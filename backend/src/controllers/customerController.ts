@@ -161,7 +161,8 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       birthMonth,
       birthYear,
       isDependent,
-      parentId
+      parentId,
+      saleCount
     } = req.body;
 
     let phone = req.body.phone;
@@ -256,7 +257,8 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         birthMonth: parseInt(birthMonth),
         birthYear: birthYear ? parseInt(birthYear) : null,
         isDependent: isDependent || false,
-        parentId: isDependent ? parentId : null
+        parentId: isDependent ? parentId : null,
+        saleCount: saleCount ? parseInt(saleCount) : 0
       }
     });
 

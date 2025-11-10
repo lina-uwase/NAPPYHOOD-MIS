@@ -12,9 +12,7 @@ Authorization: Bearer <your_jwt_token>
 ```
 
 ## Default Login Credentials
-- **Admin**: `admin@nappyhood.com` / `admin123`
-- **Manager**: `manager@nappyhood.com` / `manager123`
-- **Staff**: `stylist1@nappyhood.com` / `staff123`
+- **Admin**: `nappyhood.boutique@gmail.com` / `admin123`
 
 ---
 
@@ -26,7 +24,7 @@ Login to the system.
 **Request Body:**
 ```json
 {
-  "email": "admin@nappyhood.com",
+  "email": "nappyhood.boutique@gmail.com",
   "password": "admin123"
 }
 ```
@@ -40,7 +38,7 @@ Login to the system.
     "user": {
       "id": "user_id",
       "name": "Nappyhood Admin",
-      "email": "admin@nappyhood.com",
+      "email": "nappyhood.boutique@gmail.com",
       "role": "ADMIN"
     }
   }

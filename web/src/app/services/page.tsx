@@ -166,59 +166,7 @@ export default function ServicesPage() {
     return `RWF ${price.toLocaleString()}`;
   };
 
-  const sortedAndFilteredServices = React.useMemo(() => {
-    let filtered = [...services];
-
-    if (searchTerm) {
-      filtered = filtered.filter(service =>
-        service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    if (categoryFilter) {
-      filtered = filtered.filter(service => service.category === categoryFilter);
-    }
-
-    if (sortField) {
-      filtered.sort((a, b) => {
-        let aValue: string | number;
-        let bValue: string | number;
-
-        switch (sortField) {
-          case 'name':
-            aValue = a.name;
-            bValue = b.name;
-            break;
-          case 'category':
-            aValue = a.category;
-            bValue = b.category;
-            break;
-          case 'singlePrice':
-            aValue = a.singlePrice || 0;
-            bValue = b.singlePrice || 0;
-            break;
-          case 'duration':
-            aValue = a.duration;
-            bValue = b.duration;
-            break;
-          default:
-            return 0;
-        }
-
-        if (typeof aValue === 'string') {
-          aValue = aValue.toLowerCase();
-          bValue = typeof bValue === 'string' ? bValue.toLowerCase() : bValue;
-        }
-
-        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [services, searchTerm, categoryFilter, sortField, sortDirection]);
+  // Server-side pagination and filtering handles all the logic
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -371,14 +319,14 @@ export default function ServicesPage() {
                     </div>
                   </td>
                 </tr>
-              ) : sortedAndFilteredServices.length === 0 ? (
+              ) : services.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
                     No services found
                   </td>
                 </tr>
               ) : (
-                Array.isArray(sortedAndFilteredServices) && sortedAndFilteredServices.map((service) => (
+                Array.isArray(services) && services.map((service) => (
                   <tr key={service.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
@@ -437,7 +385,7 @@ export default function ServicesPage() {
           </table>
         </div>
 
-        {totalPages > 1 && (
+        {!loading && totalPages > 1 && (
           <div className="px-6 py-4 border-t border-gray-200">
             <Pagination
               currentPage={currentPage}

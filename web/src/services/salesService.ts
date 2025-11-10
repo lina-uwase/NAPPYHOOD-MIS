@@ -20,6 +20,7 @@ export interface Sale {
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerVisitCount: number;
   saleDate: string;
   services: SaleService[];
   staff: SaleStaff[];

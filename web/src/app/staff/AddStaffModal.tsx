@@ -40,7 +40,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.phone.trim()) {
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.email.trim()) {
       return;
     }
 
@@ -48,7 +48,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     try {
       await onAddStaff({
         name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
+        email: formData.email.trim(),
         phone: formData.phone.trim(),
         role: formData.role,
       });
@@ -105,14 +105,15 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email (Optional)
+              Email *
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-              placeholder="Enter email address (optional)"
+              placeholder="Enter email address"
+              required
             />
           </div>
 
@@ -132,9 +133,9 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </select>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
-              📱 <strong>Password will be auto-generated</strong> and sent via SMS to the phone number provided.
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p className="text-sm text-green-800">
+              📧 <strong>Password will be auto-generated</strong> and sent via email to the address provided.
             </p>
           </div>
 
@@ -149,7 +150,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.name.trim() || !formData.phone.trim()}
+              disabled={loading || !formData.name.trim() || !formData.phone.trim() || !formData.email.trim()}
               className="flex-1 px-4 py-2 bg-[#5A8621] text-white rounded-lg hover:bg-[#4A7219] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (

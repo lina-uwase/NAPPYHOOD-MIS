@@ -65,10 +65,7 @@ The API will be available at `http://localhost:5000`
 
 After seeding, you can use these credentials:
 
-- **Admin**: `admin@nappyhood.com` / `admin123`
-- **Manager**: `manager@nappyhood.com` / `manager123`
-- **Staff**: `stylist1@nappyhood.com` / `staff123`
-- **Staff**: `stylist2@nappyhood.com` / `staff123`
+- **Admin**: `nappyhood.boutique@gmail.com` / `admin123`
 
 ## API Endpoints
 

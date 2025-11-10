@@ -4,27 +4,55 @@ import { AuthenticatedRequest } from '../middleware/auth';
 
 export const getAllServices = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { category, isActive = 'true' } = req.query;
+    const { page = '1', limit = '10', search, category, isActive = 'true' } = req.query;
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
 
     const whereClause: any = {
       isActive: isActive === 'true'
     };
 
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { description: { contains: search as string, mode: 'insensitive' } }
+      ];
+    }
+
     if (category) {
       whereClause.category = category;
     }
 
-    const services = await prisma.service.findMany({
-      where: whereClause,
-      orderBy: [
-        { category: 'asc' },
-        { name: 'asc' }
-      ]
+    const [services, total] = await Promise.all([
+      prisma.service.findMany({
+        where: whereClause,
+        skip,
+        take: limitNum,
+        orderBy: [
+          { category: 'asc' },
+          { name: 'asc' }
+        ]
+      }),
+      prisma.service.count({ where: whereClause })
+    ]);
+
+    // Add cache-busting headers
+    res.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
 
     res.json({
       success: true,
-      data: services
+      data: services,
+      meta: {
+        total,
+        totalPages: Math.ceil(total / limitNum),
+        currentPage: pageNum,
+        limit: limitNum
+      }
     });
   } catch (error) {
     console.error('Get services error:', error);

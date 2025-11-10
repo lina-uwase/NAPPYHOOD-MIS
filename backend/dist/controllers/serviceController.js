@@ -4,23 +4,43 @@ exports.deleteService = exports.updateService = exports.createService = exports.
 const database_1 = require("../utils/database");
 const getAllServices = async (req, res) => {
     try {
-        const { category, isActive = 'true' } = req.query;
+        const { page = '1', limit = '10', search, category, isActive = 'true' } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
         const whereClause = {
             isActive: isActive === 'true'
         };
+        if (search) {
+            whereClause.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } }
+            ];
+        }
         if (category) {
             whereClause.category = category;
         }
-        const services = await database_1.prisma.service.findMany({
-            where: whereClause,
-            orderBy: [
-                { category: 'asc' },
-                { name: 'asc' }
-            ]
-        });
+        const [services, total] = await Promise.all([
+            database_1.prisma.service.findMany({
+                where: whereClause,
+                skip,
+                take: limitNum,
+                orderBy: [
+                    { category: 'asc' },
+                    { name: 'asc' }
+                ]
+            }),
+            database_1.prisma.service.count({ where: whereClause })
+        ]);
         res.json({
             success: true,
-            data: services
+            data: services,
+            meta: {
+                total,
+                totalPages: Math.ceil(total / limitNum),
+                currentPage: pageNum,
+                limit: limitNum
+            }
         });
     }
     catch (error) {

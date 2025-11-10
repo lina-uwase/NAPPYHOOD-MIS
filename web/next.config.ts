@@ -1,11 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Conditionally enable static export only for build
-  ...(process.env.NODE_ENV === 'production' && {
-    output: 'export',
-    trailingSlash: false,
-  }),
+  // Disable static export to enable API calls
   images: {
     unoptimized: true,
     remotePatterns: [

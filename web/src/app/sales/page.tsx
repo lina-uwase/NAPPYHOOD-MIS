@@ -56,6 +56,7 @@ const SalesPage: React.FC = () => {
         ...sale,
         customerName: sale.customer?.fullName || 'Unknown Customer',
         customerPhone: sale.customer?.phone || 'No phone',
+        customerVisitCount: sale.customer?.saleCount || 0,
         subtotal: Number(sale.totalAmount || 0),
         discountAmount: Number(sale.discountAmount || 0),
         finalAmount: Number(sale.finalAmount || 0),
@@ -274,6 +275,10 @@ const SalesPage: React.FC = () => {
                         <div className="flex items-center">
                           <User className="h-4 w-4 mr-1" />
                           {sale.customerPhone || 'No phone'}
+                        </div>
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 mr-1" />
+                          Visit #{sale.customerVisitCount || 0}
                         </div>
                         <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />

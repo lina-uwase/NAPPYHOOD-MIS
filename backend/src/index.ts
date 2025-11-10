@@ -31,7 +31,7 @@ const swaggerOptions = {
       description: 'API documentation for Nappyhood Salon Management System',
       contact: {
         name: 'Nappyhood Salon',
-        email: 'admin@nappyhood.com'
+        email: 'nappyhood.boutique@gmail.com'
       }
     },
     servers: [

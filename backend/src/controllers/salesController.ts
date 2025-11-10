@@ -362,7 +362,8 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
             select: {
               id: true,
               fullName: true,
-              phone: true
+              phone: true,
+              saleCount: true
             }
           },
           services: {

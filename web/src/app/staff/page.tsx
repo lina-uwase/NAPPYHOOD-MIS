@@ -76,16 +76,34 @@ export default function StaffPage() {
         addToast({
           type: 'success',
           title: 'Staff member added successfully',
-          message: `${(newStaff as CreateStaffDto).name} has been added to the team.`
+          message: `${(newStaff as CreateStaffDto).name} has been added to the team. Login credentials have been sent via email.`
         });
         setShowAddModal(false);
         loadStaff();
       }
     } catch (error) {
+      const errorResponse = error as { response?: { data?: { error?: string; message?: string } } };
+      const errorMessage = errorResponse.response?.data?.error || errorResponse.response?.data?.message;
+
+      let title = 'Error adding staff member';
+      let message = 'Failed to add staff member. Please try again.';
+
+      if (errorMessage) {
+        if (errorMessage.toLowerCase().includes('email') && errorMessage.toLowerCase().includes('exists')) {
+          title = 'Email already exists';
+          message = 'A staff member with this email address already exists. Please use a different email address.';
+        } else if (errorMessage.toLowerCase().includes('phone') && errorMessage.toLowerCase().includes('exists')) {
+          title = 'Phone number already exists';
+          message = 'A staff member with this phone number already exists. Please use a different phone number.';
+        } else {
+          message = errorMessage;
+        }
+      }
+
       addToast({
         type: 'error',
-        title: 'Error adding staff member',
-        message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add staff member. Please try again.'
+        title,
+        message
       });
     }
   };

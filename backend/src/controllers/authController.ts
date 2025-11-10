@@ -97,9 +97,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
     const { name, email, phone, role = 'STAFF' } = req.body;
 
-    if (!name || (!phone && !email)) {
+    if (!name || !email || !phone) {
       console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
-      res.status(400).json({ error: 'Name and either phone number or email are required' });
+      res.status(400).json({ error: 'Name, email, and phone number are all required' });
       return;
     }
 
@@ -109,15 +109,16 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate email format if provided
-    if (email && !email.includes('@')) {
+    // Validate email format
+    if (!email.includes('@')) {
       res.status(400).json({ error: 'Invalid email format' });
       return;
     }
 
-    // Check if user already exists by phone or email
+    // Check if user already exists by phone or email (only among active users)
     const existingUser = await prisma.user.findFirst({
       where: {
+        isActive: true,
         OR: [
           phone ? { phone } : {},
           email ? { email } : {}
@@ -156,26 +157,25 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Try to send email first, fall back to SMS if no email provided
+    // Send welcome email with credentials (email is now required)
     let notificationResult = false;
     let notificationMethod = '';
 
-    if (email) {
-      notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
-      notificationMethod = 'email';
+    // Send email notification (primary method)
+    notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
+    notificationMethod = 'email';
 
-      if (!notificationResult) {
-        console.warn(`Failed to send email to ${email} for user ${name}`);
-      }
-    }
+    if (!notificationResult) {
+      console.warn(`Failed to send welcome email to ${email} for user ${name}`);
 
-    // If email failed or no email provided, try SMS as fallback
-    if (!notificationResult && phone) {
-      notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
-      notificationMethod = notificationResult ? 'SMS' : '';
+      // Fallback to SMS if email fails
+      if (phone) {
+        notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
+        notificationMethod = notificationResult ? 'SMS' : '';
 
-      if (!notificationResult) {
-        console.warn(`Failed to send SMS to ${phone} for user ${name}`);
+        if (!notificationResult) {
+          console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
+        }
       }
     }
 

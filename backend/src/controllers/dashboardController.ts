@@ -26,7 +26,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     }
 
     // Get basic counts
-    const totalCustomers = await prisma.customer.count();
+    const totalCustomers = await prisma.customer.count({
+      where: { isActive: true }
+    });
     // Get new customers who came today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -35,6 +37,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     const newCustomers = await prisma.customer.count({
       where: {
+        isActive: true,
         createdAt: {
           gte: today,
           lt: tomorrow
@@ -66,7 +69,10 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     // Customer retention
     const returningCustomers = await prisma.customer.count({
-      where: { saleCount: { gt: 1 } }
+      where: {
+        isActive: true,
+        saleCount: { gt: 1 }
+      }
     });
 
     const customerRetentionRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
@@ -102,31 +108,82 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       })
     );
 
-    // Get revenue trend for last 7 days
+    // Get revenue trend based on period
+    let trendPeriod = periodStart;
+    let trendDataCount = 7; // Default for week
+
+    if (period === 'month') {
+      trendDataCount = 30;
+    } else if (period === 'year') {
+      trendDataCount = 12;
+    }
+
     const revenueTrendData = await prisma.sale.findMany({
-      where: { saleDate: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+      where: { saleDate: { gte: trendPeriod } },
       select: { saleDate: true, finalAmount: true }
     });
 
-    // Group by day
-    const revenueTrend = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (6 - i));
-      const dayStr = date.toISOString().split('T')[0];
+    // Group by appropriate time unit based on period
+    let revenueTrend = [];
 
-      const dayRevenue = revenueTrendData
-        .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
-        .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+    if (period === 'year') {
+      // Group by months for yearly view
+      revenueTrend = Array.from({ length: 12 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - (11 - i));
+        const monthStr = date.toISOString().substring(0, 7); // YYYY-MM
 
-      return {
-        date: dayStr,
-        day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-        revenue: dayRevenue
-      };
-    });
+        const monthRevenue = revenueTrendData
+          .filter(sale => sale.saleDate.toISOString().substring(0, 7) === monthStr)
+          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+
+        return {
+          date: monthStr,
+          day: date.toLocaleDateString('en-US', { month: 'short' }),
+          revenue: monthRevenue
+        };
+      });
+    } else if (period === 'month') {
+      // Group by days for monthly view (last 30 days)
+      revenueTrend = Array.from({ length: 30 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (29 - i));
+        const dayStr = date.toISOString().split('T')[0];
+
+        const dayRevenue = revenueTrendData
+          .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
+          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+
+        return {
+          date: dayStr,
+          day: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          revenue: dayRevenue
+        };
+      });
+    } else {
+      // Group by days for weekly view (last 7 days)
+      revenueTrend = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        const dayStr = date.toISOString().split('T')[0];
+
+        const dayRevenue = revenueTrendData
+          .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
+          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+
+        return {
+          date: dayStr,
+          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          revenue: dayRevenue
+        };
+      });
+    }
 
     // Get most recent customers (by last sale date, then by creation date)
     const topCustomers = await prisma.customer.findMany({
+      where: {
+        isActive: true
+      },
       orderBy: [
         { lastSale: 'desc' },
         { createdAt: 'desc' }

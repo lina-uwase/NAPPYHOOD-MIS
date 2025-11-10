@@ -317,10 +317,14 @@ export const updateStaff = async (req: AuthenticatedRequest, res: Response): Pro
       return;
     }
 
-    // Check if phone is being changed and if new phone already exists
+    // Check if phone is being changed and if new phone already exists (only among active users)
     if (phone && phone !== existingStaff.phone) {
-      const phoneExists = await prisma.user.findUnique({
-        where: { phone }
+      const phoneExists = await prisma.user.findFirst({
+        where: {
+          phone,
+          isActive: true,
+          id: { not: id } // Exclude current user
+        }
       });
       if (phoneExists) {
         res.status(400).json({ error: 'User with this phone number already exists' });

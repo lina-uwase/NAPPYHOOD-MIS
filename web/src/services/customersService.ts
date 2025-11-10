@@ -17,6 +17,7 @@ export interface Customer {
   loyaltyPoints: number;
   totalSales: number;
   totalSpent: number;
+  saleCount: number;
   lastSale?: string;
   lastVisit?: string;
   isActive: boolean;
@@ -42,6 +43,7 @@ export interface CreateCustomerDto {
   province: string;
   isDependent?: boolean;
   parentId?: string;
+  saleCount?: number;
 }
 
 export interface UpdateCustomerDto extends Partial<CreateCustomerDto> {

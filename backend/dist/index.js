@@ -21,7 +21,7 @@ const dashboard_1 = __importDefault(require("./routes/dashboard"));
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 // Swagger configuration
 const swaggerOptions = {
     definition: {
@@ -32,7 +32,7 @@ const swaggerOptions = {
             description: 'API documentation for Nappyhood Salon Management System',
             contact: {
                 name: 'Nappyhood Salon',
-                email: 'admin@nappyhood.com'
+                email: 'nappyhood.boutique@gmail.com'
             }
         },
         servers: [
@@ -139,7 +139,7 @@ app.use((err, req, res, next) => {
     });
 });
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Nappyhood Salon API server running on port ${PORT}`);
     console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);

@@ -28,7 +28,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     district: '',
     province: '',
     isDependent: false,
-    parentId: ''
+    parentId: '',
+    isFirstTime: true,
+    previousVisits: 0
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,7 +69,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         district: editingCustomer.district,
         province: editingCustomer.province,
         isDependent: editingCustomer.isDependent || false,
-        parentId: editingCustomer.parentId || ''
+        parentId: editingCustomer.parentId || '',
+        isFirstTime: false, // When editing, it's not first time
+        previousVisits: editingCustomer.saleCount || 0
       });
     }
   }, [editingCustomer]);
@@ -219,7 +223,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         district: formData.district,
         province: formData.province,
         isDependent: formData.isDependent,
-        parentId: formData.isDependent ? formData.parentId : undefined
+        parentId: formData.isDependent ? formData.parentId : undefined,
+        saleCount: formData.isFirstTime ? 0 : formData.previousVisits
       };
 
       console.log('Submitting customer data:', submitData); // Debug log
@@ -430,6 +435,52 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
             </div>
 
+
+          </div>
+
+          {/* VISIT TRACKING - PROMINENT SECTION */}
+          <div className="bg-green-50 p-6 rounded-lg border-2 border-green-300 mb-6">
+            <h2 className="text-xl font-bold text-green-800 mb-4">🏆 CUSTOMER VISIT TRACKING</h2>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <input
+                  type="checkbox"
+                  id="isFirstTime"
+                  name="isFirstTime"
+                  checked={formData.isFirstTime}
+                  onChange={handleInputChange}
+                  className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isFirstTime" className="text-lg font-semibold text-green-800">
+                  ✨ This is their FIRST TIME visiting our salon
+                </label>
+              </div>
+
+              {!formData.isFirstTime && (
+                <div className="mt-4 p-4 bg-white rounded border border-green-200">
+                  <label className="block text-lg font-medium text-green-700 mb-3">
+                    📊 How many times have they visited before?
+                  </label>
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="number"
+                      name="previousVisits"
+                      value={formData.previousVisits}
+                      onChange={handleInputChange}
+                      min="0"
+                      max="50"
+                      className="w-24 px-4 py-3 text-lg border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="0"
+                    />
+                    <span className="text-lg text-green-700">previous visits</span>
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-green-600 bg-green-100 p-2 rounded">
+                    🎁 Remember: 6th visit gets a special discount!
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           {allowDependent && (
@@ -536,6 +587,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               )}
             </div>
           )}
+
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button

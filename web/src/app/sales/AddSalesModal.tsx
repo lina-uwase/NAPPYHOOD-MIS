@@ -391,7 +391,19 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   type="datetime-local"
                   name="saleDate"
                   value={formData.saleDate}
+                  min={new Date().toISOString().slice(0, 16)}
                   onChange={(e) => {
+                    const selectedDate = new Date(e.target.value);
+                    const currentDate = new Date();
+
+                    if (selectedDate < currentDate) {
+                      setErrors(prev => ({
+                        ...prev,
+                        saleDate: 'Cannot select past dates for sale recording'
+                      }));
+                      return;
+                    }
+
                     handleInputChange(e);
                     // Close any open dropdowns when date changes
                     setShowCustomerDropdown(false);

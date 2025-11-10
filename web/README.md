@@ -30,9 +30,7 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 
 ## Default Login Credentials
 
-- **Admin**: `admin@nappyhood.com` / `admin123`
-- **Manager**: `manager@nappyhood.com` / `manager123`
-- **Staff**: `stylist1@nappyhood.com` / `staff123`
+- **Admin**: `nappyhood.boutique@gmail.com` / `admin123`
 
 ## Tech Stack
 

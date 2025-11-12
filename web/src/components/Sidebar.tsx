@@ -1,5 +1,5 @@
 "use client"
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -8,29 +8,13 @@ import {
   Users2,
   Calendar,
   Users,
-  Moon
 } from 'lucide-react';
 import NappyhoodLogo from './NappyhoodLogo';
 import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const [darkMode, setDarkMode] = useState(false);
   const { user } = useAuth();
-  
-
-  React.useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode !== null) {
-      const isDark = savedDarkMode === 'true';
-      setDarkMode(isDark);
-      if (isDark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-  }, []);
 
   const allMenuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['ADMIN', 'MANAGER'] },
@@ -80,33 +64,6 @@ const Sidebar = () => {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center px-4 py-3">
-          <Moon className="mr-3 h-5 w-5 text-gray-500" />
-          <span className="text-sm font-medium text-gray-600 flex-1">Dark Mode</span>
-          <button
-            onClick={() => {
-              const newDarkMode = !darkMode;
-              setDarkMode(newDarkMode);
-              localStorage.setItem('darkMode', newDarkMode.toString());
-              if (newDarkMode) {
-                document.documentElement.classList.add('dark');
-              } else {
-                document.documentElement.classList.remove('dark');
-              }
-            }}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              darkMode ? 'bg-[#5A8621]' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                darkMode ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

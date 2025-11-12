@@ -34,6 +34,11 @@ export interface Sale {
   ownShampooDiscount?: boolean;
   birthMonthDiscount?: boolean;
   isCompleted: boolean;
+  createdBy?: {
+    id: string;
+    name?: string;
+    fullName?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

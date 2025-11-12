@@ -211,6 +211,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         return;
       }
 
+      const calculatedSaleCount = formData.isFirstTime ? 1 : (formData.previousVisits + 1);
+
       const submitData = {
         fullName: formData.fullName.trim(),
         gender: formData.gender as 'MALE' | 'FEMALE',
@@ -224,9 +226,15 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         province: formData.province,
         isDependent: formData.isDependent,
         parentId: formData.isDependent ? formData.parentId : undefined,
-        saleCount: formData.isFirstTime ? 0 : formData.previousVisits
+        saleCount: calculatedSaleCount
       };
 
+      console.log('Visit Count Debug:', {
+        isFirstTime: formData.isFirstTime,
+        previousVisits: formData.previousVisits,
+        calculatedSaleCount: calculatedSaleCount,
+        finalSaleCount: submitData.saleCount
+      });
       console.log('Submitting customer data:', submitData); // Debug log
       await onSubmit(submitData);
     } catch (error) {
@@ -438,49 +446,41 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
           </div>
 
-          {/* VISIT TRACKING - PROMINENT SECTION */}
-          <div className="bg-green-50 p-6 rounded-lg border-2 border-green-300 mb-6">
-            <h2 className="text-xl font-bold text-green-800 mb-4">🏆 CUSTOMER VISIT TRACKING</h2>
+          {/* VISIT TRACKING - SIMPLE SECTION */}
+          <div className="p-3 border border-gray-300 rounded-md mb-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Visit Tracking</h3>
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <input
-                  type="checkbox"
-                  id="isFirstTime"
-                  name="isFirstTime"
-                  checked={formData.isFirstTime}
-                  onChange={handleInputChange}
-                  className="h-5 w-5 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <label htmlFor="isFirstTime" className="text-lg font-semibold text-green-800">
-                  ✨ This is their FIRST TIME visiting our salon
-                </label>
-              </div>
-
-              {!formData.isFirstTime && (
-                <div className="mt-4 p-4 bg-white rounded border border-green-200">
-                  <label className="block text-lg font-medium text-green-700 mb-3">
-                    📊 How many times have they visited before?
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="number"
-                      name="previousVisits"
-                      value={formData.previousVisits}
-                      onChange={handleInputChange}
-                      min="0"
-                      max="50"
-                      className="w-24 px-4 py-3 text-lg border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                      placeholder="0"
-                    />
-                    <span className="text-lg text-green-700">previous visits</span>
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-green-600 bg-green-100 p-2 rounded">
-                    🎁 Remember: 6th visit gets a special discount!
-                  </p>
-                </div>
-              )}
+            <div className="flex items-center space-x-3 mb-2">
+              <input
+                type="checkbox"
+                id="isFirstTime"
+                name="isFirstTime"
+                checked={formData.isFirstTime}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+              />
+              <label htmlFor="isFirstTime" className="text-sm text-gray-700">
+                First time visiting our salon
+              </label>
             </div>
+
+            {!formData.isFirstTime && (
+              <div className="ml-7">
+                <label className="block text-sm text-gray-600 mb-1">
+                  Previous visits:
+                </label>
+                <input
+                  type="number"
+                  name="previousVisits"
+                  value={formData.previousVisits}
+                  onChange={handleInputChange}
+                  min="0"
+                  max="50"
+                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                  placeholder="0"
+                />
+              </div>
+            )}
           </div>
 
           {allowDependent && (

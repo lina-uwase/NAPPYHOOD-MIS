@@ -43,7 +43,7 @@ export interface CreateCustomerDto {
   province: string;
   isDependent?: boolean;
   parentId?: string;
-  saleCount?: number;
+  saleCount: number; // Make this required to ensure visit count is properly set
 }
 
 export interface UpdateCustomerDto extends Partial<CreateCustomerDto> {

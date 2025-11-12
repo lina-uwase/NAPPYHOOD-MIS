@@ -144,10 +144,13 @@ const SalesPage: React.FC = () => {
 
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-RW', {
+    return new Date(dateString).toLocaleString('en-RW', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
     });
   };
 
@@ -277,12 +280,12 @@ const SalesPage: React.FC = () => {
                           {sale.customerPhone || 'No phone'}
                         </div>
                         <div className="flex items-center">
-                          <Star className="h-4 w-4 mr-1" />
-                          Visit #{sale.customerVisitCount || 0}
-                        </div>
-                        <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-1" />
                           {formatDate(sale.saleDate)}
+                        </div>
+                        <div className="flex items-center">
+                          <User className="h-4 w-4 mr-1" />
+                          Recorded by: {sale.createdBy?.name || sale.createdBy?.fullName || 'Admin'}
                         </div>
                       </div>
                     </div>

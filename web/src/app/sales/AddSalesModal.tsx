@@ -23,7 +23,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     customerId: '',
     serviceIds: [] as string[],
     staffIds: [] as string[],
-    saleDate: new Date().toISOString().slice(0, 16),
+    saleDate: (() => {
+      const now = new Date();
+      // Adjust for timezone offset to get local time
+      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+      return now.toISOString().slice(0, 16);
+    })(),
     notes: '',
     paymentMethod: 'CASH',
     bringOwnShampoo: false
@@ -176,9 +181,6 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       newErrors.staffIds = 'Please select at least one staff member';
     }
 
-    if (!formData.saleDate) {
-      newErrors.saleDate = 'Sale date is required';
-    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -381,40 +383,22 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 {errors.customerId && <p className="mt-1 text-sm text-red-600">{errors.customerId}</p>}
               </div>
 
-              {/* Sale Date */}
+              {/* Sale Date & Time - Auto-generated */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <Calendar className="inline h-4 w-4 mr-1" />
-                  Sale Date & Time *
+                  Sale Date & Time
                 </label>
-                <input
-                  type="datetime-local"
-                  name="saleDate"
-                  value={formData.saleDate}
-                  min={new Date().toISOString().slice(0, 16)}
-                  onChange={(e) => {
-                    const selectedDate = new Date(e.target.value);
-                    const currentDate = new Date();
-
-                    if (selectedDate < currentDate) {
-                      setErrors(prev => ({
-                        ...prev,
-                        saleDate: 'Cannot select past dates for sale recording'
-                      }));
-                      return;
-                    }
-
-                    handleInputChange(e);
-                    // Close any open dropdowns when date changes
-                    setShowCustomerDropdown(false);
-                    setShowServiceDropdown(false);
-                    setShowStaffDropdown(false);
-                  }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                    errors.saleDate ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {errors.saleDate && <p className="mt-1 text-sm text-red-600">{errors.saleDate}</p>}
+                <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+                  {new Date(formData.saleDate).toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })} (Auto-generated)
+                </div>
               </div>
 
               {/* Payment Method */}

@@ -26,6 +26,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     birthDay: '',
     birthYear: '',
     district: '',
+    sector: '',
     province: '',
     isDependent: false,
     parentId: '',
@@ -38,22 +39,60 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [parentSearch, setParentSearch] = useState('');
   const [showParentDropdown, setShowParentDropdown] = useState(false);
+  const [provinces, setProvinces] = useState<string[]>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [sectors, setSectors] = useState<string[]>([]);
 
-  const rwandanProvinces = [
-    'Kigali City',
-    'Eastern Province',
-    'Western Province',
-    'Northern Province',
-    'Southern Province'
-  ];
+  // Load provinces on component mount
+  useEffect(() => {
+    const loadProvinces = async () => {
+      try {
+        const response = await customersService.getProvinces();
+        setProvinces(response.data);
+      } catch (error) {
+        console.error('Error loading provinces:', error);
+      }
+    };
+    loadProvinces();
+  }, []);
 
-  const districtsByProvince: Record<string, string[]> = {
-    'Kigali City': ['Gasabo', 'Kicukiro', 'Nyarugenge'],
-    'Eastern Province': ['Bugesera', 'Gatsibo', 'Kayonza', 'Kirehe', 'Ngoma', 'Nyagatare', 'Rwamagana'],
-    'Western Province': ['Karongi', 'Ngororero', 'Nyabihu', 'Nyamasheke', 'Rubavu', 'Rusizi', 'Rutsiro'],
-    'Northern Province': ['Burera', 'Gakenke', 'Gicumbi', 'Musanze', 'Rulindo'],
-    'Southern Province': ['Gisagara', 'Huye', 'Kamonyi', 'Muhanga', 'Nyamagabe', 'Nyanza', 'Nyaruguru', 'Ruhango']
-  };
+  // Update districts when province changes
+  useEffect(() => {
+    if (formData.province) {
+      const loadDistricts = async () => {
+        try {
+          const response = await customersService.getDistrictsByProvince(formData.province);
+          setDistricts(response.data);
+        } catch (error) {
+          console.error('Error loading districts:', error);
+        }
+      };
+      loadDistricts();
+      setFormData(prev => ({ ...prev, district: '', sector: '' }));
+      setSectors([]);
+    } else {
+      setDistricts([]);
+      setSectors([]);
+    }
+  }, [formData.province]);
+
+  // Update sectors when district changes
+  useEffect(() => {
+    if (formData.province && formData.district) {
+      const loadSectors = async () => {
+        try {
+          const response = await customersService.getSectorsByDistrict(formData.province, formData.district);
+          setSectors(response.data);
+        } catch (error) {
+          console.error('Error loading sectors:', error);
+        }
+      };
+      loadSectors();
+      setFormData(prev => ({ ...prev, sector: '' }));
+    } else {
+      setSectors([]);
+    }
+  }, [formData.province, formData.district]);
 
   useEffect(() => {
     fetchCustomers();
@@ -67,6 +106,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthDay: editingCustomer.birthDay ? editingCustomer.birthDay.toString().padStart(2, '0') : '',
         birthYear: editingCustomer.birthYear ? editingCustomer.birthYear.toString() : '',
         district: editingCustomer.district,
+        sector: editingCustomer.sector || '',
         province: editingCustomer.province,
         isDependent: editingCustomer.isDependent || false,
         parentId: editingCustomer.parentId || '',
@@ -211,8 +251,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         return;
       }
 
-      const calculatedSaleCount = formData.isFirstTime ? 1 : (formData.previousVisits + 1);
-
       const submitData = {
         fullName: formData.fullName.trim(),
         gender: formData.gender as 'MALE' | 'FEMALE',
@@ -223,18 +261,13 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthYear,
         location: formData.district, // Use district as location for now
         district: formData.district,
+        sector: formData.sector?.trim() || undefined,
         province: formData.province,
         isDependent: formData.isDependent,
-        parentId: formData.isDependent ? formData.parentId : undefined,
-        saleCount: calculatedSaleCount
+        parentId: formData.isDependent ? formData.parentId : undefined
+        // Note: saleCount is always 0 for new customers, managed by backend
       };
 
-      console.log('Visit Count Debug:', {
-        isFirstTime: formData.isFirstTime,
-        previousVisits: formData.previousVisits,
-        calculatedSaleCount: calculatedSaleCount,
-        finalSaleCount: submitData.saleCount
-      });
       console.log('Submitting customer data:', submitData); // Debug log
       await onSubmit(submitData);
     } catch (error) {
@@ -243,8 +276,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       setLoading(false);
     }
   };
-
-  const availableDistricts = formData.province ? districtsByProvince[formData.province] || [] : [];
 
   return (
     <div
@@ -411,7 +442,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 }`}
               >
                 <option value="">Select Province</option>
-                {rwandanProvinces.map(province => (
+                {provinces.map(province => (
                   <option key={province} value={province}>
                     {province}
                   </option>
@@ -434,7 +465,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 }`}
               >
                 <option value="">Select District</option>
-                {availableDistricts.map(district => (
+                {districts.map(district => (
                   <option key={district} value={district}>
                     {district}
                   </option>
@@ -443,6 +474,25 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sector (Optional)
+              </label>
+              <select
+                name="sector"
+                value={formData.sector}
+                onChange={handleInputChange}
+                disabled={!formData.district}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Sector</option>
+                {sectors.map(sector => (
+                  <option key={sector} value={sector}>
+                    {sector}
+                  </option>
+                ))}
+              </select>
+            </div>
 
           </div>
 

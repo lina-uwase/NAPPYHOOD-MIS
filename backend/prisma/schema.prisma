@@ -30,6 +30,7 @@ model Customer {
   gender        Gender
   location      String
   district      String
+  sector        String?
   province      String
   phone         String?
   email         String?

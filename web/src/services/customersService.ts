@@ -13,6 +13,7 @@ export interface Customer {
   birthYear?: number;
   location: string;
   district: string;
+  sector?: string;
   province: string;
   loyaltyPoints: number;
   totalSales: number;
@@ -158,6 +159,11 @@ class CustomersService {
 
   async getDistrictsByProvince(province: string): Promise<ApiResponse<string[]>> {
     const response = await api.get<ApiResponse<string[]>>(`/customers/locations/districts/${province}`);
+    return response.data;
+  }
+
+  async getSectorsByDistrict(province: string, district: string): Promise<ApiResponse<string[]>> {
+    const response = await api.get<ApiResponse<string[]>>(`/customers/locations/sectors/${province}/${district}`);
     return response.data;
   }
 

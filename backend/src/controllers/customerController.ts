@@ -156,6 +156,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       gender,
       location,
       district,
+      sector,
       province,
       birthDay,
       birthMonth,
@@ -250,6 +251,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         gender,
         location,
         district,
+        sector: sector || null,
         province,
         phone: phone || null,
         email: email || null,
@@ -258,7 +260,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         birthYear: birthYear ? parseInt(birthYear) : null,
         isDependent: isDependent || false,
         parentId: isDependent ? parentId : null,
-        saleCount: saleCount ? parseInt(saleCount) : 0
+        saleCount: 0 // Always start new customers with 0 visit count
       }
     });
 
@@ -281,6 +283,7 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
       gender,
       location,
       district,
+      sector,
       province,
       phone,
       email,
@@ -320,6 +323,7 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
     if (gender !== undefined) updateData.gender = gender;
     if (location !== undefined) updateData.location = location;
     if (district !== undefined) updateData.district = district;
+    if (sector !== undefined) updateData.sector = sector || null;
     if (province !== undefined) updateData.province = province;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email || null;

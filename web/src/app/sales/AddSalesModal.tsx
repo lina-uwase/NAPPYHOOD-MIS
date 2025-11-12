@@ -430,7 +430,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                     className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
                   />
                   <label className="ml-2 text-sm text-gray-700">
-                    Customer brought own shampoo (-1,000 RWF)
+                    Customer brought their own product (-1,000 RWF)
                   </label>
                 </div>
               </div>

@@ -445,4 +445,74 @@ router.get('/locations/districts/:province', authenticateToken, (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/customers/locations/sectors/{province}/{district}:
+ *   get:
+ *     summary: Get sectors by province and district
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: province
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Province name
+ *       - in: path
+ *         name: district
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: District name
+ *     responses:
+ *       200:
+ *         description: Sectors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
+router.get('/locations/sectors/:province/:district', authenticateToken, (req, res) => {
+  const { district } = req.params;
+
+  const sectorsByDistrict: Record<string, string[]> = {
+    // Kigali Province
+    'Gasabo': ['Bumbogo', 'Gatsata', 'Jali', 'Gikomero', 'Gisozi', 'Jabana', 'Kacyiru', 'Kimihurura', 'Kimironko', 'Kinyinya', 'Ndera', 'Nduba', 'Rusororo', 'Rutunga'],
+    'Kicukiro': ['Gahanga', 'Gatenga', 'Gikondo', 'Kagarama', 'Kanombe', 'Kicukiro', 'Niboye', 'Nyarugunga', 'Rukiri', 'Masaka'],
+    'Nyarugenge': ['Gitega', 'Kanyinya', 'Kigali', 'Kimisagara', 'Mageragere', 'Muhima', 'Nyakabanda', 'Nyamirambo', 'Nyarugenge', 'Rwezamenyo'],
+
+    // Eastern Province - major districts
+    'Bugesera': ['Gashora', 'Juru', 'Kamabuye', 'Mareba', 'Mayange', 'Musenyi', 'Mwogo', 'Ngeruka', 'Ntarama', 'Nyamata', 'Nyarugenge', 'Rilima', 'Ruhuha', 'Rweru', 'Shyara'],
+    'Gatsibo': ['Gasange', 'Gatsibo', 'Gitoki', 'Kabarore', 'Kageyo', 'Kiramuruzi', 'Kiziguro', 'Muhura', 'Murambi', 'Nyagihanga', 'Remera', 'Rugarama', 'Rwimbogo'],
+
+    // Northern Province - major districts
+    'Musanze': ['Busogo', 'Cyuve', 'Gacaca', 'Gashaki', 'Gataraga', 'Kimonyi', 'Kinigi', 'Muhoza', 'Muko', 'Musanze', 'Nkotsi', 'Nyange', 'Remera', 'Rwaza', 'Shingiro'],
+    'Gicumbi': ['Bukure', 'Bwisige', 'Byumba', 'Cyumba', 'Gicumbi', 'Kaniga', 'Manyagiro', 'Miyove', 'Munini', 'Nyamiyaga', 'Nyankenke', 'Rubaya', 'Rukomo', 'Rushenyi', 'Rutare', 'Rwerere'],
+
+    // Southern Province - major districts
+    'Huye': ['Gishamvu', 'Karama', 'Kigoma', 'Kinazi', 'Maraba', 'Mbazi', 'Mukura', 'Ngoma', 'Ruhashya', 'Rusatira', 'Rwaniro', 'Simbi', 'Tumba'],
+    'Muhanga': ['Cyeza', 'Kabacuzi', 'Kibangu', 'Kiyumba', 'Muhanga', 'Mushishiro', 'Nyabinoni', 'Nyamabuye', 'Nyarusange', 'Rongi', 'Rugendabari', 'Shyogwe'],
+
+    // Western Province - major districts
+    'Rubavu': ['Bugeshi', 'Busasamana', 'Cyanzarwe', 'Gisenyi', 'Kanama', 'Mudende', 'Nyakiliba', 'Nyamyumba', 'Rubavu', 'Rugerero'],
+    'Rusizi': ['Butare', 'Bugarama', 'Giheke', 'Gishoma', 'Kamembe', 'Muganza', 'Mururu', 'Nkanka', 'Nkombo', 'Nyakabuye', 'Nyakarenzo', 'Rwimbogo']
+  };
+
+  const sectors = sectorsByDistrict[district] || [];
+
+  res.json({
+    success: true,
+    data: sectors
+  });
+});
+
 export default router;

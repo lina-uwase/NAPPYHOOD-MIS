@@ -7,6 +7,11 @@ export interface SaleService {
   serviceCategory: string;
   price: number;
   duration: number;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  isChild: boolean;
+  isCombined: boolean;
 }
 
 export interface SaleStaff {
@@ -46,11 +51,13 @@ export interface Sale {
 export interface CreateSaleDto {
   customerId: string;
   serviceIds: string[];
+  serviceShampooOptions?: Record<string, boolean>;
   staffIds: string[];
   saleDate?: string;
   notes?: string;
   paymentMethod?: string;
   ownShampooDiscount?: boolean;
+  addShampoo?: boolean;
 }
 
 export interface UpdateSaleDto {

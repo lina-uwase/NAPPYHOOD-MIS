@@ -6,6 +6,7 @@ import customersService, { Customer } from '../../services/customersService';
 import servicesService, { Service } from '../../services/servicesService';
 import staffService, { Staff } from '../../services/staffService';
 import MultiSelect from '../../components/MultiSelect';
+import CategorizedServiceSelect from '../../components/CategorizedServiceSelect';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -31,8 +32,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     })(),
     notes: '',
     paymentMethod: 'CASH',
-    bringOwnShampoo: false
+    bringOwnProduct: false,
+    addShampoo: false
   });
+
+  const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -46,12 +50,38 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [discountEligibility, setDiscountEligibility] = useState<{
+    sixthVisitEligible: boolean;
+    isBirthdayMonth: boolean;
+    birthdayDiscountAvailable: boolean;
+    birthdayDiscountUsed: boolean;
+    nextSaleCount: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchCustomers();
     fetchServices();
     fetchStaff();
   }, []);
+
+  // Fetch discount eligibility when customer is selected
+  useEffect(() => {
+    const fetchDiscountEligibility = async () => {
+      if (formData.customerId) {
+        try {
+          const response = await customersService.getDiscountEligibility(formData.customerId);
+          setDiscountEligibility(response.data);
+        } catch (error) {
+          console.error('Failed to fetch discount eligibility:', error);
+          setDiscountEligibility(null);
+        }
+      } else {
+        setDiscountEligibility(null);
+      }
+    };
+
+    fetchDiscountEligibility();
+  }, [formData.customerId]);
 
   useEffect(() => {
     if (editingSale) {
@@ -62,8 +92,16 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         saleDate: new Date(editingSale.saleDate).toISOString().slice(0, 16),
         notes: editingSale.notes || '',
         paymentMethod: editingSale.paymentMethod || 'CASH',
-        bringOwnShampoo: editingSale.ownShampooDiscount || false
+        bringOwnProduct: editingSale.ownShampooDiscount || false,
+        addShampoo: false
       });
+
+      // Initialize shampoo options based on existing sale
+      const shampooOptions: Record<string, boolean> = {};
+      editingSale.services.forEach(s => {
+        shampooOptions[s.serviceId] = s.isCombined || false;
+      });
+      setServiceShampooOptions(shampooOptions);
     }
   }, [editingSale]);
 
@@ -157,12 +195,30 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       ...prev,
       serviceIds
     }));
+
+    // Clean up shampoo options for removed services
+    setServiceShampooOptions(prev => {
+      const newOptions = { ...prev };
+      Object.keys(newOptions).forEach(serviceId => {
+        if (!serviceIds.includes(serviceId)) {
+          delete newOptions[serviceId];
+        }
+      });
+      return newOptions;
+    });
   };
 
   const handleStaffSelectionChange = (staffIds: string[]) => {
     setFormData(prev => ({
       ...prev,
       staffIds
+    }));
+  };
+
+  const handleServiceShampooToggle = (serviceId: string, addShampoo: boolean) => {
+    setServiceShampooOptions(prev => ({
+      ...prev,
+      [serviceId]: addShampoo
     }));
   };
 
@@ -200,11 +256,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       const submitData = {
         customerId: formData.customerId,
         serviceIds: formData.serviceIds,
+        serviceShampooOptions: serviceShampooOptions,
         staffIds: formData.staffIds,
         saleDate: formData.saleDate,
         notes: formData.notes.trim() || undefined,
         paymentMethod: formData.paymentMethod,
-        ownShampooDiscount: formData.bringOwnShampoo
+        ownShampooDiscount: formData.bringOwnProduct,
+        addShampoo: formData.addShampoo
       };
 
       await onSubmit(submitData);
@@ -250,13 +308,53 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const selectedStaff = staff.filter(s => formData.staffIds.includes(s.id));
 
   const calculateTotals = () => {
-    const subtotal = selectedServices.reduce((total, service) => total + Number(service.singlePrice), 0);
-    const ownShampooDiscount = formData.bringOwnShampoo ? 1000 : 0;
-    const finalAmount = Math.max(0, subtotal - ownShampooDiscount);
-    return { subtotal, ownShampooDiscount, finalAmount };
+    let subtotal = 0;
+
+    // Calculate service costs with individual shampoo options
+    selectedServices.forEach(service => {
+      const hasShampooForThisService = serviceShampooOptions[service.id] || false;
+
+      if (hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice) {
+        // Use combined price if shampoo is added for this service and service has combined pricing
+        subtotal += Number(service.combinedPrice);
+      } else {
+        // Use single price
+        subtotal += Number(service.singlePrice);
+      }
+    });
+
+    // Own product discount
+    const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
+
+    // Automatic discounts based on eligibility
+    let birthdayDiscount = 0;
+    let sixthVisitDiscount = 0;
+
+    if (discountEligibility) {
+      // Birthday discount (20%)
+      if (discountEligibility.birthdayDiscountAvailable) {
+        birthdayDiscount = Math.round(subtotal * 0.2);
+      }
+
+      // 6th visit discount (20%)
+      if (discountEligibility.sixthVisitEligible) {
+        sixthVisitDiscount = Math.round(subtotal * 0.2);
+      }
+    }
+
+    const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount;
+    const finalAmount = Math.max(0, subtotal - totalDiscounts);
+
+    return {
+      subtotal,
+      ownProductDiscount,
+      birthdayDiscount,
+      sixthVisitDiscount,
+      finalAmount
+    };
   };
 
-  const { subtotal, ownShampooDiscount, finalAmount } = calculateTotals();
+  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, finalAmount } = calculateTotals();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -424,8 +522,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 <div className="flex items-center">
                   <input
                     type="checkbox"
-                    name="bringOwnShampoo"
-                    checked={formData.bringOwnShampoo}
+                    name="bringOwnProduct"
+                    checked={formData.bringOwnProduct}
                     onChange={handleInputChange}
                     className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
                   />
@@ -459,15 +557,54 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <Scissors className="inline h-4 w-4 mr-1" />
                   Select Services *
                 </label>
-                <MultiSelect
-                  options={serviceOptions}
+                <CategorizedServiceSelect
+                  services={services}
                   selectedIds={formData.serviceIds}
                   onSelectionChange={handleServiceSelectionChange}
                   placeholder="Select services..."
-                  searchPlaceholder="Search services..."
-                  emptyStateText="No services found"
                   error={errors.serviceIds}
                 />
+
+                {/* Individual Service Shampoo Options */}
+                {selectedServices.length > 0 && selectedServices.some(service => service.combinedPrice && service.combinedPrice !== service.singlePrice) && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-3">Add Shampoo to Services</h4>
+                    <div className="space-y-3">
+                      {selectedServices.map(service => {
+                        // Only show shampoo option if the service has combined pricing
+                        if (!service.combinedPrice || service.combinedPrice === service.singlePrice) {
+                          return null;
+                        }
+
+                        const hasShampoo = serviceShampooOptions[service.id] || false;
+                        const savings = Number(service.singlePrice) + 9000 - Number(service.combinedPrice);
+
+                        return (
+                          <div key={service.id} className="flex items-center justify-between bg-white p-3 rounded-lg">
+                            <div className="flex-1">
+                              <div className="font-medium text-sm">{service.name}</div>
+                              <div className="text-xs text-gray-500">
+                                Regular: {Number(service.singlePrice).toLocaleString()} RWF + 9,000 RWF (Shampoo) = {(Number(service.singlePrice) + 9000).toLocaleString()} RWF
+                              </div>
+                              <div className="text-xs text-green-600">
+                                With shampoo: {Number(service.combinedPrice).toLocaleString()} RWF (Save {savings.toLocaleString()} RWF)
+                              </div>
+                            </div>
+                            <label className="flex items-center cursor-pointer ml-4">
+                              <input
+                                type="checkbox"
+                                checked={hasShampoo}
+                                onChange={(e) => handleServiceShampooToggle(service.id, e.target.checked)}
+                                className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
+                              />
+                              <span className="ml-2 text-sm font-medium">Add Shampoo</span>
+                            </label>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Staff */}
@@ -505,12 +642,20 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 <div>
                   <span className="text-sm text-gray-600">Services: </span>
                   <div className="mt-1 space-y-1">
-                    {selectedServices.map(service => (
-                      <div key={service.id} className="flex justify-between text-sm">
-                        <span>{service.name}</span>
-                        <span>{Number(service.singlePrice).toLocaleString()} RWF</span>
-                      </div>
-                    ))}
+                    {selectedServices.map(service => {
+                      const hasShampooForThisService = serviceShampooOptions[service.id] || false;
+                      const useCombined = hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice;
+                      const price = useCombined ? Number(service.combinedPrice) : Number(service.singlePrice);
+                      return (
+                        <div key={service.id} className="flex justify-between text-sm">
+                          <span>
+                            {service.name}
+                            {useCombined && <span className="text-xs text-green-600 ml-1">(with Shampoo)</span>}
+                          </span>
+                          <span>{price.toLocaleString()} RWF</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -527,21 +672,57 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <span className="text-sm text-gray-600">Subtotal:</span>
                   <span className="font-medium">{subtotal.toLocaleString()} RWF</span>
                 </div>
-                {ownShampooDiscount > 0 && (
+
+                {ownProductDiscount > 0 && (
                   <div className="flex justify-between items-center text-green-600">
-                    <span className="text-sm">Own Shampoo Discount:</span>
-                    <span className="font-medium">-{ownShampooDiscount.toLocaleString()} RWF</span>
+                    <span className="text-sm">Own Product Discount:</span>
+                    <span className="font-medium">-{ownProductDiscount.toLocaleString()} RWF</span>
                   </div>
                 )}
+
+                {birthdayDiscount > 0 && (
+                  <div className="flex justify-between items-center text-green-600">
+                    <span className="text-sm">Birthday Month Discount (20%):</span>
+                    <span className="font-medium">-{birthdayDiscount.toLocaleString()} RWF</span>
+                  </div>
+                )}
+
+                {sixthVisitDiscount > 0 && (
+                  <div className="flex justify-between items-center text-green-600">
+                    <span className="text-sm">6th Visit Discount (20%):</span>
+                    <span className="font-medium">-{sixthVisitDiscount.toLocaleString()} RWF</span>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center pt-2 border-t border-gray-200">
                   <span className="text-sm text-gray-600">Final Total:</span>
                   <span className="font-bold text-[#5A8621]">{finalAmount.toLocaleString()} RWF</span>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-500">
-                * Final amount may vary due to additional automatic discounts (6th visit, birthday)
-              </p>
+              <div className="text-xs text-gray-500 space-y-1">
+                {discountEligibility ? (
+                  <div>
+                    <p>* Discount eligibility for this sale:</p>
+                    <ul className="ml-4 space-y-1">
+                      {discountEligibility.sixthVisitEligible && (
+                        <li className="text-green-600">• 6th visit discount (20%) - Sale #{discountEligibility.nextSaleCount}</li>
+                      )}
+                      {discountEligibility.birthdayDiscountAvailable && (
+                        <li className="text-green-600">• Birthday month discount (20%) available</li>
+                      )}
+                      {discountEligibility.isBirthdayMonth && discountEligibility.birthdayDiscountUsed && (
+                        <li className="text-orange-600">• Birthday discount already used this month</li>
+                      )}
+                      {!discountEligibility.sixthVisitEligible && !discountEligibility.isBirthdayMonth && (
+                        <li className="text-gray-500">• No automatic discounts apply to this sale</li>
+                      )}
+                    </ul>
+                  </div>
+                ) : (
+                  <p>* Final amount may vary due to additional automatic discounts</p>
+                )}
+              </div>
             </div>
           )}
 

@@ -149,7 +149,11 @@
       "Bash(socat:*)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_mRUTkc/**)",
       "Bash(gtimeout 10 npm start)",
-      "Bash(PORT=3005 npm start)"
+      "Bash(PORT=3005 npm start)",
+      "WebFetch(domain:www.nappyhood.com)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_IhaDue/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_H3jJsf/**)",
+      "Bash(docker-compose:*)"
     ],
     "deny": [],
     "ask": []

@@ -36,12 +36,15 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [parentSearch, setParentSearch] = useState('');
   const [showParentDropdown, setShowParentDropdown] = useState(false);
   const [provinces, setProvinces] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [sectors, setSectors] = useState<string[]>([]);
+
+  
 
   // Load provinces on component mount
   useEffect(() => {
@@ -171,6 +174,11 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         [name]: ''
       }));
     }
+
+    // Clear submit error when user makes changes
+    if (submitError) {
+      setSubmitError('');
+    }
   };
 
   const validateForm = () => {
@@ -269,9 +277,24 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       };
 
       console.log('Submitting customer data:', submitData); // Debug log
+
+      // Clear any previous submit errors
+      setSubmitError('');
+
       await onSubmit(submitData);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to submit customer:', error);
+
+      // Extract error message from the response
+      let errorMessage = 'Failed to create customer. Please try again.';
+
+      if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      setSubmitError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -296,6 +319,13 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error Message Display */}
+          {submitError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+              <p className="text-sm">{submitError}</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -56,7 +56,7 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
     ]);
 
     // Transform customers to include calculated fields expected by frontend
-    const transformedCustomers = customers.map(customer => ({
+    const transformedCustomers = customers.map((customer: any) => ({
       ...customer,
       totalSales: customer.saleCount,
       totalSpent: Number(customer.totalSpent),
@@ -320,7 +320,8 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
       birthMonth,
       birthYear,
       isDependent,
-      parentId
+      parentId,
+      saleCount
     } = req.body;
 
     const existingCustomer = await prisma.customer.findUnique({
@@ -361,6 +362,7 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
     if (birthYear !== undefined) updateData.birthYear = birthYear ? parseInt(birthYear) : null;
     if (isDependent !== undefined) updateData.isDependent = isDependent;
     if (parentId !== undefined) updateData.parentId = isDependent ? parentId : null;
+    if (saleCount !== undefined) updateData.saleCount = parseInt(saleCount) || 0;
 
     const customer = await prisma.customer.update({
       where: { id },
@@ -380,23 +382,50 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
 
 export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    console.log('🗑️ DELETE CUSTOMER FUNCTION CALLED - START');
+    console.log('🔍 Request params:', req.params);
+    console.log('🔍 Request user:', req.user);
     console.log('🗑️ Delete customer request received for ID:', req.params.id);
+
     const { id } = req.params;
 
+    if (!id) {
+      console.log('❌ No ID provided');
+      res.status(400).json({ error: 'Customer ID is required' });
+      return;
+    }
+
+    console.log('📋 Searching for customer with ID:', id);
     const existingCustomer = await prisma.customer.findUnique({ where: { id } });
+
     if (!existingCustomer) {
       console.log('❌ Customer not found:', id);
       res.status(404).json({ error: 'Customer not found' });
       return;
     }
 
-    console.log('👤 Found customer to deactivate:', { id: existingCustomer.id, name: existingCustomer.fullName });
-    await prisma.customer.update({ where: { id }, data: { isActive: false } });
-    console.log('✅ Customer deactivated successfully');
+    console.log('👤 Found customer to deactivate:', {
+      id: existingCustomer.id,
+      name: existingCustomer.fullName,
+      currentStatus: existingCustomer.isActive
+    });
 
-    res.json({ success: true, message: 'Customer deactivated successfully' });
+    console.log('🔄 Attempting to update customer status...');
+    const updatedCustomer = await prisma.customer.update({
+      where: { id },
+      data: { isActive: false }
+    });
+    console.log('✅ Customer deactivated successfully:', updatedCustomer.id);
+
+    res.json({
+      success: true,
+      message: 'Customer deactivated successfully',
+      data: { id: updatedCustomer.id, isActive: updatedCustomer.isActive }
+    });
+    console.log('📤 Response sent successfully');
   } catch (error) {
-    console.error('❌ Delete customer error:', error);
+    console.error('❌ Delete customer error - FULL DETAILS:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -482,7 +511,7 @@ export const getCustomerStats = async (req: Request, res: Response): Promise<voi
       averageSpending: customer.saleCount > 0 ? Number(customer.totalSpent) / customer.saleCount : 0,
       isBirthdayMonth,
       isEligibleForSixthSaleDiscount,
-      monthlySales: customer.sales.reduce((acc: any, sale) => {
+      monthlySales: customer.sales.reduce((acc: any, sale: any) => {
         const month = new Date(sale.saleDate).getMonth();
         acc[month] = (acc[month] || 0) + 1;
         return acc;

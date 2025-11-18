@@ -390,7 +390,7 @@ export default function Dashboard() {
                           RWF {customer.totalSpent?.toLocaleString() || '0'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {customer.totalSales || 0} sales
+                          {customer.saleCount || 0} sales
                         </div>
                       </div>
                     </div>

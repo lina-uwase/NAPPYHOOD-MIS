@@ -81,7 +81,22 @@ app.use((0, cors_1.default)({
 app.use((0, morgan_1.default)('combined'));
 // Custom request logging
 app.use((req, res, next) => {
-    console.log(`📡 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+    console.log(`📡 INCOMING REQUEST: ${req.method} ${req.path} - ${new Date().toISOString()}`);
+    // Extra logging for DELETE requests
+    if (req.method === 'DELETE') {
+        console.log('🔍 DELETE REQUEST DETAILS:', {
+            url: req.url,
+            originalUrl: req.originalUrl,
+            baseUrl: req.baseUrl,
+            path: req.path,
+            params: req.params,
+            headers: {
+                authorization: req.headers.authorization ? 'Bearer [PRESENT]' : 'MISSING',
+                'content-type': req.headers['content-type'],
+                'user-agent': req.headers['user-agent']
+            }
+        });
+    }
     next();
 });
 // Body parsing middleware
@@ -126,18 +141,30 @@ app.use((req, res) => {
 });
 // Global error handler
 app.use((err, req, res, next) => {
-    console.error('Global error handler:', err);
+    console.error('🚨 GLOBAL ERROR HANDLER TRIGGERED:', err);
+    console.error('🔍 Error details:', {
+        message: err.message,
+        stack: err.stack,
+        code: err.code,
+        meta: err.meta,
+        method: req.method,
+        url: req.url,
+        params: req.params
+    });
     if (err.code === 'P2002') {
+        console.error('❌ Prisma duplicate entry error');
         return res.status(400).json({
             error: 'Duplicate entry',
             field: err.meta?.target?.[0] || 'unknown'
         });
     }
     if (err.code === 'P2025') {
+        console.error('❌ Prisma record not found error');
         return res.status(404).json({
             error: 'Record not found'
         });
     }
+    console.error('❌ Generic error, returning 500');
     res.status(500).json({
         error: 'Internal server error',
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'

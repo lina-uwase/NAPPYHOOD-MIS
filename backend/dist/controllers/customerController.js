@@ -269,7 +269,7 @@ exports.createCustomer = createCustomer;
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
-        let { fullName, gender, location, district, sector, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let { fullName, gender, location, district, sector, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
         const existingCustomer = await database_1.prisma.customer.findUnique({
             where: { id }
         });
@@ -318,6 +318,8 @@ const updateCustomer = async (req, res) => {
             updateData.isDependent = isDependent;
         if (parentId !== undefined)
             updateData.parentId = isDependent ? parentId : null;
+        if (saleCount !== undefined)
+            updateData.saleCount = parseInt(saleCount) || 0;
         const customer = await database_1.prisma.customer.update({
             where: { id },
             data: updateData
@@ -336,21 +338,44 @@ const updateCustomer = async (req, res) => {
 exports.updateCustomer = updateCustomer;
 const deleteCustomer = async (req, res) => {
     try {
+        console.log('🗑️ DELETE CUSTOMER FUNCTION CALLED - START');
+        console.log('🔍 Request params:', req.params);
+        console.log('🔍 Request user:', req.user);
         console.log('🗑️ Delete customer request received for ID:', req.params.id);
         const { id } = req.params;
+        if (!id) {
+            console.log('❌ No ID provided');
+            res.status(400).json({ error: 'Customer ID is required' });
+            return;
+        }
+        console.log('📋 Searching for customer with ID:', id);
         const existingCustomer = await database_1.prisma.customer.findUnique({ where: { id } });
         if (!existingCustomer) {
             console.log('❌ Customer not found:', id);
             res.status(404).json({ error: 'Customer not found' });
             return;
         }
-        console.log('👤 Found customer to deactivate:', { id: existingCustomer.id, name: existingCustomer.fullName });
-        await database_1.prisma.customer.update({ where: { id }, data: { isActive: false } });
-        console.log('✅ Customer deactivated successfully');
-        res.json({ success: true, message: 'Customer deactivated successfully' });
+        console.log('👤 Found customer to deactivate:', {
+            id: existingCustomer.id,
+            name: existingCustomer.fullName,
+            currentStatus: existingCustomer.isActive
+        });
+        console.log('🔄 Attempting to update customer status...');
+        const updatedCustomer = await database_1.prisma.customer.update({
+            where: { id },
+            data: { isActive: false }
+        });
+        console.log('✅ Customer deactivated successfully:', updatedCustomer.id);
+        res.json({
+            success: true,
+            message: 'Customer deactivated successfully',
+            data: { id: updatedCustomer.id, isActive: updatedCustomer.isActive }
+        });
+        console.log('📤 Response sent successfully');
     }
     catch (error) {
-        console.error('❌ Delete customer error:', error);
+        console.error('❌ Delete customer error - FULL DETAILS:', error);
+        console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
         res.status(500).json({ error: 'Internal server error' });
     }
 };

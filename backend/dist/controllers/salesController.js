@@ -6,12 +6,20 @@ const createSale = async (req, res) => {
     try {
         const { customerId, services, // Array of SaleService
         serviceIds, // Optional: Array<string> (frontend simplified payload)
+        serviceShampooOptions, // Object mapping serviceId to shampoo preference
         staffIds, // Array of staff IDs
-        notes, paymentMethod = 'CASH', ownShampooDiscount = false } = req.body;
+        notes, paymentMethod = 'CASH', ownShampooDiscount = false, addShampoo = false // Legacy global shampoo option
+         } = req.body;
         const normalizedServices = Array.isArray(services) && services.length > 0
             ? services
             : Array.isArray(serviceIds) && serviceIds.length > 0
-                ? serviceIds.map((sid) => ({ serviceId: sid, quantity: 1, isChild: false, isCombined: false }))
+                ? serviceIds.map((sid) => ({
+                    serviceId: sid,
+                    quantity: 1,
+                    isChild: false,
+                    isCombined: false,
+                    addShampoo: serviceShampooOptions?.[sid] ?? addShampoo // Use individual or fallback to global
+                }))
                 : [];
         if (!customerId || normalizedServices.length === 0) {
             res.status(400).json({ error: 'Customer ID and services are required' });
@@ -48,15 +56,23 @@ const createSale = async (req, res) => {
             if (!serviceDetail)
                 continue;
             let unitPrice = 0;
+            // Determine if shampoo should be added for this service
+            const shouldAddShampoo = service.addShampoo || false;
             if (service.isChild) {
-                unitPrice = service.isCombined
-                    ? Number(serviceDetail.childCombinedPrice || serviceDetail.childPrice || serviceDetail.singlePrice)
-                    : Number(serviceDetail.childPrice || serviceDetail.singlePrice);
+                if (shouldAddShampoo && serviceDetail.childCombinedPrice) {
+                    unitPrice = Number(serviceDetail.childCombinedPrice);
+                }
+                else {
+                    unitPrice = Number(serviceDetail.childPrice || serviceDetail.singlePrice);
+                }
             }
             else {
-                unitPrice = service.isCombined
-                    ? Number(serviceDetail.combinedPrice || serviceDetail.singlePrice)
-                    : Number(serviceDetail.singlePrice);
+                if (shouldAddShampoo && serviceDetail.combinedPrice) {
+                    unitPrice = Number(serviceDetail.combinedPrice);
+                }
+                else {
+                    unitPrice = Number(serviceDetail.singlePrice);
+                }
             }
             const lineTotal = unitPrice * service.quantity;
             totalAmount += lineTotal;
@@ -66,7 +82,8 @@ const createSale = async (req, res) => {
                 unitPrice,
                 totalPrice: lineTotal,
                 isChild: service.isChild,
-                isCombined: service.isCombined
+                isCombined: shouldAddShampoo,
+                addShampoo: shouldAddShampoo
             });
         }
         // Calculate discounts
@@ -98,7 +115,13 @@ const createSale = async (req, res) => {
             await tx.saleService.createMany({
                 data: saleServices.map(vs => ({
                     saleId: sale.id,
-                    ...vs
+                    serviceId: vs.serviceId,
+                    quantity: vs.quantity,
+                    unitPrice: vs.unitPrice,
+                    totalPrice: vs.totalPrice,
+                    isChild: vs.isChild,
+                    isCombined: vs.isCombined,
+                    addShampoo: vs.addShampoo
                 }))
             });
             // Create sale staff relationships
@@ -245,12 +268,12 @@ async function calculateDiscounts(customer, services, serviceDetails, totalAmoun
             description: 'Shampoo + Service Combo Discount'
         });
     }
-    // 4. Own shampoo discount (1000 RWF off when customer brings own shampoo)
+    // 4. Own product discount (1000 RWF off when customer brings own product)
     if (ownShampooDiscount && totalAmount >= 1000) {
         discounts.push({
             type: 'BRING_OWN_PRODUCT',
             amount: 1000,
-            description: 'Bring Your Own Shampoo Discount'
+            description: 'Bring Your Own Product Discount'
         });
     }
     return discounts;
@@ -426,16 +449,23 @@ const updateSale = async (req, res) => {
                         const detail = serviceDetails.find(s => s.id === service.serviceId);
                         if (!detail)
                             continue;
+                        const shouldAddShampoo = service.addShampoo || false;
                         let unitPrice = 0;
                         if (service.isChild) {
-                            unitPrice = service.isCombined
-                                ? Number(detail.childCombinedPrice || detail.childPrice || detail.singlePrice)
-                                : Number(detail.childPrice || detail.singlePrice);
+                            if (shouldAddShampoo && detail.childCombinedPrice) {
+                                unitPrice = Number(detail.childCombinedPrice);
+                            }
+                            else {
+                                unitPrice = Number(detail.childPrice || detail.singlePrice);
+                            }
                         }
                         else {
-                            unitPrice = service.isCombined
-                                ? Number(detail.combinedPrice || detail.singlePrice)
-                                : Number(detail.singlePrice);
+                            if (shouldAddShampoo && detail.combinedPrice) {
+                                unitPrice = Number(detail.combinedPrice);
+                            }
+                            else {
+                                unitPrice = Number(detail.singlePrice);
+                            }
                         }
                         const lineTotal = unitPrice * (service.quantity || 1);
                         totalAmount += lineTotal;
@@ -446,7 +476,8 @@ const updateSale = async (req, res) => {
                             unitPrice,
                             totalPrice: lineTotal,
                             isChild: !!service.isChild,
-                            isCombined: !!service.isCombined
+                            isCombined: shouldAddShampoo,
+                            addShampoo: shouldAddShampoo
                         });
                     }
                     await tx.saleService.createMany({ data: saleServices });

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomerStats = exports.getTopCustomers = exports.toggleCustomerActive = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.getCustomerById = exports.getAllCustomers = void 0;
+exports.getDiscountEligibility = exports.getCustomerStats = exports.getTopCustomers = exports.toggleCustomerActive = exports.deleteCustomer = exports.updateCustomer = exports.createCustomer = exports.getCustomerById = exports.getAllCustomers = void 0;
 const database_1 = require("../utils/database");
 const getAllCustomers = async (req, res) => {
     try {
@@ -141,9 +141,10 @@ const createCustomer = async (req, res) => {
                 authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
             }
         });
-        let { fullName, gender, location, district, province, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
+        let { fullName, gender, location, district, sector, province, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
         let phone = req.body.phone;
         let email = req.body.email;
+        console.log('🔢 saleCount received:', { saleCount, type: typeof saleCount });
         if (!fullName || !gender) {
             console.log('❌ Validation failed: Missing required fields', { fullName, gender });
             res.status(400).json({ error: 'Required fields: fullName, gender' });
@@ -177,26 +178,36 @@ const createCustomer = async (req, res) => {
         }
         // Check phone uniqueness only for non-dependent customers with phone
         if (phone && !isDependent) {
+            console.log('🔍 Checking phone uniqueness for:', phone);
             const existingCustomer = await database_1.prisma.customer.findFirst({
                 where: {
                     phone: phone,
-                    isDependent: false
+                    isDependent: false,
+                    isActive: true // Only check against active customers
                 }
             });
             if (existingCustomer) {
-                res.status(400).json({ error: 'Customer with this phone number already exists' });
+                console.log('❌ Phone number already exists:', { phone, existingCustomer: existingCustomer.id });
+                res.status(400).json({ error: `Customer with this phone number already exists: ${existingCustomer.fullName}` });
                 return;
             }
+            console.log('✅ Phone number is unique');
         }
         // Check if customer with email already exists (only for non-dependent customers or dependent customers with custom email)
         if (email && !isDependent) {
+            console.log('📧 Checking email uniqueness for:', email);
             const existingCustomer = await database_1.prisma.customer.findFirst({
-                where: { email }
+                where: {
+                    email,
+                    isActive: true // Only check against active customers
+                }
             });
             if (existingCustomer) {
-                res.status(400).json({ error: 'Customer with this email already exists' });
+                console.log('❌ Email already exists:', { email, existingCustomer: existingCustomer.id });
+                res.status(400).json({ error: `Customer with this email already exists: ${existingCustomer.fullName}` });
                 return;
             }
+            console.log('✅ Email is unique');
         }
         // For dependent customers with custom email (not inherited), check uniqueness
         if (email && isDependent && req.body.email) {
@@ -209,12 +220,29 @@ const createCustomer = async (req, res) => {
             }
         }
         // Parent existence already verified above if isDependent
+        console.log('🚀 Creating customer with data:', {
+            fullName,
+            gender,
+            location,
+            district,
+            sector: sector || null,
+            province,
+            phone: phone || null,
+            email: email || null,
+            birthDay: parseInt(birthDay),
+            birthMonth: parseInt(birthMonth),
+            birthYear: birthYear ? parseInt(birthYear) : null,
+            isDependent: isDependent || false,
+            parentId: isDependent ? parentId : null,
+            saleCount: parseInt(saleCount) || 0
+        });
         const customer = await database_1.prisma.customer.create({
             data: {
                 fullName,
                 gender,
                 location,
                 district,
+                sector: sector || null,
                 province,
                 phone: phone || null,
                 email: email || null,
@@ -223,7 +251,7 @@ const createCustomer = async (req, res) => {
                 birthYear: birthYear ? parseInt(birthYear) : null,
                 isDependent: isDependent || false,
                 parentId: isDependent ? parentId : null,
-                saleCount: saleCount ? parseInt(saleCount) : 0
+                saleCount: parseInt(saleCount) || 0 // Use provided visit count or default to 0
             }
         });
         res.status(201).json({
@@ -241,7 +269,7 @@ exports.createCustomer = createCustomer;
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
-        let { fullName, gender, location, district, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
+        let { fullName, gender, location, district, sector, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId } = req.body;
         const existingCustomer = await database_1.prisma.customer.findUnique({
             where: { id }
         });
@@ -272,6 +300,8 @@ const updateCustomer = async (req, res) => {
             updateData.location = location;
         if (district !== undefined)
             updateData.district = district;
+        if (sector !== undefined)
+            updateData.sector = sector || null;
         if (province !== undefined)
             updateData.province = province;
         if (phone !== undefined)
@@ -306,17 +336,21 @@ const updateCustomer = async (req, res) => {
 exports.updateCustomer = updateCustomer;
 const deleteCustomer = async (req, res) => {
     try {
+        console.log('🗑️ Delete customer request received for ID:', req.params.id);
         const { id } = req.params;
         const existingCustomer = await database_1.prisma.customer.findUnique({ where: { id } });
         if (!existingCustomer) {
+            console.log('❌ Customer not found:', id);
             res.status(404).json({ error: 'Customer not found' });
             return;
         }
+        console.log('👤 Found customer to deactivate:', { id: existingCustomer.id, name: existingCustomer.fullName });
         await database_1.prisma.customer.update({ where: { id }, data: { isActive: false } });
+        console.log('✅ Customer deactivated successfully');
         res.json({ success: true, message: 'Customer deactivated successfully' });
     }
     catch (error) {
-        console.error('Delete customer error:', error);
+        console.error('❌ Delete customer error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -418,4 +452,58 @@ const getCustomerStats = async (req, res) => {
     }
 };
 exports.getCustomerStats = getCustomerStats;
+const getDiscountEligibility = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const customer = await database_1.prisma.customer.findUnique({
+            where: { id },
+            include: {
+                discounts: {
+                    where: {
+                        discountRule: {
+                            type: 'BIRTHDAY_MONTH'
+                        }
+                    },
+                    orderBy: { usedAt: 'desc' },
+                    take: 1
+                }
+            }
+        });
+        if (!customer) {
+            res.status(404).json({ error: 'Customer not found' });
+            return;
+        }
+        const currentMonth = new Date().getMonth() + 1;
+        const isBirthdayMonth = customer.birthMonth === currentMonth;
+        const nextSaleCount = customer.saleCount + 1;
+        const sixthVisitEligible = nextSaleCount % 6 === 0;
+        // Check if birthday discount was used this month
+        let birthdayDiscountUsed = false;
+        if (isBirthdayMonth && customer.discounts.length > 0) {
+            const lastBirthdayDiscount = customer.discounts[0];
+            const thisMonth = new Date();
+            thisMonth.setDate(1);
+            thisMonth.setHours(0, 0, 0, 0);
+            if (lastBirthdayDiscount.usedAt >= thisMonth) {
+                birthdayDiscountUsed = true;
+            }
+        }
+        const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed;
+        res.json({
+            success: true,
+            data: {
+                sixthVisitEligible,
+                isBirthdayMonth,
+                birthdayDiscountAvailable,
+                birthdayDiscountUsed,
+                nextSaleCount
+            }
+        });
+    }
+    catch (error) {
+        console.error('Get discount eligibility error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+exports.getDiscountEligibility = getDiscountEligibility;
 //# sourceMappingURL=customerController.js.map

@@ -32,6 +32,12 @@ const getAllServices = async (req, res) => {
             }),
             database_1.prisma.service.count({ where: whereClause })
         ]);
+        // Add cache-busting headers
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
         res.json({
             success: true,
             data: services,

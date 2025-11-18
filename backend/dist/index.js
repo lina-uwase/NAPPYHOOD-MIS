@@ -79,6 +79,11 @@ app.use((0, cors_1.default)({
 }));
 // Request logging
 app.use((0, morgan_1.default)('combined'));
+// Custom request logging
+app.use((req, res, next) => {
+    console.log(`📡 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+    next();
+});
 // Body parsing middleware
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true, limit: '10mb' }));

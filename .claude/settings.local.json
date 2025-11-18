@@ -136,7 +136,20 @@
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_RHfdOK/**)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_VXVj9T/**)",
       "Read(//tmp/**)",
-      "Bash(rsync:*)"
+      "Bash(rsync:*)",
+      "Bash(git log:*)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_dkG3Xs/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_KJVvoo/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_kMlOPY/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_k5Pf3S/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_X3h4O2/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_u0HA7Q/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_HGDrNv/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_yxQoR0/**)",
+      "Bash(socat:*)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_mRUTkc/**)",
+      "Bash(gtimeout 10 npm start)",
+      "Bash(PORT=3005 npm start)"
     ],
     "deny": [],
     "ask": []

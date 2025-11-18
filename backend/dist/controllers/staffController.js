@@ -292,10 +292,14 @@ const updateStaff = async (req, res) => {
             res.status(404).json({ error: 'Staff member not found' });
             return;
         }
-        // Check if phone is being changed and if new phone already exists
+        // Check if phone is being changed and if new phone already exists (only among active users)
         if (phone && phone !== existingStaff.phone) {
-            const phoneExists = await database_1.prisma.user.findUnique({
-                where: { phone }
+            const phoneExists = await database_1.prisma.user.findFirst({
+                where: {
+                    phone,
+                    isActive: true,
+                    id: { not: id } // Exclude current user
+                }
             });
             if (phoneExists) {
                 res.status(400).json({ error: 'User with this phone number already exists' });

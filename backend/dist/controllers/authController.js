@@ -106,9 +106,10 @@ const register = async (req, res) => {
             res.status(400).json({ error: 'Invalid email format' });
             return;
         }
-        // Check if user already exists by phone or email
+        // Check if user already exists by phone or email (only among active users)
         const existingUser = await database_1.prisma.user.findFirst({
             where: {
+                isActive: true,
                 OR: [
                     phone ? { phone } : {},
                     email ? { email } : {}

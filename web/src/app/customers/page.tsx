@@ -48,6 +48,7 @@ const CustomersPage: React.FC = () => {
         gender: genderFilter !== 'ALL' ? genderFilter : undefined,
         province: provinceFilter || undefined,
         district: districtFilter || undefined,
+        isActive: true, // Only show active customers
       };
 
       const response = await customersService.getAll(params);

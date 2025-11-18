@@ -7,7 +7,8 @@ import {
   getCustomerStats,
   getTopCustomers,
   deleteCustomer,
-  toggleCustomerActive
+  toggleCustomerActive,
+  getDiscountEligibility
 } from '../controllers/customerController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -358,6 +359,49 @@ router.patch('/:id/toggle-active', authenticateToken, requireRole(['ADMIN', 'MAN
  *         description: Customer not found
  */
 router.get('/:id/stats', authenticateToken, getCustomerStats);
+
+/**
+ * @swagger
+ * /api/customers/{id}/discount-eligibility:
+ *   get:
+ *     summary: Get customer discount eligibility for next sale
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Customer ID
+ *     responses:
+ *       200:
+ *         description: Discount eligibility retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     sixthVisitEligible:
+ *                       type: boolean
+ *                     isBirthdayMonth:
+ *                       type: boolean
+ *                     birthdayDiscountAvailable:
+ *                       type: boolean
+ *                     birthdayDiscountUsed:
+ *                       type: boolean
+ *                     nextSaleCount:
+ *                       type: integer
+ *       404:
+ *         description: Customer not found
+ */
+router.get('/:id/discount-eligibility', authenticateToken, getDiscountEligibility);
 
 /**
  * @swagger

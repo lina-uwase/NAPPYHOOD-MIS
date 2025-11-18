@@ -264,8 +264,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         sector: formData.sector?.trim() || undefined,
         province: formData.province,
         isDependent: formData.isDependent,
-        parentId: formData.isDependent ? formData.parentId : undefined
-        // Note: saleCount is always 0 for new customers, managed by backend
+        parentId: formData.isDependent ? formData.parentId : undefined,
+        saleCount: formData.isFirstTime ? 0 : formData.previousVisits
       };
 
       console.log('Submitting customer data:', submitData); // Debug log

@@ -6,7 +6,7 @@ import customersService, { Customer } from '../../services/customersService';
 import servicesService, { Service } from '../../services/servicesService';
 import staffService, { Staff } from '../../services/staffService';
 import MultiSelect from '../../components/MultiSelect';
-import CategorizedServiceSelect from '../../components/CategorizedServiceSelect';
+import CategorizedServiceSelect, { SelectedServiceWithCombo } from '../../components/CategorizedServiceSelect';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -37,6 +37,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   });
 
   const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
+  const [selectedServices, setSelectedServices] = useState<SelectedServiceWithCombo[]>([]);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -190,11 +191,21 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     }));
   };
 
-  const handleServiceSelectionChange = (serviceIds: string[]) => {
+  const handleServiceSelectionChange = (selectedServicesData: SelectedServiceWithCombo[]) => {
+    // Update the selectedServices state for CategorizedServiceSelect
+    setSelectedServices(selectedServicesData);
+
+    // Extract service IDs for formData compatibility
+    const serviceIds = selectedServicesData.map(s => s.serviceId);
     setFormData(prev => ({
       ...prev,
       serviceIds
     }));
+
+    // Clear service errors if services are selected
+    if (serviceIds.length > 0 && errors.serviceIds) {
+      setErrors(prev => ({ ...prev, serviceIds: '' }));
+    }
 
     // Clean up shampoo options for removed services
     setServiceShampooOptions(prev => {
@@ -213,6 +224,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       ...prev,
       staffIds
     }));
+
+    // Clear staff errors if staff are selected
+    if (staffIds.length > 0 && errors.staffIds) {
+      setErrors(prev => ({ ...prev, staffIds: '' }));
+    }
   };
 
   const handleServiceShampooToggle = (serviceId: string, addShampoo: boolean) => {
@@ -304,14 +320,22 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   }));
 
   const selectedCustomer = customers.find(c => c.id === formData.customerId);
-  const selectedServices = services.filter(s => formData.serviceIds.includes(s.id));
+  // Get detailed service information for selected services
+  const getSelectedServicesDetails = () => {
+    return selectedServices.map(selected => {
+      const service = services.find(s => s.id === selected.serviceId);
+      return service ? { ...service, isCombined: selected.isCombined } : null;
+    }).filter((service): service is Service & { isCombined: boolean } => service !== null);
+  };
+
+  const selectedServicesDetails = getSelectedServicesDetails();
   const selectedStaff = staff.filter(s => formData.staffIds.includes(s.id));
 
   const calculateTotals = () => {
     let subtotal = 0;
 
     // Calculate service costs with individual shampoo options
-    selectedServices.forEach(service => {
+    selectedServicesDetails.forEach(service => {
       const hasShampooForThisService = serviceShampooOptions[service.id] || false;
 
       if (hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice) {
@@ -384,17 +408,17 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 {/* Selected Customer Display */}
                 {selectedCustomer ? (
                   <div className="mb-3">
-                    <div className="inline-flex items-center text-sm rounded-full px-4 py-2" style={{backgroundColor: '#BCF099', color: '#166534'}}>
+                    <div className="inline-flex items-center text-sm rounded-lg px-4 py-2 bg-[#5A8621] text-white">
                       <div className="flex flex-col">
                         <div className="font-medium flex items-center">
                           {selectedCustomer.fullName || selectedCustomer.name}
                           {selectedCustomer.isDependent && (
-                            <span className="ml-2 px-2 py-1 text-xs bg-white bg-opacity-30 rounded-full">
+                            <span className="ml-2 px-2 py-1 text-xs bg-white bg-opacity-20 rounded-full">
                               Dependent
                             </span>
                           )}
                         </div>
-                        <div className="text-xs opacity-80">
+                        <div className="text-xs opacity-90">
                           {selectedCustomer.phone || (selectedCustomer.isDependent ? 'Via parent' : 'No phone')}
                         </div>
                       </div>
@@ -425,7 +449,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                           setShowCustomerDropdown(true);
                         }}
                         onFocus={() => setShowCustomerDropdown(true)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
                       />
                     </div>
 
@@ -439,6 +463,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                                 setFormData(prev => ({ ...prev, customerId: customer.id }));
                                 setShowCustomerDropdown(false);
                                 setCustomerSearch('');
+                                // Clear customer errors when customer is selected
+                                if (errors.customerId) {
+                                  setErrors(prev => ({ ...prev, customerId: '' }));
+                                }
                               }}
                               className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0"
                             >
@@ -487,7 +515,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <Calendar className="inline h-4 w-4 mr-1" />
                   Sale Date & Time
                 </label>
-                <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-gray-700">
+                <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-700">
                   {new Date(formData.saleDate).toLocaleString('en-US', {
                     year: 'numeric',
                     month: '2-digit',
@@ -508,7 +536,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   name="paymentMethod"
                   value={formData.paymentMethod}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
                 >
                   <option value="CASH">Cash</option>
                   <option value="MOBILE_MONEY">Mobile Money</option>
@@ -543,7 +571,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   value={formData.notes}
                   onChange={handleInputChange}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
                   placeholder="Any additional notes about the sale..."
                 />
               </div>
@@ -559,18 +587,18 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 </label>
                 <CategorizedServiceSelect
                   services={services}
-                  selectedIds={formData.serviceIds}
+                  selectedServices={selectedServices}
                   onSelectionChange={handleServiceSelectionChange}
                   placeholder="Select services..."
                   error={errors.serviceIds}
                 />
 
                 {/* Individual Service Shampoo Options */}
-                {selectedServices.length > 0 && selectedServices.some(service => service.combinedPrice && service.combinedPrice !== service.singlePrice) && (
-                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                {selectedServicesDetails.length > 0 && selectedServicesDetails.some(service => service.combinedPrice && service.combinedPrice !== service.singlePrice) && (
+                  <div className="mt-4 p-4 border border-gray-300 rounded-lg">
                     <h4 className="font-medium text-gray-900 mb-3">Add Shampoo to Services</h4>
                     <div className="space-y-3">
-                      {selectedServices.map(service => {
+                      {selectedServicesDetails.map(service => {
                         // Only show shampoo option if the service has combined pricing
                         if (!service.combinedPrice || service.combinedPrice === service.singlePrice) {
                           return null;
@@ -627,7 +655,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           </div>
 
           {/* Summary */}
-          {(selectedCustomer || selectedServices.length > 0) && (
+          {(selectedCustomer || selectedServicesDetails.length > 0) && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h3 className="font-medium text-gray-900">Visit Summary</h3>
 
@@ -638,11 +666,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 </div>
               )}
 
-              {selectedServices.length > 0 && (
+              {selectedServicesDetails.length > 0 && (
                 <div>
                   <span className="text-sm text-gray-600">Services: </span>
                   <div className="mt-1 space-y-1">
-                    {selectedServices.map(service => {
+                    {selectedServicesDetails.map(service => {
                       const hasShampooForThisService = serviceShampooOptions[service.id] || false;
                       const useCombined = hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice;
                       const price = useCombined ? Number(service.combinedPrice) : Number(service.singlePrice);

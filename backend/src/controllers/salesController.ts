@@ -149,7 +149,13 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       await tx.saleService.createMany({
         data: saleServices.map(vs => ({
           saleId: sale.id,
-          ...vs
+          serviceId: vs.serviceId,
+          quantity: vs.quantity,
+          unitPrice: vs.unitPrice,
+          totalPrice: vs.totalPrice,
+          isChild: vs.isChild,
+          isCombined: vs.isCombined,
+          addShampoo: vs.addShampoo
         }))
       });
 

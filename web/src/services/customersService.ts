@@ -171,6 +171,23 @@ class CustomersService {
     const response = await api.get<ApiResponse<Customer[]>>(`/customers/top?limit=${limit}`);
     return response.data;
   }
+
+  async getDiscountEligibility(customerId: string): Promise<ApiResponse<{
+    sixthVisitEligible: boolean;
+    isBirthdayMonth: boolean;
+    birthdayDiscountAvailable: boolean;
+    birthdayDiscountUsed: boolean;
+    nextSaleCount: number;
+  }>> {
+    const response = await api.get<ApiResponse<{
+      sixthVisitEligible: boolean;
+      isBirthdayMonth: boolean;
+      birthdayDiscountAvailable: boolean;
+      birthdayDiscountUsed: boolean;
+      nextSaleCount: number;
+    }>>(`/customers/${customerId}/discount-eligibility`);
+    return response.data;
+  }
 }
 
 const customersService = new CustomersService();

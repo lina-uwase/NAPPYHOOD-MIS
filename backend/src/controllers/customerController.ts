@@ -169,6 +169,8 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
     let phone = req.body.phone;
     let email = req.body.email;
 
+    console.log('🔢 saleCount received:', { saleCount, type: typeof saleCount });
+
     if (!fullName || !gender) {
       console.log('❌ Validation failed: Missing required fields', { fullName, gender });
       res.status(400).json({ error: 'Required fields: fullName, gender' });
@@ -206,29 +208,39 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
 
     // Check phone uniqueness only for non-dependent customers with phone
     if (phone && !isDependent) {
+      console.log('🔍 Checking phone uniqueness for:', phone);
       const existingCustomer = await prisma.customer.findFirst({
         where: {
           phone: phone,
-          isDependent: false
+          isDependent: false,
+          isActive: true // Only check against active customers
         }
       });
 
       if (existingCustomer) {
-        res.status(400).json({ error: 'Customer with this phone number already exists' });
+        console.log('❌ Phone number already exists:', { phone, existingCustomer: existingCustomer.id });
+        res.status(400).json({ error: `Customer with this phone number already exists: ${existingCustomer.fullName}` });
         return;
       }
+      console.log('✅ Phone number is unique');
     }
 
     // Check if customer with email already exists (only for non-dependent customers or dependent customers with custom email)
     if (email && !isDependent) {
+      console.log('📧 Checking email uniqueness for:', email);
       const existingCustomer = await prisma.customer.findFirst({
-        where: { email }
+        where: {
+          email,
+          isActive: true // Only check against active customers
+        }
       });
 
       if (existingCustomer) {
-        res.status(400).json({ error: 'Customer with this email already exists' });
+        console.log('❌ Email already exists:', { email, existingCustomer: existingCustomer.id });
+        res.status(400).json({ error: `Customer with this email already exists: ${existingCustomer.fullName}` });
         return;
       }
+      console.log('✅ Email is unique');
     }
 
     // For dependent customers with custom email (not inherited), check uniqueness
@@ -245,6 +257,23 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
 
     // Parent existence already verified above if isDependent
 
+    console.log('🚀 Creating customer with data:', {
+      fullName,
+      gender,
+      location,
+      district,
+      sector: sector || null,
+      province,
+      phone: phone || null,
+      email: email || null,
+      birthDay: parseInt(birthDay),
+      birthMonth: parseInt(birthMonth),
+      birthYear: birthYear ? parseInt(birthYear) : null,
+      isDependent: isDependent || false,
+      parentId: isDependent ? parentId : null,
+      saleCount: parseInt(saleCount) || 0
+    });
+
     const customer = await prisma.customer.create({
       data: {
         fullName,
@@ -260,7 +289,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         birthYear: birthYear ? parseInt(birthYear) : null,
         isDependent: isDependent || false,
         parentId: isDependent ? parentId : null,
-        saleCount: 0 // Always start new customers with 0 visit count
+        saleCount: parseInt(saleCount) || 0 // Use provided visit count or default to 0
       }
     });
 
@@ -351,16 +380,23 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
 
 export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    console.log('🗑️ Delete customer request received for ID:', req.params.id);
     const { id } = req.params;
+
     const existingCustomer = await prisma.customer.findUnique({ where: { id } });
     if (!existingCustomer) {
+      console.log('❌ Customer not found:', id);
       res.status(404).json({ error: 'Customer not found' });
       return;
     }
+
+    console.log('👤 Found customer to deactivate:', { id: existingCustomer.id, name: existingCustomer.fullName });
     await prisma.customer.update({ where: { id }, data: { isActive: false } });
+    console.log('✅ Customer deactivated successfully');
+
     res.json({ success: true, message: 'Customer deactivated successfully' });
   } catch (error) {
-    console.error('Delete customer error:', error);
+    console.error('❌ Delete customer error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -462,6 +498,66 @@ export const getCustomerStats = async (req: Request, res: Response): Promise<voi
     });
   } catch (error) {
     console.error('Get customer stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getDiscountEligibility = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      include: {
+        discounts: {
+          where: {
+            discountRule: {
+              type: 'BIRTHDAY_MONTH'
+            }
+          },
+          orderBy: { usedAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    if (!customer) {
+      res.status(404).json({ error: 'Customer not found' });
+      return;
+    }
+
+    const currentMonth = new Date().getMonth() + 1;
+    const isBirthdayMonth = customer.birthMonth === currentMonth;
+    const nextSaleCount = customer.saleCount + 1;
+    const sixthVisitEligible = nextSaleCount % 6 === 0;
+
+    // Check if birthday discount was used this month
+    let birthdayDiscountUsed = false;
+    if (isBirthdayMonth && customer.discounts.length > 0) {
+      const lastBirthdayDiscount = customer.discounts[0];
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      thisMonth.setHours(0, 0, 0, 0);
+
+      if (lastBirthdayDiscount.usedAt >= thisMonth) {
+        birthdayDiscountUsed = true;
+      }
+    }
+
+    const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed;
+
+    res.json({
+      success: true,
+      data: {
+        sixthVisitEligible,
+        isBirthdayMonth,
+        birthdayDiscountAvailable,
+        birthdayDiscountUsed,
+        nextSaleCount
+      }
+    });
+  } catch (error) {
+    console.error('Get discount eligibility error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

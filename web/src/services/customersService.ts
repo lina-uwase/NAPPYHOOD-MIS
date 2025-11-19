@@ -15,6 +15,7 @@ export interface Customer {
   district: string;
   sector?: string;
   province: string;
+  additionalLocation?: string;
   loyaltyPoints: number;
   totalSales: number;
   totalSpent: number;
@@ -41,7 +42,9 @@ export interface CreateCustomerDto {
   birthYear?: number;
   location: string;
   district: string;
+  sector?: string;
   province: string;
+  additionalLocation?: string;
   isDependent?: boolean;
   parentId?: string;
   saleCount: number; // Make this required to ensure visit count is properly set

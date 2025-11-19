@@ -25,14 +25,15 @@ model User {
 }
 
 model Customer {
-  id            String             @id @default(cuid())
-  fullName      String
-  gender        Gender
-  location      String
-  district      String
-  sector        String?
-  province      String
-  phone         String?
+  id                 String             @id @default(cuid())
+  fullName           String
+  gender             Gender
+  location           String
+  district           String
+  sector             String?
+  province           String
+  additionalLocation String?
+  phone              String?
   email         String?
   birthDay      Int
   birthMonth    Int

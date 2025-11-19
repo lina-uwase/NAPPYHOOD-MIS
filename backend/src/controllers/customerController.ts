@@ -158,6 +158,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       district,
       sector,
       province,
+      additionalLocation,
       birthDay,
       birthMonth,
       birthYear,
@@ -264,6 +265,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       district,
       sector: sector || null,
       province,
+      additionalLocation: additionalLocation || null,
       phone: phone || null,
       email: email || null,
       birthDay: parseInt(birthDay),
@@ -282,6 +284,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         district,
         sector: sector || null,
         province,
+        additionalLocation: additionalLocation || null,
         phone: phone || null,
         email: email || null,
         birthDay: parseInt(birthDay),
@@ -314,6 +317,7 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
       district,
       sector,
       province,
+      additionalLocation,
       phone,
       email,
       birthDay,
@@ -355,6 +359,7 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
     if (district !== undefined) updateData.district = district;
     if (sector !== undefined) updateData.sector = sector || null;
     if (province !== undefined) updateData.province = province;
+    if (additionalLocation !== undefined) updateData.additionalLocation = additionalLocation || null;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email || null;
     if (birthDay !== undefined) updateData.birthDay = parseInt(birthDay);
@@ -404,23 +409,47 @@ export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): 
       return;
     }
 
-    console.log('👤 Found customer to deactivate:', {
+    console.log('👤 Found customer to delete:', {
       id: existingCustomer.id,
       name: existingCustomer.fullName,
-      currentStatus: existingCustomer.isActive
+      phone: existingCustomer.phone
     });
 
-    console.log('🔄 Attempting to update customer status...');
-    const updatedCustomer = await prisma.customer.update({
-      where: { id },
-      data: { isActive: false }
+    // Check if customer has any sales records
+    const salesCount = await prisma.sale.count({
+      where: { customerId: id }
     });
-    console.log('✅ Customer deactivated successfully:', updatedCustomer.id);
+
+    if (salesCount > 0) {
+      console.log('⚠️ Customer has sales records, cannot delete');
+      res.status(400).json({
+        error: 'Cannot delete customer with existing sales records. Customer has been deactivated instead.',
+        hasActiveRecords: true
+      });
+
+      // Deactivate instead of delete if has sales
+      await prisma.customer.update({
+        where: { id },
+        data: { isActive: false }
+      });
+      return;
+    }
+
+    // Delete customer discounts first (foreign key constraint)
+    await prisma.customerDiscount.deleteMany({
+      where: { customerId: id }
+    });
+
+    console.log('🔄 Attempting to permanently delete customer...');
+    await prisma.customer.delete({
+      where: { id }
+    });
+    console.log('✅ Customer deleted permanently:', id);
 
     res.json({
       success: true,
-      message: 'Customer deactivated successfully',
-      data: { id: updatedCustomer.id, isActive: updatedCustomer.isActive }
+      message: 'Customer deleted successfully',
+      data: { id, deleted: true }
     });
     console.log('📤 Response sent successfully');
   } catch (error) {

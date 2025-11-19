@@ -28,6 +28,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     district: '',
     sector: '',
     province: '',
+    additionalLocation: '',
     isDependent: false,
     parentId: '',
     isFirstTime: true,
@@ -43,6 +44,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   const [provinces, setProvinces] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [sectors, setSectors] = useState<string[]>([]);
+  const [additionalLocationSuggestions, setAdditionalLocationSuggestions] = useState<string[]>([]);
+  const [showAdditionalLocationDropdown, setShowAdditionalLocationDropdown] = useState(false);
 
   
 
@@ -97,6 +100,39 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     }
   }, [formData.province, formData.district]);
 
+  // Load additional location suggestions when province or sector changes
+  useEffect(() => {
+    if (formData.province || formData.sector) {
+      const loadAdditionalLocationSuggestions = async () => {
+        try {
+          const response = await customersService.getAll({ limit: 1000, isActive: true });
+          const allCustomers = response.data;
+
+          // Filter customers by matching province/sector and extract unique additional locations
+          const matchingLocations = allCustomers
+            .filter(customer =>
+              (formData.province && customer.province === formData.province) ||
+              (formData.sector && customer.sector === formData.sector)
+            )
+            .map(customer => customer.additionalLocation)
+            .filter((location, index, array): location is string =>
+              location !== undefined && // Not null/empty
+              location !== null &&
+              location.trim() !== '' && // Not just whitespace
+              array.indexOf(location) === index // Unique values only
+            );
+
+          setAdditionalLocationSuggestions(matchingLocations);
+        } catch (error) {
+          console.error('Error loading additional location suggestions:', error);
+        }
+      };
+      loadAdditionalLocationSuggestions();
+    } else {
+      setAdditionalLocationSuggestions([]);
+    }
+  }, [formData.province, formData.sector]);
+
   useEffect(() => {
     fetchCustomers();
     if (editingCustomer) {
@@ -111,6 +147,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         district: editingCustomer.district,
         sector: editingCustomer.sector || '',
         province: editingCustomer.province,
+        additionalLocation: editingCustomer.additionalLocation || '',
         isDependent: editingCustomer.isDependent || false,
         parentId: editingCustomer.parentId || '',
         isFirstTime: false, // When editing, it's not first time
@@ -128,12 +165,15 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     }
   };
 
-  // Close parent dropdown when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       if (!target.closest('.parent-dropdown-container')) {
         setShowParentDropdown(false);
+      }
+      if (!target.closest('.additional-location-container')) {
+        setShowAdditionalLocationDropdown(false);
       }
     };
 
@@ -271,6 +311,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         district: formData.district,
         sector: formData.sector?.trim() || undefined,
         province: formData.province,
+        additionalLocation: formData.additionalLocation?.trim() || undefined,
         isDependent: formData.isDependent,
         parentId: formData.isDependent ? formData.parentId : undefined,
         saleCount: formData.isFirstTime ? 0 : formData.previousVisits
@@ -522,6 +563,49 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="additional-location-container">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Additional Location (Optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="additionalLocation"
+                  value={formData.additionalLocation}
+                  onChange={handleInputChange}
+                  onFocus={() => setShowAdditionalLocationDropdown(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                  placeholder="Enter specific location details..."
+                />
+                {showAdditionalLocationDropdown && additionalLocationSuggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
+                    {additionalLocationSuggestions
+                      .filter(suggestion =>
+                        suggestion.toLowerCase().includes(formData.additionalLocation.toLowerCase())
+                      )
+                      .map((suggestion, index) => (
+                        <div
+                          key={index}
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              additionalLocation: suggestion
+                            }));
+                            setShowAdditionalLocationDropdown(false);
+                          }}
+                          className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                        >
+                          <div className="text-sm">{suggestion}</div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Specify landmark, building, or detailed location info
+              </p>
             </div>
 
           </div>

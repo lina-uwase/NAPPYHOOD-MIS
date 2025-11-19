@@ -1,0 +1,3 @@
+*.tar.gz
+node_modules/
+out.zip

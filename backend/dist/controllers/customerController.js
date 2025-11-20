@@ -49,7 +49,7 @@ const getAllCustomers = async (req, res) => {
             database_1.prisma.customer.count({ where: whereClause })
         ]);
         // Transform customers to include calculated fields expected by frontend
-        const transformedCustomers = customers.map(customer => ({
+        const transformedCustomers = customers.map((customer) => ({
             ...customer,
             totalSales: customer.saleCount,
             totalSpent: Number(customer.totalSpent),

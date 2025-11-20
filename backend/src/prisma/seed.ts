@@ -7,14 +7,14 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create default admin user only
-  const hashedPassword = await bcrypt.hash('admin123', 10);
+  const hashedPassword = await bcrypt.hash('HairIs@2030', 10);
 
   const adminUser = await prisma.user.upsert({
-    where: { phone: '0788456312' },
+    where: { email: 'nappyhood.boutique@gmail.com' },
     update: {},
     create: {
       name: 'Nappyhood Admin',
-      email: 'Nappyhood.boutique@gmail.com',
+      email: 'nappyhood.boutique@gmail.com',
       password: hashedPassword,
       role: 'ADMIN',
       phone: '0788456312'
@@ -613,8 +613,8 @@ async function main() {
   console.log('🎉 Database seeding completed successfully!');
 
   console.log('\n📋 Default Admin Login:');
-  console.log('Admin Phone: 0788456312');
-  console.log('Admin Password: admin123');
+  console.log('Admin Email: nappyhood.boutique@gmail.com');
+  console.log('Admin Password: HairIs@2030');
   console.log('\n💡 Other users can be created through the admin panel with custom phone numbers');
 }
 

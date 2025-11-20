@@ -24,14 +24,6 @@ declare const nappyhoodServices: ({
     childCombinedPrice: null;
 } | {
     name: string;
-    category: "HAIR_TREATMENTS";
-    description: string;
-    singlePrice: number;
-    combinedPrice: null;
-    childPrice: null;
-    childCombinedPrice: null;
-} | {
-    name: string;
     category: "TWIST_HAIRSTYLE";
     description: string;
     singlePrice: number;

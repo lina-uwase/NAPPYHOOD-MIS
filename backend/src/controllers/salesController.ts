@@ -367,10 +367,14 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
     if (startDate || endDate) {
       whereClause.saleDate = {};
       if (startDate) {
+        // Start of the start date
         whereClause.saleDate.gte = new Date(startDate as string);
       }
       if (endDate) {
-        whereClause.saleDate.lte = new Date(endDate as string);
+        // End of the end date (23:59:59.999)
+        const endDateObj = new Date(endDate as string);
+        endDateObj.setHours(23, 59, 59, 999);
+        whereClause.saleDate.lte = endDateObj;
       }
     }
 
@@ -413,6 +417,12 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
           discounts: {
             include: {
               discountRule: true
+            }
+          },
+          createdBy: {
+            select: {
+              id: true,
+              name: true
             }
           }
         }
@@ -674,7 +684,12 @@ export const getSalesSummary = async (req: AuthenticatedRequest, res: Response):
     if (startDate || endDate) {
       where.saleDate = {};
       if (startDate) where.saleDate.gte = new Date(startDate as string);
-      if (endDate) where.saleDate.lte = new Date(endDate as string);
+      if (endDate) {
+        // End of the end date (23:59:59.999)
+        const endDateObj = new Date(endDate as string);
+        endDateObj.setHours(23, 59, 59, 999);
+        where.saleDate.lte = endDateObj;
+      }
     }
 
     const [count, agg] = await Promise.all([

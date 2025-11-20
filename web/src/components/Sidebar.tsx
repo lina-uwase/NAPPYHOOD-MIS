@@ -8,6 +8,7 @@ import {
   Users2,
   Calendar,
   Users,
+  FileText,
 } from 'lucide-react';
 import NappyhoodLogo from './NappyhoodLogo';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +23,7 @@ const Sidebar = () => {
     { name: 'Customers', icon: Users2, href: '/customers', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Sales', icon: Calendar, href: '/sales', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Staff', icon: Users, href: '/staff', roles: ['ADMIN', 'MANAGER'] },
+    { name: 'Reports', icon: FileText, href: '/reports', roles: ['ADMIN', 'MANAGER'] },
   ];
 
   const menuItems = allMenuItems.filter(item =>

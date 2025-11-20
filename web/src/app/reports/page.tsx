@@ -243,7 +243,7 @@ const ReportsPage: React.FC = () => {
 
         const date = formatDate(sale.saleDate);
         const customer = (sale.customer?.fullName || 'Unknown').substring(0, 18);
-        const services = (sale.services?.map(s => s.service?.name).join(', ') || 'N/A').substring(0, 25);
+        const services = (sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A').substring(0, 25);
         const recordedBy = (sale.createdBy?.name || 'Admin').substring(0, 18);
         const amount = formatCurrency(sale.finalAmount || 0);
 
@@ -423,7 +423,7 @@ const ReportsPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-sm text-gray-600">
-                          Services: {sale.services?.map(s => s.service?.name).join(', ') || 'N/A'}
+                          Services: {sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A'}
                         </div>
                       </div>
                     ))}

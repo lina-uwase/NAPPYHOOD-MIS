@@ -343,11 +343,27 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
         where: {
           phone: phone,
           isDependent: false,
+          isActive: true, // Only check against active customers
           id: { not: id } // Exclude current customer
         }
       });
       if (phoneExists) {
         res.status(400).json({ error: 'Customer with this phone number already exists' });
+        return;
+      }
+    }
+
+    // Check email uniqueness if email is being changed
+    if (email && email !== existingCustomer.email) {
+      const emailExists = await prisma.customer.findFirst({
+        where: {
+          email: email,
+          isActive: true, // Only check against active customers
+          id: { not: id } // Exclude current customer
+        }
+      });
+      if (emailExists) {
+        res.status(400).json({ error: 'Customer with this email already exists' });
         return;
       }
     }

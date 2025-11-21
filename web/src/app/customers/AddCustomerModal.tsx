@@ -74,13 +74,16 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         }
       };
       loadDistricts();
-      setFormData(prev => ({ ...prev, district: '', sector: '' }));
-      setSectors([]);
+      // Only reset district and sector if not editing (to preserve existing data)
+      if (!editingCustomer) {
+        setFormData(prev => ({ ...prev, district: '', sector: '' }));
+        setSectors([]);
+      }
     } else {
       setDistricts([]);
       setSectors([]);
     }
-  }, [formData.province]);
+  }, [formData.province, editingCustomer]);
 
   // Update sectors when district changes
   useEffect(() => {
@@ -94,11 +97,14 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         }
       };
       loadSectors();
-      setFormData(prev => ({ ...prev, sector: '' }));
+      // Only reset sector if not editing (to preserve existing data)
+      if (!editingCustomer) {
+        setFormData(prev => ({ ...prev, sector: '' }));
+      }
     } else {
       setSectors([]);
     }
-  }, [formData.province, formData.district]);
+  }, [formData.province, formData.district, editingCustomer]);
 
   // Load additional location suggestions when province or sector changes
   useEffect(() => {
@@ -190,8 +196,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       [name]: type === 'checkbox' ? checked : value
     }));
 
-    // Reset district when province changes
-    if (name === 'province') {
+    // Reset district when province changes (only for new customers, not when editing)
+    if (name === 'province' && !editingCustomer) {
       setFormData(prev => ({
         ...prev,
         district: ''

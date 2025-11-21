@@ -367,8 +367,17 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
     if (startDate || endDate) {
       whereClause.saleDate = {};
       if (startDate) {
-        // Start of the start date
-        whereClause.saleDate.gte = new Date(startDate as string);
+        // If only startDate is provided, filter for that specific date
+        const startDateObj = new Date(startDate as string);
+        startDateObj.setHours(0, 0, 0, 0);
+        whereClause.saleDate.gte = startDateObj;
+
+        // If no endDate provided, set endDate to end of the same day
+        if (!endDate) {
+          const endOfDayObj = new Date(startDate as string);
+          endOfDayObj.setHours(23, 59, 59, 999);
+          whereClause.saleDate.lte = endOfDayObj;
+        }
       }
       if (endDate) {
         // End of the end date (23:59:59.999)

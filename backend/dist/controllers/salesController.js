@@ -305,10 +305,22 @@ const getAllSales = async (req, res) => {
         if (startDate || endDate) {
             whereClause.saleDate = {};
             if (startDate) {
-                whereClause.saleDate.gte = new Date(startDate);
+                // If only startDate is provided, filter for that specific date
+                const startDateObj = new Date(startDate);
+                startDateObj.setHours(0, 0, 0, 0);
+                whereClause.saleDate.gte = startDateObj;
+                // If no endDate provided, set endDate to end of the same day
+                if (!endDate) {
+                    const endOfDayObj = new Date(startDate);
+                    endOfDayObj.setHours(23, 59, 59, 999);
+                    whereClause.saleDate.lte = endOfDayObj;
+                }
             }
             if (endDate) {
-                whereClause.saleDate.lte = new Date(endDate);
+                // End of the end date (23:59:59.999)
+                const endDateObj = new Date(endDate);
+                endDateObj.setHours(23, 59, 59, 999);
+                whereClause.saleDate.lte = endDateObj;
             }
         }
         const [sales, total] = await Promise.all([
@@ -350,6 +362,12 @@ const getAllSales = async (req, res) => {
                     discounts: {
                         include: {
                             discountRule: true
+                        }
+                    },
+                    createdBy: {
+                        select: {
+                            id: true,
+                            name: true
                         }
                     }
                 }
@@ -599,8 +617,12 @@ const getSalesSummary = async (req, res) => {
             where.saleDate = {};
             if (startDate)
                 where.saleDate.gte = new Date(startDate);
-            if (endDate)
-                where.saleDate.lte = new Date(endDate);
+            if (endDate) {
+                // End of the end date (23:59:59.999)
+                const endDateObj = new Date(endDate);
+                endDateObj.setHours(23, 59, 59, 999);
+                where.saleDate.lte = endDateObj;
+            }
         }
         const [count, agg] = await Promise.all([
             database_1.prisma.sale.count({ where }),

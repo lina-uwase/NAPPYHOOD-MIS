@@ -22,7 +22,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
     combinedPrice: '',
     childPrice: '',
     childCombinedPrice: '',
-    duration: '',
     isActive: true
   });
 
@@ -48,7 +47,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
         combinedPrice: editingService.combinedPrice?.toString() || '',
         childPrice: editingService.childPrice?.toString() || '',
         childCombinedPrice: editingService.childCombinedPrice?.toString() || '',
-        duration: editingService.duration.toString(),
         isActive: editingService.isActive
       });
     }
@@ -91,9 +89,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
       newErrors.singlePrice = 'Single price must be greater than 0';
     }
 
-    if (!formData.duration || parseInt(formData.duration) <= 0) {
-      newErrors.duration = 'Duration must be greater than 0';
-    }
 
     if (formData.combinedPrice && parseFloat(formData.combinedPrice) <= 0) {
       newErrors.combinedPrice = 'Combined price must be greater than 0';
@@ -129,7 +124,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
         combinedPrice: formData.combinedPrice ? parseFloat(formData.combinedPrice) : undefined,
         childPrice: formData.childPrice ? parseFloat(formData.childPrice) : undefined,
         childCombinedPrice: formData.childCombinedPrice ? parseFloat(formData.childCombinedPrice) : undefined,
-        duration: parseInt(formData.duration),
         isActive: formData.isActive
       };
 
@@ -193,23 +187,6 @@ const AddServiceModal: React.FC<AddServiceModalProps> = ({
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Duration (minutes) *
-              </label>
-              <input
-                type="number"
-                name="duration"
-                value={formData.duration}
-                onChange={handleInputChange}
-                min="1"
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.duration ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="e.g., 60"
-              />
-              {errors.duration && <p className="mt-1 text-sm text-red-600">{errors.duration}</p>}
-            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

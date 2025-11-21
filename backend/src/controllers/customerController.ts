@@ -444,9 +444,16 @@ export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): 
       });
 
       // Deactivate instead of delete if has sales
+      // Reset spending and sales data when deactivating
       await prisma.customer.update({
         where: { id },
-        data: { isActive: false }
+        data: {
+          isActive: false,
+          totalSpent: 0,
+          saleCount: 0,
+          loyaltyPoints: 0,
+          lastSale: null
+        }
       });
       return;
     }

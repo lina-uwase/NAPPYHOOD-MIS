@@ -21,7 +21,7 @@ const SalesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState({ start: '', end: '' });
+  const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,8 +41,7 @@ const SalesPage: React.FC = () => {
         limit: itemsPerPage,
         search: searchTerm || undefined,
         customerId: customerFilter || undefined,
-        startDate: dateFilter.start || undefined,
-        endDate: dateFilter.end || undefined,
+        startDate: dateFilter || undefined,
       };
 
       const response = await salesService.getAll(params);
@@ -182,7 +181,7 @@ const SalesPage: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
@@ -216,24 +215,13 @@ const SalesPage: React.FC = () => {
 
             <input
               type="date"
-              value={dateFilter.start}
+              value={dateFilter}
               onChange={(e) => {
-                setDateFilter(prev => ({ ...prev, start: e.target.value }));
+                setDateFilter(e.target.value);
                 setCurrentPage(1);
               }}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-              placeholder="Start date"
-            />
-
-            <input
-              type="date"
-              value={dateFilter.end}
-              onChange={(e) => {
-                setDateFilter(prev => ({ ...prev, end: e.target.value }));
-                setCurrentPage(1);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-              placeholder="End date"
+              placeholder="Select date"
             />
           </div>
         </div>

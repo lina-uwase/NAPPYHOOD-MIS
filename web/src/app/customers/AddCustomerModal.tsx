@@ -156,7 +156,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         additionalLocation: editingCustomer.additionalLocation || '',
         isDependent: editingCustomer.isDependent || false,
         parentId: editingCustomer.parentId || '',
-        isFirstTime: false, // When editing, it's not first time
+        isFirstTime: (editingCustomer.saleCount || 0) === 0, // First time if saleCount is 0
         previousVisits: editingCustomer.saleCount || 0
       });
     }

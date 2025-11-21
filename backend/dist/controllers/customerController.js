@@ -141,7 +141,7 @@ const createCustomer = async (req, res) => {
                 authorization: req.headers.authorization ? 'Bearer [REDACTED]' : 'None'
             }
         });
-        let { fullName, gender, location, district, sector, province, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
+        let { fullName, gender, location, district, sector, province, additionalLocation, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
         let phone = req.body.phone;
         let email = req.body.email;
         console.log('🔢 saleCount received:', { saleCount, type: typeof saleCount });
@@ -227,6 +227,7 @@ const createCustomer = async (req, res) => {
             district,
             sector: sector || null,
             province,
+            additionalLocation: additionalLocation || null,
             phone: phone || null,
             email: email || null,
             birthDay: parseInt(birthDay),
@@ -244,6 +245,7 @@ const createCustomer = async (req, res) => {
                 district,
                 sector: sector || null,
                 province,
+                additionalLocation: additionalLocation || null,
                 phone: phone || null,
                 email: email || null,
                 birthDay: parseInt(birthDay),
@@ -269,7 +271,7 @@ exports.createCustomer = createCustomer;
 const updateCustomer = async (req, res) => {
     try {
         const { id } = req.params;
-        let { fullName, gender, location, district, sector, province, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
+        let { fullName, gender, location, district, sector, province, additionalLocation, phone, email, birthDay, birthMonth, birthYear, isDependent, parentId, saleCount } = req.body;
         const existingCustomer = await database_1.prisma.customer.findUnique({
             where: { id }
         });
@@ -283,11 +285,26 @@ const updateCustomer = async (req, res) => {
                 where: {
                     phone: phone,
                     isDependent: false,
+                    isActive: true, // Only check against active customers
                     id: { not: id } // Exclude current customer
                 }
             });
             if (phoneExists) {
                 res.status(400).json({ error: 'Customer with this phone number already exists' });
+                return;
+            }
+        }
+        // Check email uniqueness if email is being changed
+        if (email && email !== existingCustomer.email) {
+            const emailExists = await database_1.prisma.customer.findFirst({
+                where: {
+                    email: email,
+                    isActive: true, // Only check against active customers
+                    id: { not: id } // Exclude current customer
+                }
+            });
+            if (emailExists) {
+                res.status(400).json({ error: 'Customer with this email already exists' });
                 return;
             }
         }
@@ -304,6 +321,8 @@ const updateCustomer = async (req, res) => {
             updateData.sector = sector || null;
         if (province !== undefined)
             updateData.province = province;
+        if (additionalLocation !== undefined)
+            updateData.additionalLocation = additionalLocation || null;
         if (phone !== undefined)
             updateData.phone = phone;
         if (email !== undefined)
@@ -355,21 +374,48 @@ const deleteCustomer = async (req, res) => {
             res.status(404).json({ error: 'Customer not found' });
             return;
         }
-        console.log('👤 Found customer to deactivate:', {
+        console.log('👤 Found customer to delete:', {
             id: existingCustomer.id,
             name: existingCustomer.fullName,
-            currentStatus: existingCustomer.isActive
+            phone: existingCustomer.phone
         });
-        console.log('🔄 Attempting to update customer status...');
-        const updatedCustomer = await database_1.prisma.customer.update({
-            where: { id },
-            data: { isActive: false }
+        // Check if customer has any sales records
+        const salesCount = await database_1.prisma.sale.count({
+            where: { customerId: id }
         });
-        console.log('✅ Customer deactivated successfully:', updatedCustomer.id);
+        if (salesCount > 0) {
+            console.log('⚠️ Customer has sales records, cannot delete');
+            res.status(400).json({
+                error: 'Cannot delete customer with existing sales records. Customer has been deactivated instead.',
+                hasActiveRecords: true
+            });
+            // Deactivate instead of delete if has sales
+            // Reset spending and sales data when deactivating
+            await database_1.prisma.customer.update({
+                where: { id },
+                data: {
+                    isActive: false,
+                    totalSpent: 0,
+                    saleCount: 0,
+                    loyaltyPoints: 0,
+                    lastSale: null
+                }
+            });
+            return;
+        }
+        // Delete customer discounts first (foreign key constraint)
+        await database_1.prisma.customerDiscount.deleteMany({
+            where: { customerId: id }
+        });
+        console.log('🔄 Attempting to permanently delete customer...');
+        await database_1.prisma.customer.delete({
+            where: { id }
+        });
+        console.log('✅ Customer deleted permanently:', id);
         res.json({
             success: true,
-            message: 'Customer deactivated successfully',
-            data: { id: updatedCustomer.id, isActive: updatedCustomer.isActive }
+            message: 'Customer deleted successfully',
+            data: { id, deleted: true }
         });
         console.log('📤 Response sent successfully');
     }

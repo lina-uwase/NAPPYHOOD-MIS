@@ -9,7 +9,6 @@ export interface Service {
   combinedPrice: number | null;
   childPrice: number | null;
   childCombinedPrice: number | null;
-  duration: number;
   isActive: boolean;
   isComboEligible: boolean;
   createdAt: string;
@@ -24,7 +23,6 @@ export interface CreateServiceDto {
   combinedPrice?: number;
   childPrice?: number;
   childCombinedPrice?: number;
-  duration: number;
   isComboEligible?: boolean;
   isActive?: boolean;
 }

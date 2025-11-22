@@ -4,12 +4,21 @@ exports.updateStaff = exports.getAllStaffPerformance = exports.getStaffPerforman
 const database_1 = require("../utils/database");
 const getAllStaff = async (req, res) => {
     try {
-        const { isActive = 'true', role } = req.query;
-        const whereClause = {
-            isActive: isActive === 'true'
-        };
+        const { isActive, role, search } = req.query;
+        const whereClause = {};
+        // Only filter by isActive if explicitly provided
+        if (isActive !== undefined) {
+            whereClause.isActive = isActive === 'true';
+        }
         if (role) {
             whereClause.role = role;
+        }
+        if (search) {
+            whereClause.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } }
+            ];
         }
         const staff = await database_1.prisma.user.findMany({
             where: whereClause,

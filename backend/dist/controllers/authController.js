@@ -51,7 +51,7 @@ const login = async (req, res) => {
                 }
             });
         }
-        if (!user || !user.isActive) {
+        if (!user) {
             res.status(401).json({ error: 'Invalid credentials' });
             return;
         }
@@ -60,6 +60,14 @@ const login = async (req, res) => {
         if (!isValidPassword) {
             res.status(401).json({ error: 'Invalid credentials' });
             return;
+        }
+        // Activate user on first successful login
+        if (!user.isActive) {
+            await database_1.prisma.user.update({
+                where: { id: user.id },
+                data: { isActive: true }
+            });
+            console.log(`✅ User ${user.name} activated on first login`);
         }
         // Generate JWT token
         const token = jsonwebtoken_1.default.sign({ userId: user.id, phone: user.phone, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
@@ -106,14 +114,18 @@ const register = async (req, res) => {
             res.status(400).json({ error: 'Invalid email format' });
             return;
         }
-        // Check if user already exists by phone or email (only among active users)
+        // Check if ACTIVE user already exists by phone or email
         const existingUser = await database_1.prisma.user.findFirst({
             where: {
-                isActive: true,
-                OR: [
-                    phone ? { phone } : {},
-                    email ? { email } : {}
-                ].filter(condition => Object.keys(condition).length > 0)
+                AND: [
+                    { isActive: true },
+                    {
+                        OR: [
+                            phone ? { phone } : {},
+                            email ? { email } : {}
+                        ].filter(condition => Object.keys(condition).length > 0)
+                    }
+                ]
             }
         });
         if (existingUser) {
@@ -125,14 +137,15 @@ const register = async (req, res) => {
         const randomPassword = (0, passwordGenerator_1.generateRandomPassword)(8);
         // Hash password
         const hashedPassword = await bcryptjs_1.default.hash(randomPassword, 10);
-        // Create user
+        // Create user (inactive until first login)
         const user = await database_1.prisma.user.create({
             data: {
                 name,
                 email,
                 password: hashedPassword,
                 phone,
-                role: role
+                role: role,
+                isActive: false // New staff are inactive until they log in for the first time
             },
             select: {
                 id: true,
@@ -476,9 +489,8 @@ exports.updateUser = updateUser;
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
-        await database_1.prisma.user.update({
-            where: { id },
-            data: { isActive: false }
+        await database_1.prisma.user.delete({
+            where: { id }
         });
         res.json({
             success: true,

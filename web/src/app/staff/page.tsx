@@ -40,7 +40,10 @@ export default function StaffPage() {
     try {
       setLoading(true);
       setHasError(false);
-      const response = await staffService.getAll();
+      const response = await staffService.getAll(
+        roleFilter || undefined,
+        searchTerm || undefined
+      );
 
       if (response.success) {
         const staffData = Array.isArray(response.data) ? response.data : [];
@@ -63,7 +66,7 @@ export default function StaffPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [roleFilter, searchTerm]);
 
   useEffect(() => {
     loadStaff();

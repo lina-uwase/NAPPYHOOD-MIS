@@ -4,14 +4,25 @@ import { AuthenticatedRequest } from '../middleware/auth';
 
 export const getAllStaff = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { isActive = 'true', role } = req.query;
+    const { isActive, role, search } = req.query;
 
-    const whereClause: any = {
-      isActive: isActive === 'true'
-    };
+    const whereClause: any = {};
+
+    // Only filter by isActive if explicitly provided
+    if (isActive !== undefined) {
+      whereClause.isActive = isActive === 'true';
+    }
 
     if (role) {
       whereClause.role = role;
+    }
+
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: search as string, mode: 'insensitive' } },
+        { phone: { contains: search as string, mode: 'insensitive' } }
+      ];
     }
 
     const staff = await prisma.user.findMany({

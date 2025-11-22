@@ -12,6 +12,7 @@ import { useTitle } from '../../contexts/TitleContext';
 import salesService from '../../services/salesService';
 import customersService from '../../services/customersService';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ReportData {
   sales: any[];
@@ -25,10 +26,12 @@ interface ReportData {
 const ReportsPage: React.FC = () => {
   const { setTitle } = useTitle();
   const [reportType, setReportType] = useState<'sales' | 'customers'>('sales');
-  const [periodType, setPeriodType] = useState<'daily' | 'monthly' | 'yearly'>('daily');
+  const [periodType, setPeriodType] = useState<'daily' | 'monthly' | 'yearly' | 'custom'>('custom');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,27 +42,31 @@ const ReportsPage: React.FC = () => {
   const fetchReportData = async () => {
     setLoading(true);
     try {
-      let startDate: string;
-      let endDate: string;
+      let reportStartDate: string;
+      let reportEndDate: string;
 
       // Calculate date ranges based on period type
       if (periodType === 'daily') {
-        startDate = selectedDate;
-        endDate = selectedDate;
+        reportStartDate = selectedDate;
+        reportEndDate = selectedDate;
       } else if (periodType === 'monthly') {
         const monthStart = new Date(selectedMonth + '-01');
         const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-        startDate = monthStart.toISOString().split('T')[0];
-        endDate = monthEnd.toISOString().split('T')[0];
+        reportStartDate = monthStart.toISOString().split('T')[0];
+        reportEndDate = monthEnd.toISOString().split('T')[0];
+      } else if (periodType === 'yearly') {
+        reportStartDate = `${selectedYear}-01-01`;
+        reportEndDate = `${selectedYear}-12-31`;
       } else {
-        startDate = `${selectedYear}-01-01`;
-        endDate = `${selectedYear}-12-31`;
+        // Custom date range
+        reportStartDate = startDate;
+        reportEndDate = endDate;
       }
 
       const [salesResponse, customersResponse] = await Promise.all([
         salesService.getAll({
-          startDate,
-          endDate,
+          startDate: reportStartDate,
+          endDate: reportEndDate,
           limit: 1000
         }),
         customersService.getAll({
@@ -72,7 +79,7 @@ const ReportsPage: React.FC = () => {
       const allCustomers = customersResponse.data || [];
       const filteredCustomers = allCustomers.filter(customer => {
         const createdDate = new Date(customer.createdAt).toISOString().split('T')[0];
-        return createdDate >= startDate && createdDate <= endDate;
+        return createdDate >= reportStartDate && createdDate <= reportEndDate;
       });
 
       // Calculate metrics
@@ -104,7 +111,7 @@ const ReportsPage: React.FC = () => {
 
   useEffect(() => {
     fetchReportData();
-  }, [reportType, periodType, selectedDate, selectedMonth, selectedYear]);
+  }, [reportType, periodType, selectedDate, selectedMonth, selectedYear, startDate, endDate]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('rw-RW', {
@@ -126,7 +133,9 @@ const ReportsPage: React.FC = () => {
     if (!reportData) return;
 
     const periodLabel = periodType === 'daily' ? selectedDate :
-                       periodType === 'monthly' ? selectedMonth : selectedYear;
+                       periodType === 'monthly' ? selectedMonth :
+                       periodType === 'yearly' ? selectedYear :
+                       `${startDate} to ${endDate}`;
 
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = 210; // A4 width in mm
@@ -143,7 +152,7 @@ const ReportsPage: React.FC = () => {
       logoImg.src = '/assets/NAPPYHOODPHOTO.png';
 
       // Wait for image to load, then add it to PDF
-      await new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         logoImg.onload = () => {
           // Create canvas to convert image to base64
           const canvas = document.createElement('canvas');
@@ -174,22 +183,26 @@ const ReportsPage: React.FC = () => {
           const logoX = (pageWidth - logoWidth) / 2; // Center horizontally
           const logoY = 5; // Top margin
           pdf.addImage(logoData, 'PNG', logoX, logoY, logoWidth, logoHeight);
-          resolve(void 0);
+          resolve();
         };
 
         logoImg.onerror = () => {
           console.warn('Logo image failed to load, skipping');
-          resolve(void 0);
+          resolve();
         };
       });
     } catch (error) {
       console.warn('Failed to load logo:', error);
     }
 
-    // No text in header - just the centered logo
+    // Generate report content after logo loading is complete
+    generateReportContent(pdf, pageWidth, pageHeight, reportData, reportType, periodType, periodLabel);
+  };
 
-    // Reset position and add report details
-    yPosition = 55;
+  const generateReportContent = (pdf: jsPDF, pageWidth: number, pageHeight: number, reportData: ReportData, reportType: string, periodType: string, periodLabel: string) => {
+    let yPosition = 55;
+
+    // Add report details
     pdf.setFontSize(18);
     pdf.setTextColor(90, 134, 33);
     pdf.text(`${reportType.toUpperCase()} REPORT`, pageWidth / 2, yPosition, { align: 'center' });
@@ -220,75 +233,118 @@ const ReportsPage: React.FC = () => {
       pdf.setFontSize(12);
       pdf.setTextColor(90, 134, 33);
       pdf.text('SALES DETAILS', 20, yPosition);
-      yPosition += 8;
+      yPosition += 10;
 
-      // Table headers
-      pdf.setFontSize(9);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text('Date', 20, yPosition);
-      pdf.text('Customer', 45, yPosition);
-      pdf.text('Services', 85, yPosition);
-      pdf.text('Recorded By', 135, yPosition);
-      pdf.text('Amount', 175, yPosition);
-
-      yPosition += 3;
-      pdf.line(20, yPosition, 190, yPosition); // Underline
-      yPosition += 5;
-
-      reportData.sales.forEach(sale => {
-        if (yPosition > pageHeight - 20) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-
+      // Prepare table data
+      const tableData = reportData.sales.map(sale => {
         const date = formatDate(sale.saleDate);
-        const customer = (sale.customer?.fullName || 'Unknown').substring(0, 18);
-        const services = (sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A').substring(0, 25);
-        const recordedBy = (sale.createdBy?.name || 'Admin').substring(0, 18);
+        const customer = sale.customer?.fullName || 'Unknown';
+        const services = sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A';
+        const recordedBy = sale.createdBy?.name || 'Admin';
         const amount = formatCurrency(sale.finalAmount || 0);
 
-        pdf.text(date, 20, yPosition);
-        pdf.text(customer, 45, yPosition);
-        pdf.text(services, 85, yPosition);
-        pdf.text(recordedBy, 135, yPosition);
-        pdf.text(amount, 175, yPosition);
-        yPosition += 5;
-      });
-    } else {
-      // Customer details header
-      pdf.setFontSize(14);
-      pdf.setTextColor(90, 134, 33);
-      pdf.text('CUSTOMER DETAILS', 20, yPosition);
-      yPosition += 8;
-
-      // Table headers
-      pdf.setFontSize(9);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text('Date Registered', 20, yPosition);
-      pdf.text('Name', 55, yPosition);
-      pdf.text('Phone', 105, yPosition);
-      pdf.text('Location', 140, yPosition);
-
-      yPosition += 3;
-      pdf.line(20, yPosition, 190, yPosition); // Underline
-      yPosition += 5;
-
-      reportData.customers.forEach(customer => {
-        if (yPosition > pageHeight - 20) {
-          pdf.addPage();
-          yPosition = 20;
+        // Payment display
+        let paymentDisplay = 'CASH';
+        if (sale.payments && sale.payments.length > 0) {
+          if (sale.payments.length === 1) {
+            const method = sale.payments[0].paymentMethod;
+            paymentDisplay = method === 'MOBILE_MONEY' ? 'MOBILE MONEY' :
+                           method === 'BANK_TRANSFER' ? 'BANK TRANSFER' :
+                           method === 'BANK_CARD' ? 'BANK CARD' : method;
+          } else {
+            paymentDisplay = 'MIXED';
+          }
         }
 
-        const date = formatDate(customer.createdAt);
-        const name = (customer.fullName || 'Unknown').substring(0, 23);
-        const phone = (customer.phone || 'N/A').substring(0, 15);
-        const location = `${customer.location || 'N/A'}, ${customer.district || ''}`.substring(0, 25);
+        return [date, customer, services, amount, paymentDisplay, recordedBy];
+      });
 
-        pdf.text(date, 20, yPosition);
-        pdf.text(name, 55, yPosition);
-        pdf.text(phone, 105, yPosition);
-        pdf.text(location, 140, yPosition);
+      // Generate table using autoTable
+      autoTable(pdf, {
+        head: [['Date', 'Customer', 'Services', 'Amount', 'Payment', 'Recorded by']],
+        body: tableData,
+        startY: yPosition,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [90, 134, 33],
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9,
+          cellPadding: 3
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        margin: { left: 20, right: 20 },
+        tableWidth: 'wrap',
+        // halign: 'center',
+        didDrawPage: function (data: any) {
+          // Add page numbers if needed
+        }
+      });
+
+      // Add discount information if any
+      const salesWithDiscounts = reportData.sales.filter(sale =>
+        sale.manualDiscountAmount && Number(sale.manualDiscountAmount) > 0
+      );
+
+      if (salesWithDiscounts.length > 0) {
+        yPosition = (pdf as any).lastAutoTable.finalY + 10;
+        pdf.setFontSize(10);
+        pdf.setTextColor(90, 134, 33);
+        pdf.text('DISCOUNTS APPLIED:', 20, yPosition);
         yPosition += 5;
+
+        salesWithDiscounts.forEach(sale => {
+          pdf.setFontSize(8);
+          pdf.setTextColor(200, 100, 0);
+          const discountText = `• ${sale.customer?.fullName || 'Unknown'}: ${formatCurrency(sale.manualDiscountAmount)} - ${sale.manualDiscountReason || 'No reason'}`;
+          pdf.text(discountText, 25, yPosition);
+          yPosition += 4;
+        });
+      }
+    } else {
+      // Customer details header
+      pdf.setFontSize(12);
+      pdf.setTextColor(90, 134, 33);
+      pdf.text('CUSTOMER DETAILS', 20, yPosition);
+      yPosition += 10;
+
+      // Prepare customer table data
+      const customerTableData = reportData.customers.map(customer => {
+        const date = formatDate(customer.createdAt);
+        const name = customer.fullName || 'Unknown';
+        const phone = customer.phone || 'N/A';
+        const location = `${customer.location || 'N/A'}, ${customer.district || ''}`;
+
+        return [date, name, phone, location];
+      });
+
+      // Generate customer table using autoTable
+      autoTable(pdf, {
+        head: [['Date Registered', 'Name', 'Phone', 'Location']],
+        body: customerTableData,
+        startY: yPosition,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [90, 134, 33],
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9,
+          cellPadding: 3
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        margin: { left: 20, right: 20 },
+        tableWidth: 'wrap',
+        // halign: 'center',
       });
     }
 
@@ -323,44 +379,70 @@ const ReportsPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Period</label>
                 <select
                   value={periodType}
-                  onChange={(e) => setPeriodType(e.target.value as 'daily' | 'monthly' | 'yearly')}
+                  onChange={(e) => setPeriodType(e.target.value as 'daily' | 'monthly' | 'yearly' | 'custom')}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
                 >
                   <option value="daily">Daily</option>
                   <option value="monthly">Monthly</option>
                   <option value="yearly">Yearly</option>
+                  <option value="custom">Custom Date Range</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {periodType === 'daily' ? 'Date' : periodType === 'monthly' ? 'Month' : 'Year'}
-                </label>
-                {periodType === 'daily' && (
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-                  />
-                )}
-                {periodType === 'monthly' && (
-                  <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-                  />
-                )}
-                {periodType === 'yearly' && (
-                  <input
-                    type="number"
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    min="2020"
-                    max="2030"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-                  />
+              <div className="flex space-x-2">
+                {periodType === 'custom' ? (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {periodType === 'daily' ? 'Date' : periodType === 'monthly' ? 'Month' : 'Year'}
+                    </label>
+                    {periodType === 'daily' && (
+                      <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    )}
+                    {periodType === 'monthly' && (
+                      <input
+                        type="month"
+                        value={selectedMonth}
+                        onChange={(e) => setSelectedMonth(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    )}
+                    {periodType === 'yearly' && (
+                      <input
+                        type="number"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                        min="2020"
+                        max="2030"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -401,32 +483,80 @@ const ReportsPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Sales Details</h3>
-                  <div className="space-y-4">
-                    {reportData.sales.map((sale) => (
-                      <div key={sale.id} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h4 className="font-medium text-gray-900">
-                              {sale.customer?.fullName || 'Unknown Customer'}
-                            </h4>
-                            <p className="text-sm text-gray-600">{formatDate(sale.saleDate)}</p>
-                            <p className="text-sm text-gray-500">
-                              Recorded by: {sale.createdBy?.name || 'Admin'}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-bold text-[#5A8621]">{formatCurrency(sale.finalAmount || 0)}</p>
-                            <p className="text-sm text-gray-500">
-                              {sale.services?.length || 0} service(s)
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Services: {sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A'}
-                        </div>
-                      </div>
-                    ))}
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Sales Report</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-white border border-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Date
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Customer
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Services
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Amount
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Payment
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">
+                            Recorded by
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {reportData.sales.map((sale) => (
+                          <tr key={sale.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                              {formatDate(sale.saleDate)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                              <div>
+                                <div className="font-medium">{sale.customer?.fullName || 'Unknown'}</div>
+                                {sale.manualDiscountAmount && Number(sale.manualDiscountAmount) > 0 && (
+                                  <div className="text-xs text-orange-600 mt-1">
+                                    Discount: {formatCurrency(sale.manualDiscountAmount)} - {sale.manualDiscountReason || 'No reason'}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                              {sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A'}
+                            </td>
+                            <td className="px-4 py-3 text-sm font-medium text-[#5A8621] border-b">
+                              {formatCurrency(sale.finalAmount || 0)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                              <div>
+                                {sale.payments && sale.payments.length > 0 ? (
+                                  sale.payments.length === 1 ? (
+                                    <span>{sale.payments[0].paymentMethod}</span>
+                                  ) : (
+                                    <div>
+                                      <span className="font-medium text-blue-600">MIXED</span>
+                                      <div className="text-xs text-gray-500 mt-1">
+                                        {sale.payments.map((p: any) =>
+                                          `${p.paymentMethod}: ${formatCurrency(p.amount)}`
+                                        ).join(', ')}
+                                      </div>
+                                    </div>
+                                  )
+                                ) : (
+                                  <span>CASH</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-900 border-b">
+                              {sale.createdBy?.name || 'Admin'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )

@@ -33,8 +33,13 @@ export interface ApiResponse<T = unknown> {
 }
 
 class StaffService {
-  async getAll(): Promise<ApiResponse<Staff[]>> {
-    const response = await api.get<ApiResponse<Staff[]>>('/staff');
+  async getAll(role?: string, search?: string): Promise<ApiResponse<Staff[]>> {
+    const params = new URLSearchParams();
+    if (role) params.append('role', role);
+    if (search) params.append('search', search);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const response = await api.get<ApiResponse<Staff[]>>(`/staff${query}`);
     return response.data;
   }
 

@@ -50,7 +50,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
     }
 
-    if (!user || !user.isActive) {
+    if (!user) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -60,6 +60,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     if (!isValidPassword) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
+    }
+
+    // Activate user on first successful login
+    if (!user.isActive) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isActive: true }
+      });
+      console.log(`✅ User ${user.name} activated on first login`);
     }
 
     // Generate JWT token
@@ -115,14 +124,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user already exists by phone or email (only among active users)
+    // Check if ACTIVE user already exists by phone or email
     const existingUser = await prisma.user.findFirst({
       where: {
-        isActive: true,
-        OR: [
-          phone ? { phone } : {},
-          email ? { email } : {}
-        ].filter(condition => Object.keys(condition).length > 0)
+        AND: [
+          { isActive: true },
+          {
+            OR: [
+              phone ? { phone } : {},
+              email ? { email } : {}
+            ].filter(condition => Object.keys(condition).length > 0)
+          }
+        ]
       }
     });
 
@@ -138,14 +151,15 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     // Hash password
     const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
-    // Create user
+    // Create user (inactive until first login)
     const user = await prisma.user.create({
       data: {
         name,
         email,
         password: hashedPassword,
         phone,
-        role: role as any
+        role: role as any,
+        isActive: false // New staff are inactive until they log in for the first time
       },
       select: {
         id: true,
@@ -513,9 +527,8 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
 
-    await prisma.user.update({
-      where: { id },
-      data: { isActive: false }
+    await prisma.user.delete({
+      where: { id }
     });
 
     res.json({

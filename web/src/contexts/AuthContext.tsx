@@ -51,7 +51,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.success && response.data) {
         setUser(response.data.user);
         setIsAuthenticated(true);
-        router.push('/'); // Redirect to dashboard
+
+        // Redirect based on user role
+        if (response.data.user.role === 'STAFF') {
+          router.push('/sales'); // STAFF goes directly to sales
+        } else {
+          router.push('/'); // ADMIN and MANAGER go to dashboard
+        }
       } else {
         throw new Error('Login failed');
       }

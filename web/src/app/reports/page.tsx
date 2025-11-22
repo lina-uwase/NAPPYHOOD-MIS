@@ -140,7 +140,7 @@ const ReportsPage: React.FC = () => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = 210; // A4 width in mm
     const pageHeight = 297; // A4 height in mm
-    let yPosition = 20;
+    const yPosition = 20;
 
     // Beautiful header with gradient background effect
     pdf.setFillColor(90, 134, 33); // Nappyhood green

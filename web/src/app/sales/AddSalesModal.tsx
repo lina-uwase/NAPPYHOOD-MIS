@@ -101,7 +101,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         notes: editingSale.notes || '',
         paymentMethod: editingSale.paymentMethod || 'CASH',
         bringOwnProduct: editingSale.ownShampooDiscount || false,
-        addShampoo: false
+        addShampoo: false,
+        manualDiscountAmount: editingSale.discountAmount || 0,
+        manualDiscountReason: '',
+        applyManualDiscount: (editingSale.discountAmount || 0) > 0
       });
 
       // Initialize shampoo options based on existing sale
@@ -424,9 +427,9 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         paymentMethod: 'CASH', // Will be overridden by payments array
         bringOwnProduct: false, // TODO: Add this to sale model if needed
         addShampoo: false, // TODO: Add this to sale model if needed
-        manualDiscountAmount: Number(editingSale.manualDiscountAmount || 0),
-        manualDiscountReason: editingSale.manualDiscountReason || '',
-        applyManualDiscount: (editingSale.manualDiscountAmount || 0) > 0
+        manualDiscountAmount: Number(editingSale.discountAmount || 0),
+        manualDiscountReason: editingSale.discountType || '',
+        applyManualDiscount: (editingSale.discountAmount || 0) > 0
       });
 
       // Set selected services
@@ -436,17 +439,17 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           isChild: ss.isChild,
           isCombined: ss.isCombined,
           quantity: ss.quantity,
-          addShampoo: ss.addShampoo || false
+          addShampoo: ss.isCombined || false
         }));
         setSelectedServices(serviceSelections);
       }
 
-      // Set payments
-      if (editingSale.payments && editingSale.payments.length > 0) {
-        setPayments(editingSale.payments.map(p => ({
-          paymentMethod: p.paymentMethod,
-          amount: Number(p.amount)
-        })));
+      // Set payments - fallback to single payment since Sale doesn't have payments array
+      if (editingSale.paymentMethod && editingSale.finalAmount) {
+        setPayments([{
+          paymentMethod: editingSale.paymentMethod as any,
+          amount: Number(editingSale.finalAmount)
+        }]);
       }
     }
   }, [editingSale]);

@@ -33,8 +33,15 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     notes: '',
     paymentMethod: 'CASH',
     bringOwnProduct: false,
-    addShampoo: false
+    addShampoo: false,
+    manualDiscountAmount: 0,
+    manualDiscountReason: '',
+    applyManualDiscount: false
   });
+
+  const [payments, setPayments] = useState([
+    { paymentMethod: 'CASH', amount: 0 }
+  ]);
 
   const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
   const [selectedServices, setSelectedServices] = useState<SelectedServiceWithCombo[]>([]);
@@ -269,6 +276,21 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     setSubmitError(null);
 
     try {
+      // Validate payment amounts
+      const totalPaymentAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+      if (Math.abs(totalPaymentAmount - finalAmount) > 0.01) {
+        setSubmitError('Payment amounts must equal the final total');
+        setLoading(false);
+        return;
+      }
+
+      // Validate manual discount reason
+      if (formData.applyManualDiscount && !formData.manualDiscountReason.trim()) {
+        setSubmitError('Reason for discount is required');
+        setLoading(false);
+        return;
+      }
+
       const submitData = {
         customerId: formData.customerId,
         serviceIds: formData.serviceIds,
@@ -276,9 +298,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         staffIds: formData.staffIds,
         saleDate: formData.saleDate,
         notes: formData.notes.trim() || undefined,
-        paymentMethod: formData.paymentMethod,
         ownShampooDiscount: formData.bringOwnProduct,
-        addShampoo: formData.addShampoo
+        addShampoo: formData.addShampoo,
+        payments: payments,
+        manualDiscountAmount: formData.applyManualDiscount ? formData.manualDiscountAmount : 0,
+        manualDiscountReason: formData.applyManualDiscount ? formData.manualDiscountReason : undefined
       };
 
       await onSubmit(submitData);
@@ -366,7 +390,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       }
     }
 
-    const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount;
+    // Manual discount
+    const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+
+    const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
     const finalAmount = Math.max(0, subtotal - totalDiscounts);
 
     return {
@@ -374,11 +401,67 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       ownProductDiscount,
       birthdayDiscount,
       sixthVisitDiscount,
+      manualDiscount,
       finalAmount
     };
   };
 
-  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, finalAmount } = calculateTotals();
+  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, manualDiscount, finalAmount } = calculateTotals();
+
+  // Populate form data when editing a sale
+  useEffect(() => {
+    if (editingSale) {
+      // Format the date for datetime-local input
+      const saleDate = new Date(editingSale.saleDate);
+      saleDate.setMinutes(saleDate.getMinutes() - saleDate.getTimezoneOffset());
+
+      setFormData({
+        customerId: editingSale.customerId || '',
+        serviceIds: editingSale.services?.map(s => s.serviceId) || [],
+        staffIds: editingSale.staff?.map(s => s.staffId) || [],
+        saleDate: saleDate.toISOString().slice(0, 16),
+        notes: editingSale.notes || '',
+        paymentMethod: 'CASH', // Will be overridden by payments array
+        bringOwnProduct: false, // TODO: Add this to sale model if needed
+        addShampoo: false, // TODO: Add this to sale model if needed
+        manualDiscountAmount: Number(editingSale.manualDiscountAmount || 0),
+        manualDiscountReason: editingSale.manualDiscountReason || '',
+        applyManualDiscount: (editingSale.manualDiscountAmount || 0) > 0
+      });
+
+      // Set selected services
+      if (editingSale.services) {
+        const serviceSelections: SelectedServiceWithCombo[] = editingSale.services.map(ss => ({
+          serviceId: ss.serviceId,
+          isChild: ss.isChild,
+          isCombined: ss.isCombined,
+          quantity: ss.quantity,
+          addShampoo: ss.addShampoo || false
+        }));
+        setSelectedServices(serviceSelections);
+      }
+
+      // Set payments
+      if (editingSale.payments && editingSale.payments.length > 0) {
+        setPayments(editingSale.payments.map(p => ({
+          paymentMethod: p.paymentMethod,
+          amount: Number(p.amount)
+        })));
+      }
+    }
+  }, [editingSale]);
+
+  // Update payment amounts when final amount changes
+  useEffect(() => {
+    if (!editingSale) { // Don't auto-update when editing
+      setPayments(prev => {
+        if (prev.length === 1) {
+          return [{ ...prev[0], amount: finalAmount }];
+        }
+        return prev;
+      });
+    }
+  }, [finalAmount, editingSale]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -527,22 +610,68 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Method *
-                </label>
-                <select
-                  name="paymentMethod"
-                  value={formData.paymentMethod}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
-                >
-                  <option value="CASH">Cash</option>
-                  <option value="MOBILE_MONEY">Mobile Money</option>
-                  <option value="BANK_CARD">Bank Card</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                </select>
+              {/* Payment Methods */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Payment Methods *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPayments([...payments, { paymentMethod: 'CASH', amount: 0 }])}
+                    className="text-sm text-[#5A8621] hover:text-[#4a7219]"
+                  >
+                    + Add Payment
+                  </button>
+                </div>
+
+                {payments.map((payment, index) => (
+                  <div key={index} className="flex space-x-2">
+                    <select
+                      value={payment.paymentMethod}
+                      onChange={(e) => {
+                        const newPayments = [...payments];
+                        newPayments[index].paymentMethod = e.target.value as any;
+                        setPayments(newPayments);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                    >
+                      <option value="CASH">Cash</option>
+                      <option value="MOBILE_MONEY">Mobile Money</option>
+                      <option value="BANK_CARD">Bank Card</option>
+                      <option value="BANK_TRANSFER">Bank Transfer</option>
+                    </select>
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={payment.amount}
+                      onChange={(e) => {
+                        const newPayments = [...payments];
+                        newPayments[index].amount = Number(e.target.value);
+                        setPayments(newPayments);
+                      }}
+                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                    />
+                    {payments.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setPayments(payments.filter((_, i) => i !== index))}
+                        className="px-2 py-2 text-red-600 hover:text-red-800"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                <div className="text-xs text-gray-500">
+                  Total: {payments.reduce((sum, p) => sum + p.amount, 0).toLocaleString()} RWF
+                  {Math.abs(payments.reduce((sum, p) => sum + p.amount, 0) - finalAmount) > 0.01 && (
+                    <span className="text-red-600 ml-2">
+                      (Must equal {finalAmount.toLocaleString()} RWF)
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Bring Own Shampoo */}
@@ -559,6 +688,58 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                     Customer brought their own product (-1,000 RWF)
                   </label>
                 </div>
+              </div>
+
+              {/* Manual Discount */}
+              <div className="space-y-2">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={formData.applyManualDiscount}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        applyManualDiscount: e.target.checked,
+                        manualDiscountAmount: e.target.checked ? formData.manualDiscountAmount : 0
+                      });
+                    }}
+                    className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
+                  />
+                  <label className="ml-2 text-sm text-gray-700">
+                    Apply manual discount
+                  </label>
+                </div>
+
+                {formData.applyManualDiscount && (
+                  <div className="ml-6 space-y-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Discount Amount (RWF)</label>
+                      <input
+                        type="number"
+                        value={formData.manualDiscountAmount}
+                        onChange={(e) => {
+                          setFormData({ ...formData, manualDiscountAmount: Number(e.target.value) });
+                        }}
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Reason for Discount *</label>
+                      <input
+                        type="text"
+                        value={formData.manualDiscountReason}
+                        onChange={(e) => {
+                          setFormData({ ...formData, manualDiscountReason: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                        placeholder="e.g., VIP customer, promotional offer"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -719,6 +900,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <div className="flex justify-between items-center text-green-600">
                     <span className="text-sm">6th Visit Discount (20%):</span>
                     <span className="font-medium">-{sixthVisitDiscount.toLocaleString()} RWF</span>
+                  </div>
+                )}
+
+                {manualDiscount > 0 && (
+                  <div className="flex justify-between items-center text-orange-600">
+                    <span className="text-sm">Manual Discount:</span>
+                    <span className="font-medium">-{manualDiscount.toLocaleString()} RWF</span>
                   </div>
                 )}
 

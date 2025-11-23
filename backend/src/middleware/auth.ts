@@ -16,15 +16,23 @@ export const authenticateToken = async (
   next: NextFunction
 ): Promise<void> => {
   try {
+    console.log('🔐 Auth middleware - incoming request:', {
+      method: req.method,
+      path: req.path,
+      hasAuthHeader: !!req.headers['authorization']
+    });
+
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
+      console.log('❌ Auth middleware - no token provided');
       res.status(401).json({ error: 'Access token required' });
       return;
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    console.log('✅ Auth middleware - token decoded successfully:', { userId: decoded.userId, role: decoded.role });
 
     // Verify user exists and is active
     const user = await prisma.user.findUnique({
@@ -33,13 +41,16 @@ export const authenticateToken = async (
     });
 
     if (!user || !user.isActive) {
+      console.log('❌ Auth middleware - user not found or inactive:', { userId: decoded.userId, userExists: !!user, isActive: user?.isActive });
       res.status(401).json({ error: 'Invalid or inactive user' });
       return;
     }
 
+    console.log('✅ Auth middleware - user authenticated successfully:', { userId: user.id, role: user.role });
     req.user = user;
     next();
   } catch (error) {
+    console.log('❌ Auth middleware - token verification failed:', error);
     res.status(403).json({ error: 'Invalid token' });
   }
 };

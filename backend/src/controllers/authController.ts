@@ -415,7 +415,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
       prisma.user.count({ where: whereClause })
     ]);
 
-    const formattedUsers = users.map(user => ({
+    const formattedUsers = users.map((user: any) => ({
       user_id: user.id,
       names: user.name,
       email: user.email,

@@ -19,6 +19,8 @@ interface DiscountCalculation {
 
 export const createSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    console.log('🔍 DEBUGGING SALE CREATION - Full request body:', JSON.stringify(req.body, null, 2));
+
     const {
       customerId,
       services, // Array of SaleService
@@ -34,6 +36,15 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       manualDiscountAmount = 0,
       manualDiscountReason
     } = req.body;
+
+    console.log('🔍 DEBUGGING STAFF DATA:', {
+      staffIds,
+      customStaffNames,
+      staffIdsType: typeof staffIds,
+      customStaffNamesType: typeof customStaffNames,
+      staffIdsLength: Array.isArray(staffIds) ? staffIds.length : 'not array',
+      customStaffNamesLength: Array.isArray(customStaffNames) ? customStaffNames.length : 'not array'
+    });
 
     const normalizedServices: any[] = Array.isArray(services) && services.length > 0
       ? services

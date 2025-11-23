@@ -18,6 +18,7 @@ export interface SaleStaff {
   id: string;
   staffId: string;
   staffName: string;
+  customName?: string;
 }
 
 export interface SalePayment {
@@ -74,19 +75,33 @@ export interface CreateSaleDto {
   serviceIds: string[];
   serviceShampooOptions?: Record<string, boolean>;
   staffIds: string[];
+  customStaffNames?: string[];
   saleDate?: string;
   notes?: string;
   paymentMethod?: string;
   ownShampooDiscount?: boolean;
   addShampoo?: boolean;
+  payments?: Array<{
+    paymentMethod: string;
+    amount: number;
+  }>;
+  manualDiscountAmount?: number;
+  manualDiscountReason?: string;
 }
 
 export interface UpdateSaleDto {
   serviceIds?: string[];
   staffIds?: string[];
+  customStaffNames?: string[];
   saleDate?: string;
   notes?: string;
   isCompleted?: boolean;
+  payments?: Array<{
+    paymentMethod: string;
+    amount: number;
+  }>;
+  manualDiscountAmount?: number;
+  manualDiscountReason?: string;
 }
 
 export interface GetSalesParams {

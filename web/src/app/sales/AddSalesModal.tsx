@@ -24,6 +24,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     customerId: '',
     serviceIds: [] as string[],
     staffIds: [] as string[],
+    customStaffNames: [] as string[],
     saleDate: (() => {
       const now = new Date();
       // Adjust for timezone offset to get local time
@@ -192,9 +193,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
     // Extract staff IDs for form data (only system staff have real IDs)
     const staffIds = staffList.filter(s => !('isCustom' in s)).map(s => s.id);
+    // Extract custom staff names for form data
+    const customStaffNames = staffList.filter(s => 'isCustom' in s && s.isCustom).map(s => s.name);
+
     setFormData(prev => ({
       ...prev,
-      staffIds
+      staffIds,
+      customStaffNames
     }));
 
     // Clear staff errors if staff are selected
@@ -467,10 +472,27 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         editingSale.discounts.some((d: SaleDiscount) => d.discountRule?.type === 'BRING_OWN_PRODUCT')
       );
 
+      // Extract staff IDs and custom staff names for editing
+      const systemStaffIds: string[] = [];
+      const customStaffNames: string[] = [];
+
+      if (editingSale.staff) {
+        editingSale.staff.forEach(saleStaff => {
+          if (saleStaff.staffId && staff.some(s => s.id === saleStaff.staffId)) {
+            // System staff
+            systemStaffIds.push(saleStaff.staffId);
+          } else if (saleStaff.customName) {
+            // Custom staff
+            customStaffNames.push(saleStaff.customName);
+          }
+        });
+      }
+
       setFormData({
         customerId: editingSale.customerId || '',
         serviceIds: editingSale.services?.map(s => s.serviceId) || [],
-        staffIds: editingSale.staff?.map(s => s.staffId) || [],
+        staffIds: systemStaffIds,
+        customStaffNames: customStaffNames,
         saleDate: saleDate.toISOString().slice(0, 16),
         notes: editingSale.notes || '',
         paymentMethod: 'CASH', // Will be overridden by payments array
@@ -502,24 +524,27 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
       // Set selected staff (combine system staff with custom staff names if any)
       if (editingSale.staff) {
-        const staffSelections: (StaffOption | CustomStaff)[] = editingSale.staff.map(saleStaff => {
+        const staffSelections: (StaffOption | CustomStaff)[] = [];
+
+        editingSale.staff.forEach(saleStaff => {
           // First try to find in system staff
           const systemStaff = staff.find(s => s.id === saleStaff.staffId);
           if (systemStaff) {
-            return {
+            staffSelections.push({
               id: systemStaff.id,
               name: systemStaff.name,
               role: systemStaff.role
-            };
-          } else {
-            // If not found in system, treat as custom staff
-            return {
-              id: `custom-${saleStaff.staffId}`,
-              name: saleStaff.staffName,
+            });
+          } else if (saleStaff.customName) {
+            // If not found in system and has custom name, treat as custom staff
+            staffSelections.push({
+              id: `custom-${Date.now()}-${Math.random()}`,
+              name: saleStaff.customName,
               isCustom: true as const
-            };
+            });
           }
         });
+
         setSelectedStaff(staffSelections);
       }
 

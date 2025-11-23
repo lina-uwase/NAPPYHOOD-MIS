@@ -96,24 +96,32 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
   };
 
   const toggleService = (serviceId: string) => {
-    const isSelected = selectedServices.some(s => s.serviceId === serviceId);
+    try {
+      const isSelected = selectedServices.some(s => s.serviceId === serviceId);
 
-    if (isSelected) {
-      // Remove service
-      const newSelection = selectedServices.filter(s => s.serviceId !== serviceId);
-      onSelectionChange(newSelection);
-    } else {
-      // Add service with single price by default
-      const newSelection = [...selectedServices, { serviceId, isCombined: false }];
-      onSelectionChange(newSelection);
+      if (isSelected) {
+        // Remove service
+        const newSelection = selectedServices.filter(s => s.serviceId !== serviceId);
+        onSelectionChange(newSelection);
+      } else {
+        // Add service with single price by default
+        const newSelection = [...selectedServices, { serviceId, isCombined: false }];
+        onSelectionChange(newSelection);
+      }
+    } catch (error) {
+      console.error('Error in toggleService:', error);
     }
   };
 
   const toggleCombination = (serviceId: string, isCombined: boolean) => {
-    const newSelection = selectedServices.map(s =>
-      s.serviceId === serviceId ? { ...s, isCombined } : s
-    );
-    onSelectionChange(newSelection);
+    try {
+      const newSelection = selectedServices.map(s =>
+        s.serviceId === serviceId ? { ...s, isCombined } : s
+      );
+      onSelectionChange(newSelection);
+    } catch (error) {
+      console.error('Error in toggleCombination:', error);
+    }
   };
 
   const getSelectedServiceDetails = () => {
@@ -205,6 +213,7 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
                 return (
                   <div key={service.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0">
                     <button
+                      type="button"
                       onClick={() => toggleService(service.id)}
                       className="w-full flex items-center justify-between text-left"
                     >
@@ -244,6 +253,7 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
             Object.entries(servicesByCategory).map(([category, categoryServices]) => (
               <div key={category} className="border-b border-gray-100 last:border-0">
                 <button
+                  type="button"
                   onClick={() => toggleCategory(category)}
                   className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left font-medium text-gray-700"
                 >
@@ -268,6 +278,7 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
                       return (
                         <div key={service.id} className="px-6 py-3 hover:bg-gray-50">
                           <button
+                            type="button"
                             onClick={() => toggleService(service.id)}
                             className="w-full flex items-center justify-between text-left"
                           >

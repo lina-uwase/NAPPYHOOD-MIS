@@ -27,6 +27,18 @@ export interface SalePayment {
   createdAt: string;
 }
 
+export interface DiscountRule {
+  id: string;
+  type: string;
+  description?: string;
+}
+
+export interface SaleDiscount {
+  id: string;
+  discountAmount: number;
+  discountRule?: DiscountRule;
+}
+
 export interface Sale {
   id: string;
   customerId: string;
@@ -39,6 +51,7 @@ export interface Sale {
   subtotal: number;
   discountAmount: number;
   discountType?: string;
+  discounts?: SaleDiscount[];
   finalAmount: number;
   loyaltyPointsEarned: number;
   notes?: string;

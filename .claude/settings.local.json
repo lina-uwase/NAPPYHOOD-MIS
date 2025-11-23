@@ -184,7 +184,9 @@
       "WebFetch(domain:localhost)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_8sQc5D/**)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_D0KxBa/**)",
-      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_INJFmo/**)"
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_INJFmo/**)",
+      "mcp__ide__getDiagnostics",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_ckxngq/**)"
     ],
     "deny": [],
     "ask": []

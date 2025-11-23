@@ -25,6 +25,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       serviceIds, // Optional: Array<string> (frontend simplified payload)
       serviceShampooOptions, // Object mapping serviceId to shampoo preference
       staffIds, // Array of staff IDs
+      customStaffNames, // Array of custom staff names
       notes,
       paymentMethod = 'CASH', // Legacy single payment method
       payments, // New: Array of payment methods with amounts
@@ -210,13 +211,25 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         }))
       });
 
-      // Create sale staff relationships
+      // Create sale staff relationships for system staff
       if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
         await tx.saleStaff.createMany({
           data: staffIds.map((staffId: string) => ({
             saleId: sale.id,
             staffId
           }))
+        });
+      }
+
+      // Create sale staff relationships for custom staff names
+      if (customStaffNames && Array.isArray(customStaffNames) && customStaffNames.length > 0) {
+        await tx.saleStaff.createMany({
+          data: customStaffNames
+            .filter((customName: string | null) => customName != null && customName.trim().length > 0)
+            .map((customName: string) => ({
+              saleId: sale.id,
+              customName: customName.trim()
+            }))
         });
       }
 
@@ -577,7 +590,7 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
 export const updateSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { services, serviceIds, staffIds, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
+    const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
 
     console.log('🔄 UPDATE SALE REQUEST:', {
       saleId: id,
@@ -722,11 +735,27 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
 
-      // Update staff if provided
-      if (Array.isArray(staffIds)) {
+      // Update staff if provided (handle both system staff and custom staff)
+      if (Array.isArray(staffIds) || Array.isArray(customStaffNames)) {
         await tx.saleStaff.deleteMany({ where: { saleId: id } });
-        if (staffIds.length > 0) {
-          await tx.saleStaff.createMany({ data: staffIds.map((sid: string) => ({ saleId: id, staffId: sid })) });
+
+        // Add system staff
+        if (Array.isArray(staffIds) && staffIds.length > 0) {
+          await tx.saleStaff.createMany({
+            data: staffIds.map((sid: string) => ({ saleId: id, staffId: sid }))
+          });
+        }
+
+        // Add custom staff names
+        if (Array.isArray(customStaffNames) && customStaffNames.length > 0) {
+          await tx.saleStaff.createMany({
+            data: customStaffNames
+              .filter((customName: string | null) => customName != null && customName.trim().length > 0)
+              .map((customName: string) => ({
+                saleId: id,
+                customName: customName.trim()
+              }))
+          });
         }
       }
 

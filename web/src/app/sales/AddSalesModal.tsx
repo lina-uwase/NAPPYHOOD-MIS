@@ -1,12 +1,12 @@
 "use client"
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search, User, Scissors, Users, Calendar } from 'lucide-react';
-import { Sale, CreateSaleDto, UpdateSaleDto } from '../../services/salesService';
+import { Sale, CreateSaleDto, UpdateSaleDto, SaleDiscount } from '../../services/salesService';
 import customersService, { Customer } from '../../services/customersService';
 import servicesService, { Service } from '../../services/servicesService';
 import staffService, { Staff } from '../../services/staffService';
-import MultiSelect from '../../components/MultiSelect';
 import CategorizedServiceSelect, { SelectedServiceWithCombo } from '../../components/CategorizedServiceSelect';
+import CustomStaffSelect, { StaffOption, CustomStaff } from '../../components/CustomStaffSelect';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -45,16 +45,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
   const [selectedServices, setSelectedServices] = useState<SelectedServiceWithCombo[]>([]);
+  const [selectedStaff, setSelectedStaff] = useState<(StaffOption | CustomStaff)[]>([]);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [serviceSearch, setServiceSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
-  const [showStaffDropdown, setShowStaffDropdown] = useState(false);
-  const [staffSearch, setStaffSearch] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -98,8 +95,6 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
         setShowCustomerDropdown(false);
-        setShowServiceDropdown(false);
-        setShowStaffDropdown(false);
       }
     };
 
@@ -159,60 +154,51 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     }
   };
 
-  const handleServiceToggle = (serviceId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      serviceIds: prev.serviceIds.includes(serviceId)
-        ? prev.serviceIds.filter(id => id !== serviceId)
-        : [...prev.serviceIds, serviceId]
-    }));
-  };
-
-  const handleStaffToggle = (staffId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      staffIds: prev.staffIds.includes(staffId)
-        ? prev.staffIds.filter(id => id !== staffId)
-        : [...prev.staffIds, staffId]
-    }));
-  };
 
   const handleServiceSelectionChange = (selectedServicesData: SelectedServiceWithCombo[]) => {
-    // Update the selectedServices state for CategorizedServiceSelect
-    setSelectedServices(selectedServicesData);
+    try {
+      // Update the selectedServices state for CategorizedServiceSelect
+      setSelectedServices(selectedServicesData);
 
-    // Extract service IDs for formData compatibility
-    const serviceIds = selectedServicesData.map(s => s.serviceId);
-    setFormData(prev => ({
-      ...prev,
-      serviceIds
-    }));
+      // Extract service IDs for formData compatibility
+      const serviceIds = selectedServicesData.map(s => s.serviceId);
+      setFormData(prev => ({
+        ...prev,
+        serviceIds
+      }));
 
-    // Clear service errors if services are selected
-    if (serviceIds.length > 0 && errors.serviceIds) {
-      setErrors(prev => ({ ...prev, serviceIds: '' }));
-    }
+      // Clear service errors if services are selected
+      if (serviceIds.length > 0 && errors.serviceIds) {
+        setErrors(prev => ({ ...prev, serviceIds: '' }));
+      }
 
-    // Clean up shampoo options for removed services
-    setServiceShampooOptions(prev => {
-      const newOptions = { ...prev };
-      Object.keys(newOptions).forEach(serviceId => {
-        if (!serviceIds.includes(serviceId)) {
-          delete newOptions[serviceId];
-        }
+      // Clean up shampoo options for removed services
+      setServiceShampooOptions(prev => {
+        const newOptions = { ...prev };
+        Object.keys(newOptions).forEach(serviceId => {
+          if (!serviceIds.includes(serviceId)) {
+            delete newOptions[serviceId];
+          }
+        });
+        return newOptions;
       });
-      return newOptions;
-    });
+    } catch (error) {
+      console.error('Error in handleServiceSelectionChange:', error);
+    }
   };
 
-  const handleStaffSelectionChange = (staffIds: string[]) => {
+  const handleStaffSelectionChange = (staffList: (StaffOption | CustomStaff)[]) => {
+    setSelectedStaff(staffList);
+
+    // Extract staff IDs for form data (only system staff have real IDs)
+    const staffIds = staffList.filter(s => !('isCustom' in s)).map(s => s.id);
     setFormData(prev => ({
       ...prev,
       staffIds
     }));
 
     // Clear staff errors if staff are selected
-    if (staffIds.length > 0 && errors.staffIds) {
+    if (staffList.length > 0 && errors.staffIds) {
       setErrors(prev => ({ ...prev, staffIds: '' }));
     }
   };
@@ -235,7 +221,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       newErrors.serviceIds = 'Please select at least one service';
     }
 
-    if (formData.staffIds.length === 0) {
+    if (selectedStaff.length === 0) {
       newErrors.staffIds = 'Please select at least one staff member';
     }
 
@@ -270,11 +256,18 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         return;
       }
 
+      // Prepare staff data for submission
+      const submitStaffData = {
+        staffIds: selectedStaff.filter(s => !('isCustom' in s)).map(s => s.id),
+        customStaffNames: selectedStaff.filter(s => 'isCustom' in s && s.isCustom).map(s => s.name)
+      };
+
       const submitData = {
         customerId: formData.customerId,
         serviceIds: formData.serviceIds,
         serviceShampooOptions: serviceShampooOptions,
-        staffIds: formData.staffIds,
+        staffIds: submitStaffData.staffIds,
+        customStaffNames: submitStaffData.customStaffNames,
         saleDate: formData.saleDate,
         notes: formData.notes.trim() || undefined,
         ownShampooDiscount: formData.bringOwnProduct,
@@ -300,95 +293,120 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     customer.phone.includes(customerSearch)
   );
 
-  const filteredServices = services.filter(service =>
-    service.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||
-    service.category.toLowerCase().includes(serviceSearch.toLowerCase())
-  );
-
-  const filteredStaff = staff.filter(member =>
-    member.name.toLowerCase().includes(staffSearch.toLowerCase())
-  );
-
-  // Prepare data for MultiSelect components
-  const serviceOptions = services.map(service => ({
-    id: service.id,
-    name: service.name,
-    subtitle: service.category,
-    value: `${Number(service.singlePrice).toLocaleString()} RWF`
-  }));
-
-  const staffOptions = staff.map(member => ({
+  const staffOptions: StaffOption[] = staff.map(member => ({
     id: member.id,
     name: member.name,
-    subtitle: member.role
+    role: member.role
   }));
 
   const selectedCustomer = customers.find(c => c.id === formData.customerId);
-  // Get detailed service information for selected services
-  const getSelectedServicesDetails = () => {
+
+  // Memoize selected services details to prevent infinite re-renders
+  const selectedServicesDetails = useMemo(() => {
     return selectedServices.map(selected => {
       const service = services.find(s => s.id === selected.serviceId);
       return service ? { ...service, isCombined: selected.isCombined } : null;
     }).filter((service): service is Service & { isCombined: boolean } => service !== null);
-  };
-
-  const selectedServicesDetails = getSelectedServicesDetails();
-  const selectedStaff = staff.filter(s => formData.staffIds.includes(s.id));
+  }, [selectedServices, services]);
 
   const calculateTotals = () => {
-    let subtotal = 0;
+    try {
+      let subtotal = 0;
 
-    // Calculate service costs with individual shampoo options
-    selectedServicesDetails.forEach(service => {
-      const hasShampooForThisService = serviceShampooOptions[service.id] || false;
+      // Calculate service costs with individual shampoo options
+      selectedServicesDetails.forEach(service => {
+        const hasShampooForThisService = serviceShampooOptions[service.id] || false;
 
-      if (hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice) {
-        // Use combined price if shampoo is added for this service and service has combined pricing
-        subtotal += Number(service.combinedPrice);
-      } else {
-        // Use single price
-        subtotal += Number(service.singlePrice);
+        if (hasShampooForThisService && service.combinedPrice && service.combinedPrice !== service.singlePrice) {
+          // Use combined price if shampoo is added for this service and service has combined pricing
+          subtotal += Number(service.combinedPrice) || 0;
+        } else {
+          // Use single price
+          subtotal += Number(service.singlePrice) || 0;
+        }
+      });
+
+      // When editing, preserve original discount structure
+      if (editingSale) {
+        const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
+
+        // Check if original sale had specific discounts and preserve them
+        let birthdayDiscount = 0;
+        let sixthVisitDiscount = 0;
+
+        // Check original discounts to see what was applied
+        if (editingSale.discounts && Array.isArray(editingSale.discounts)) {
+          // Check for sixth visit discount
+          const originalSixthVisit = editingSale.discounts.find((d: SaleDiscount) =>
+            d.discountRule?.type === 'SIXTH_VISIT'
+          );
+          if (originalSixthVisit) {
+            sixthVisitDiscount = Math.round(subtotal * 0.2);
+          }
+
+          // Check for birthday discount
+          const originalBirthdayDiscount = editingSale.discounts.find((d: SaleDiscount) =>
+            d.discountRule?.type === 'BIRTHDAY_MONTH'
+          );
+          if (originalBirthdayDiscount) {
+            birthdayDiscount = Math.round(subtotal * 0.2);
+          }
+        }
+
+        // If no detailed discount data, fall back to original field checks
+        if (!editingSale.discounts || editingSale.discounts.length === 0) {
+          if (editingSale.birthMonthDiscount) {
+            birthdayDiscount = Math.round(subtotal * 0.2);
+          }
+
+          // Calculate sixth visit from remaining discount amount
+          const originalTotalDiscount = Number(editingSale.discountAmount || 0);
+          const originalOwnProductDiscount = editingSale.ownShampooDiscount ? 1000 : 0;
+          const originalManualDiscount = Number(editingSale.discounts?.find((d: SaleDiscount) => d.discountRule?.type === 'MANUAL_DISCOUNT')?.discountAmount || 0);
+          const originalBirthdayDiscount = editingSale.birthMonthDiscount ? Math.round(Number(editingSale.subtotal || subtotal) * 0.2) : 0;
+
+          const remainingDiscount = originalTotalDiscount - originalOwnProductDiscount - originalBirthdayDiscount - originalManualDiscount;
+          if (remainingDiscount > 0) {
+            sixthVisitDiscount = Math.round(subtotal * 0.2);
+          }
+        }
+
+        // Manual discount is always editable
+        const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+
+        const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
+        const finalAmount = Math.max(0, subtotal - totalDiscounts);
+
+        return {
+          subtotal,
+          ownProductDiscount,
+          birthdayDiscount,
+          sixthVisitDiscount,
+          manualDiscount,
+          finalAmount
+        };
       }
-    });
 
-    // When editing, allow discount modifications while preserving current form state
-    if (editingSale) {
-      // For editing mode, we still want to allow discount changes
-      // But we need to preserve existing eligibility from the original sale
+      // For new sales, calculate discounts based on eligibility
       const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
 
-      // Check if original sale had automatic discounts - preserve them unless user explicitly changes
+      // Automatic discounts based on eligibility
       let birthdayDiscount = 0;
       let sixthVisitDiscount = 0;
 
-      // Use discountEligibility if available (user might have refreshed), otherwise infer from original sale
       if (discountEligibility) {
-        // User can toggle these discounts even when editing
+        // Birthday discount (20%)
         if (discountEligibility.birthdayDiscountAvailable) {
           birthdayDiscount = Math.round(subtotal * 0.2);
         }
+
+        // 6th visit discount (20%)
         if (discountEligibility.sixthVisitEligible) {
           sixthVisitDiscount = Math.round(subtotal * 0.2);
         }
-      } else {
-        // Fallback: preserve original automatic discounts if no new eligibility data
-        if (editingSale.birthMonthDiscount) {
-          birthdayDiscount = Math.round(subtotal * 0.2);
-        }
-
-        // Check if original sale likely had sixth visit discount
-        const originalTotalDiscount = Number(editingSale.discountAmount || 0);
-        const originalOwnProductDiscount = editingSale.ownShampooDiscount ? 1000 : 0;
-        const originalManualDiscount = editingSale.discounts?.find(d => d.discountRule?.type === 'MANUAL_DISCOUNT')?.discountAmount || 0;
-        const originalBirthdayDiscount = editingSale.birthMonthDiscount ? Math.round(Number(editingSale.subtotal || subtotal) * 0.2) : 0;
-
-        const remainingDiscount = originalTotalDiscount - originalOwnProductDiscount - originalBirthdayDiscount - Number(originalManualDiscount);
-        if (remainingDiscount > 0) {
-          sixthVisitDiscount = Math.round(subtotal * 0.2); // Recalculate based on new subtotal
-        }
       }
 
-      // Manual discount is always editable
+      // Manual discount
       const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
 
       const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
@@ -402,41 +420,17 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         manualDiscount,
         finalAmount
       };
+    } catch (error) {
+      console.error('Error in calculateTotals:', error);
+      return {
+        subtotal: 0,
+        ownProductDiscount: 0,
+        birthdayDiscount: 0,
+        sixthVisitDiscount: 0,
+        manualDiscount: 0,
+        finalAmount: 0
+      };
     }
-
-    // For new sales, calculate discounts based on eligibility
-    const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
-
-    // Automatic discounts based on eligibility
-    let birthdayDiscount = 0;
-    let sixthVisitDiscount = 0;
-
-    if (discountEligibility) {
-      // Birthday discount (20%)
-      if (discountEligibility.birthdayDiscountAvailable) {
-        birthdayDiscount = Math.round(subtotal * 0.2);
-      }
-
-      // 6th visit discount (20%)
-      if (discountEligibility.sixthVisitEligible) {
-        sixthVisitDiscount = Math.round(subtotal * 0.2);
-      }
-    }
-
-    // Manual discount
-    const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
-
-    const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
-    const finalAmount = Math.max(0, subtotal - totalDiscounts);
-
-    return {
-      subtotal,
-      ownProductDiscount,
-      birthdayDiscount,
-      sixthVisitDiscount,
-      manualDiscount,
-      finalAmount
-    };
   };
 
   const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, manualDiscount, finalAmount } = calculateTotals();
@@ -455,14 +449,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
       if (editingSale.discounts && Array.isArray(editingSale.discounts)) {
         // Look for manual discounts with type 'MANUAL_DISCOUNT'
-        const manualDiscount = editingSale.discounts.find(discount =>
+        const manualDiscount = editingSale.discounts.find((discount: SaleDiscount) =>
           discount.discountRule && discount.discountRule.type === 'MANUAL_DISCOUNT'
         );
 
         if (manualDiscount) {
           manualDiscountAmount = Number(manualDiscount.discountAmount || 0);
           // Use the description field which contains the user's custom reason
-          manualDiscountReason = manualDiscount.discountRule.description || '';
+          manualDiscountReason = manualDiscount.discountRule?.description || '';
           hasManualDiscount = true;
         }
       }
@@ -470,7 +464,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       // Check for "bring own product" discount
       const bringOwnProduct = editingSale.ownShampooDiscount || (
         editingSale.discounts &&
-        editingSale.discounts.some(d => d.discountRule?.type === 'BRING_OWN_PRODUCT')
+        editingSale.discounts.some((d: SaleDiscount) => d.discountRule?.type === 'BRING_OWN_PRODUCT')
       );
 
       setFormData({
@@ -480,7 +474,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         saleDate: saleDate.toISOString().slice(0, 16),
         notes: editingSale.notes || '',
         paymentMethod: 'CASH', // Will be overridden by payments array
-        bringOwnProduct: bringOwnProduct,
+        bringOwnProduct: Boolean(bringOwnProduct),
         addShampoo: false, // TODO: Add this to sale model if needed
         manualDiscountAmount: manualDiscountAmount,
         manualDiscountReason: manualDiscountReason,
@@ -504,6 +498,29 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           shampooOptions[s.serviceId] = s.isCombined || false;
         });
         setServiceShampooOptions(shampooOptions);
+      }
+
+      // Set selected staff (combine system staff with custom staff names if any)
+      if (editingSale.staff) {
+        const staffSelections: (StaffOption | CustomStaff)[] = editingSale.staff.map(saleStaff => {
+          // First try to find in system staff
+          const systemStaff = staff.find(s => s.id === saleStaff.staffId);
+          if (systemStaff) {
+            return {
+              id: systemStaff.id,
+              name: systemStaff.name,
+              role: systemStaff.role
+            };
+          } else {
+            // If not found in system, treat as custom staff
+            return {
+              id: `custom-${saleStaff.staffId}`,
+              name: saleStaff.staffName,
+              isCustom: true as const
+            };
+          }
+        });
+        setSelectedStaff(staffSelections);
       }
 
       // Set payments - use actual payments array from backend if available
@@ -767,7 +784,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <h4 className="text-sm font-medium text-blue-900 mb-2">Applied Discounts:</h4>
                   <div className="space-y-1">
-                    {editingSale.discounts.map((discount, index) => (
+                    {editingSale.discounts.map((discount: SaleDiscount, index: number) => (
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-blue-800">
                           {discount.discountRule?.type === 'MANUAL_DISCOUNT' ? 'Manual Discount' :
@@ -918,9 +935,9 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <Users className="inline h-4 w-4 mr-1" />
                   Select Staff *
                 </label>
-                <MultiSelect
+                <CustomStaffSelect
                   options={staffOptions}
-                  selectedIds={formData.staffIds}
+                  selectedStaff={selectedStaff}
                   onSelectionChange={handleStaffSelectionChange}
                   placeholder="Select staff..."
                   searchPlaceholder="Search staff by name..."

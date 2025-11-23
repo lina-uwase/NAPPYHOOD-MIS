@@ -116,13 +116,14 @@ model SaleService {
 }
 
 model SaleStaff {
-  id        String   @id @default(cuid())
-  saleId    String
-  staffId   String
-  serviceId String?
-  createdAt DateTime @default(now())
-  sale      Sale     @relation(fields: [saleId], references: [id])
-  staff     User     @relation(fields: [staffId], references: [id])
+  id         String   @id @default(cuid())
+  saleId     String
+  staffId    String?
+  customName String?
+  serviceId  String?
+  createdAt  DateTime @default(now())
+  sale       Sale     @relation(fields: [saleId], references: [id])
+  staff      User?    @relation(fields: [staffId], references: [id])
 
   @@map("sale_staff")
 }

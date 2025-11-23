@@ -76,7 +76,7 @@ const SalesPage: React.FC = () => {
           serviceCategory: saleService.service?.category || 'UNKNOWN'
         })) || [],
         staff: sale.staff?.map((saleStaff: any) => ({
-          staffName: saleStaff.staff?.name || 'Unknown Staff'
+          staffName: saleStaff.staff?.name || saleStaff.customName || 'Unknown Staff'
         })) || []
       })) : [];
 

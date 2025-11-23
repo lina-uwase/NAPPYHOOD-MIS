@@ -8,26 +8,36 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../utils/database");
 const authenticateToken = async (req, res, next) => {
     try {
+        console.log('🔐 Auth middleware - incoming request:', {
+            method: req.method,
+            path: req.path,
+            hasAuthHeader: !!req.headers['authorization']
+        });
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
         if (!token) {
+            console.log('❌ Auth middleware - no token provided');
             res.status(401).json({ error: 'Access token required' });
             return;
         }
         const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET);
+        console.log('✅ Auth middleware - token decoded successfully:', { userId: decoded.userId, role: decoded.role });
         // Verify user exists and is active
         const user = await database_1.prisma.user.findUnique({
             where: { id: decoded.userId },
             select: { id: true, phone: true, role: true, isActive: true }
         });
         if (!user || !user.isActive) {
+            console.log('❌ Auth middleware - user not found or inactive:', { userId: decoded.userId, userExists: !!user, isActive: user?.isActive });
             res.status(401).json({ error: 'Invalid or inactive user' });
             return;
         }
+        console.log('✅ Auth middleware - user authenticated successfully:', { userId: user.id, role: user.role });
         req.user = user;
         next();
     }
     catch (error) {
+        console.log('❌ Auth middleware - token verification failed:', error);
         res.status(403).json({ error: 'Invalid token' });
     }
 };

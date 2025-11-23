@@ -91,30 +91,6 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     fetchDiscountEligibility();
   }, [formData.customerId]);
 
-  useEffect(() => {
-    if (editingSale) {
-      setFormData({
-        customerId: editingSale.customerId,
-        serviceIds: editingSale.services.map(s => s.serviceId),
-        staffIds: editingSale.staff.map(s => s.staffId),
-        saleDate: new Date(editingSale.saleDate).toISOString().slice(0, 16),
-        notes: editingSale.notes || '',
-        paymentMethod: editingSale.paymentMethod || 'CASH',
-        bringOwnProduct: editingSale.ownShampooDiscount || false,
-        addShampoo: false,
-        manualDiscountAmount: editingSale.discountAmount || 0,
-        manualDiscountReason: '',
-        applyManualDiscount: (editingSale.discountAmount || 0) > 0
-      });
-
-      // Initialize shampoo options based on existing sale
-      const shampooOptions: Record<string, boolean> = {};
-      editingSale.services.forEach(s => {
-        shampooOptions[s.serviceId] = s.isCombined || false;
-      });
-      setServiceShampooOptions(shampooOptions);
-    }
-  }, [editingSale]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -308,6 +284,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         manualDiscountReason: formData.applyManualDiscount ? formData.manualDiscountReason : undefined
       };
 
+
       await onSubmit(submitData);
       onClose();
     } catch (error: any) {
@@ -374,7 +351,60 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       }
     });
 
-    // Own product discount
+    // When editing, allow discount modifications while preserving current form state
+    if (editingSale) {
+      // For editing mode, we still want to allow discount changes
+      // But we need to preserve existing eligibility from the original sale
+      const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
+
+      // Check if original sale had automatic discounts - preserve them unless user explicitly changes
+      let birthdayDiscount = 0;
+      let sixthVisitDiscount = 0;
+
+      // Use discountEligibility if available (user might have refreshed), otherwise infer from original sale
+      if (discountEligibility) {
+        // User can toggle these discounts even when editing
+        if (discountEligibility.birthdayDiscountAvailable) {
+          birthdayDiscount = Math.round(subtotal * 0.2);
+        }
+        if (discountEligibility.sixthVisitEligible) {
+          sixthVisitDiscount = Math.round(subtotal * 0.2);
+        }
+      } else {
+        // Fallback: preserve original automatic discounts if no new eligibility data
+        if (editingSale.birthMonthDiscount) {
+          birthdayDiscount = Math.round(subtotal * 0.2);
+        }
+
+        // Check if original sale likely had sixth visit discount
+        const originalTotalDiscount = Number(editingSale.discountAmount || 0);
+        const originalOwnProductDiscount = editingSale.ownShampooDiscount ? 1000 : 0;
+        const originalManualDiscount = editingSale.discounts?.find(d => d.discountRule?.type === 'MANUAL_DISCOUNT')?.discountAmount || 0;
+        const originalBirthdayDiscount = editingSale.birthMonthDiscount ? Math.round(Number(editingSale.subtotal || subtotal) * 0.2) : 0;
+
+        const remainingDiscount = originalTotalDiscount - originalOwnProductDiscount - originalBirthdayDiscount - Number(originalManualDiscount);
+        if (remainingDiscount > 0) {
+          sixthVisitDiscount = Math.round(subtotal * 0.2); // Recalculate based on new subtotal
+        }
+      }
+
+      // Manual discount is always editable
+      const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+
+      const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
+      const finalAmount = Math.max(0, subtotal - totalDiscounts);
+
+      return {
+        subtotal,
+        ownProductDiscount,
+        birthdayDiscount,
+        sixthVisitDiscount,
+        manualDiscount,
+        finalAmount
+      };
+    }
+
+    // For new sales, calculate discounts based on eligibility
     const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
 
     // Automatic discounts based on eligibility
@@ -418,6 +448,31 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       const saleDate = new Date(editingSale.saleDate);
       saleDate.setMinutes(saleDate.getMinutes() - saleDate.getTimezoneOffset());
 
+      // Extract manual discount from discounts array
+      let manualDiscountAmount = 0;
+      let manualDiscountReason = '';
+      let hasManualDiscount = false;
+
+      if (editingSale.discounts && Array.isArray(editingSale.discounts)) {
+        // Look for manual discounts with type 'MANUAL_DISCOUNT'
+        const manualDiscount = editingSale.discounts.find(discount =>
+          discount.discountRule && discount.discountRule.type === 'MANUAL_DISCOUNT'
+        );
+
+        if (manualDiscount) {
+          manualDiscountAmount = Number(manualDiscount.discountAmount || 0);
+          // Use the description field which contains the user's custom reason
+          manualDiscountReason = manualDiscount.discountRule.description || '';
+          hasManualDiscount = true;
+        }
+      }
+
+      // Check for "bring own product" discount
+      const bringOwnProduct = editingSale.ownShampooDiscount || (
+        editingSale.discounts &&
+        editingSale.discounts.some(d => d.discountRule?.type === 'BRING_OWN_PRODUCT')
+      );
+
       setFormData({
         customerId: editingSale.customerId || '',
         serviceIds: editingSale.services?.map(s => s.serviceId) || [],
@@ -425,11 +480,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         saleDate: saleDate.toISOString().slice(0, 16),
         notes: editingSale.notes || '',
         paymentMethod: 'CASH', // Will be overridden by payments array
-        bringOwnProduct: false, // TODO: Add this to sale model if needed
+        bringOwnProduct: bringOwnProduct,
         addShampoo: false, // TODO: Add this to sale model if needed
-        manualDiscountAmount: Number(editingSale.discountAmount || 0),
-        manualDiscountReason: editingSale.discountType || '',
-        applyManualDiscount: (editingSale.discountAmount || 0) > 0
+        manualDiscountAmount: manualDiscountAmount,
+        manualDiscountReason: manualDiscountReason,
+        applyManualDiscount: hasManualDiscount
       });
 
       // Set selected services
@@ -442,10 +497,24 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           addShampoo: ss.isCombined || false
         }));
         setSelectedServices(serviceSelections);
+
+        // Initialize shampoo options based on existing sale
+        const shampooOptions: Record<string, boolean> = {};
+        editingSale.services.forEach(s => {
+          shampooOptions[s.serviceId] = s.isCombined || false;
+        });
+        setServiceShampooOptions(shampooOptions);
       }
 
-      // Set payments - fallback to single payment since Sale doesn't have payments array
-      if (editingSale.paymentMethod && editingSale.finalAmount) {
+      // Set payments - use actual payments array from backend if available
+      if (editingSale.payments && Array.isArray(editingSale.payments) && editingSale.payments.length > 0) {
+        // Use the actual payments from the backend
+        setPayments(editingSale.payments.map(payment => ({
+          paymentMethod: payment.paymentMethod,
+          amount: Number(payment.amount)
+        })));
+      } else if (editingSale.paymentMethod && editingSale.finalAmount) {
+        // Fallback to single payment for backward compatibility
         setPayments([{
           paymentMethod: editingSale.paymentMethod as any,
           amount: Number(editingSale.finalAmount)
@@ -692,6 +761,30 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   </label>
                 </div>
               </div>
+
+              {/* Existing Discounts (when editing) */}
+              {editingSale && editingSale.discounts && editingSale.discounts.length > 0 && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h4 className="text-sm font-medium text-blue-900 mb-2">Applied Discounts:</h4>
+                  <div className="space-y-1">
+                    {editingSale.discounts.map((discount, index) => (
+                      <div key={index} className="flex justify-between text-sm">
+                        <span className="text-blue-800">
+                          {discount.discountRule?.type === 'MANUAL_DISCOUNT' ? 'Manual Discount' :
+                           discount.discountRule?.type === 'SIXTH_VISIT' ? 'Sixth Visit Discount' :
+                           discount.discountRule?.type === 'BRING_OWN_PRODUCT' ? 'Bring Own Product' :
+                           discount.discountRule?.type === 'BIRTHDAY_MONTH' ? 'Birthday Month Discount' :
+                           discount.discountRule?.description || discount.discountRule?.type}
+                          {discount.discountRule?.type === 'MANUAL_DISCOUNT' && discount.discountRule?.description &&
+                            ` (${discount.discountRule.description})`
+                          }
+                        </span>
+                        <span className="text-blue-900 font-medium">-{Number(discount.discountAmount || 0).toLocaleString()} RWF</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Manual Discount */}
               <div className="space-y-2">

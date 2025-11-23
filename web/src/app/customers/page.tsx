@@ -16,9 +16,12 @@ import {
 import customersService, { Customer, GetCustomersParams, CreateCustomerDto, UpdateCustomerDto } from '../../services/customersService';
 import AddCustomerModal from './AddCustomerModal';
 import { useTitle } from '../../contexts/TitleContext';
+import { useNotification } from '../../contexts/NotificationContext';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const CustomersPage: React.FC = () => {
   const { setTitle } = useTitle();
+  const { showSuccess, showError } = useNotification();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +34,9 @@ const CustomersPage: React.FC = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [provinces, setProvinces] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [deletingLoad, setDeletingLoad] = useState(false);
 
   const itemsPerPage = 12;
 
@@ -52,7 +58,6 @@ const CustomersPage: React.FC = () => {
       };
 
       const response = await customersService.getAll(params);
-      console.log('Customers API Response:', response); // Debug log
 
       // Handle the data structure from service (already transformed)
       const customersData = response.data || [];
@@ -63,6 +68,7 @@ const CustomersPage: React.FC = () => {
       setTotalPages(pagination?.totalPages || 1);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
+      showError('Failed to load customers. Please try again.');
       setCustomers([]);
     } finally {
       setLoading(false);
@@ -105,9 +111,11 @@ const CustomersPage: React.FC = () => {
     try {
       await customersService.create(customerData as CreateCustomerDto);
       setIsModalOpen(false);
+      showSuccess('Customer added successfully!');
       fetchCustomers();
     } catch (error) {
       console.error('Failed to add customer:', error);
+      showError('Failed to add customer. Please try again.');
       throw error;
     }
   };
@@ -119,30 +127,63 @@ const CustomersPage: React.FC = () => {
       await customersService.update(editingCustomer.id, customerData as UpdateCustomerDto);
       setIsModalOpen(false);
       setEditingCustomer(null);
+      showSuccess('Customer updated successfully!');
       fetchCustomers();
     } catch (error) {
       console.error('Failed to update customer:', error);
+      showError('Failed to update customer. Please try again.');
       throw error;
     }
   };
 
-  const handleDeleteCustomer = async (customerId: string) => {
-    if (!confirm('Are you sure you want to delete this customer?')) return;
+  const handleDeleteCustomer = async () => {
+    if (!customerToDelete) return;
 
     try {
-      await customersService.delete(customerId);
+      setDeletingLoad(true);
+      await customersService.delete(customerToDelete.id);
+      setShowDeleteModal(false);
+      setCustomerToDelete(null);
+      showSuccess('Customer deleted successfully!');
       fetchCustomers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete customer:', error);
+
+      // Handle the case where customer has sales records
+      if (error.response?.status === 400 && error.response?.data?.hasActiveRecords) {
+        setShowDeleteModal(false);
+        setCustomerToDelete(null);
+        showSuccess(
+          'Customer deactivated',
+          'Customer has sales history and was deactivated instead of deleted.'
+        );
+        fetchCustomers();
+      } else {
+        showError(
+          'Failed to delete customer',
+          error.response?.data?.error || error.message || 'Please try again.'
+        );
+      }
+    } finally {
+      setDeletingLoad(false);
     }
+  };
+
+  const confirmDelete = (customer: Customer) => {
+    setCustomerToDelete(customer);
+    setShowDeleteModal(true);
   };
 
   const handleToggleActive = async (customerId: string) => {
     try {
+      const customer = customers.find(c => c.id === customerId);
       await customersService.toggleActive(customerId);
+      const action = customer?.isActive ? 'deactivated' : 'activated';
+      showSuccess(`Customer ${action} successfully!`);
       fetchCustomers();
     } catch (error) {
       console.error('Failed to toggle customer status:', error);
+      showError('Failed to update customer status. Please try again.');
     }
   };
 
@@ -291,7 +332,7 @@ const CustomersPage: React.FC = () => {
                         {customer.isActive ? <UserCheck className="h-4 w-4" /> : <UserX className="h-4 w-4" />}
                       </button>
                       <button
-                        onClick={() => handleDeleteCustomer(customer.id)}
+                        onClick={() => confirmDelete(customer)}
                         className="p-2 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -396,6 +437,21 @@ const CustomersPage: React.FC = () => {
           editingCustomer={editingCustomer}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setCustomerToDelete(null);
+        }}
+        onConfirm={handleDeleteCustomer}
+        title="Delete Customer"
+        message={`Are you sure you want to delete ${customerToDelete?.fullName || customerToDelete?.name}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={deletingLoad}
+      />
     </div>
   );
 };

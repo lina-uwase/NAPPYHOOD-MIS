@@ -7,12 +7,15 @@ import { useTitle } from '../../contexts/TitleContext';
 import AddStaffModal from './AddStaffModal';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
+import { useNotification } from '../../contexts/NotificationContext';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import staffService, { Staff, CreateStaffDto, UpdateStaffDto } from '../../services/staffService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function StaffPage() {
   const { setTitle } = useTitle();
   const { addToast } = useToast();
+  const { showSuccess, showError } = useNotification();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
@@ -32,6 +35,9 @@ export default function StaffPage() {
   const [totalStaff, setTotalStaff] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
+  const [deletingLoad, setDeletingLoad] = useState(false);
 
   const addToastRef = React.useRef(addToast);
   addToastRef.current = addToast;
@@ -57,11 +63,7 @@ export default function StaffPage() {
       setStaff([]);
 
       if (showError) {
-        addToastRef.current({
-          type: 'error',
-          title: 'Error loading staff',
-          message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to load staff. Please check your permissions or try again later.'
-        });
+        showError('Failed to load staff. Please check your permissions or try again later.');
       }
     } finally {
       setLoading(false);
@@ -76,11 +78,7 @@ export default function StaffPage() {
     try {
       const response = await staffService.create(newStaff as CreateStaffDto);
       if (response.success) {
-        addToast({
-          type: 'success',
-          title: 'Staff member added successfully',
-          message: `${(newStaff as CreateStaffDto).name} has been added to the team. Login credentials have been sent via email.`
-        });
+        showSuccess(`${(newStaff as CreateStaffDto).name} has been added successfully!`);
         setShowAddModal(false);
         loadStaff();
       }
@@ -103,11 +101,7 @@ export default function StaffPage() {
         }
       }
 
-      addToast({
-        type: 'error',
-        title,
-        message
-      });
+      showError(message);
     }
   };
 
@@ -122,53 +116,42 @@ export default function StaffPage() {
     try {
       const response = await staffService.update(editingStaff.id, updatedStaff as UpdateStaffDto);
       if (response.success) {
-        addToast({
-          type: 'success',
-          title: 'Staff member updated successfully',
-          message: `${(updatedStaff as UpdateStaffDto).name || editingStaff.name} has been updated.`
-        });
+        showSuccess(`${(updatedStaff as UpdateStaffDto).name || editingStaff.name} has been updated successfully!`);
         setShowEditModal(false);
         setEditingStaff(null);
         loadStaff();
       }
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Error updating staff member',
-        message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update staff member. Please try again.'
-      });
+      showError('Failed to update staff member. Please try again.');
     }
   };
 
-  const handleDeleteStaff = async (id: string, name: string) => {
-    if (currentUser?.id === id) {
-      addToast({
-        type: 'error',
-        title: 'Cannot delete',
-        message: 'You cannot delete your own account.'
-      });
+  const handleDeleteStaff = async () => {
+    if (!staffToDelete) return;
+
+    try {
+      setDeletingLoad(true);
+      const response = await staffService.delete(staffToDelete.id);
+      if (response.success) {
+        showSuccess(`${staffToDelete.name} has been deleted successfully!`);
+        setShowDeleteModal(false);
+        setStaffToDelete(null);
+        loadStaff();
+      }
+    } catch (error) {
+      showError('Failed to delete staff member. Please try again.');
+    } finally {
+      setDeletingLoad(false);
+    }
+  };
+
+  const confirmDelete = (staffMember: Staff) => {
+    if (currentUser?.id === staffMember.id) {
+      showError('You cannot delete your own account.');
       return;
     }
-
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      try {
-        const response = await staffService.delete(id);
-        if (response.success) {
-          addToast({
-            type: 'success',
-            title: 'Staff member deleted successfully',
-            message: 'The staff member has been removed from the system.'
-          });
-          loadStaff();
-        }
-      } catch (error) {
-        addToast({
-          type: 'error',
-          title: 'Error deleting staff member',
-          message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete staff member. Please try again.'
-        });
-      }
-    }
+    setStaffToDelete(staffMember);
+    setShowDeleteModal(true);
   };
 
   const getRoleBadge = (role: string) => {
@@ -436,7 +419,7 @@ export default function StaffPage() {
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-3">
                       <button
-                        onClick={() => handleDeleteStaff(staffMember.id, staffMember.name)}
+                        onClick={() => confirmDelete(staffMember)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         title="Delete staff member"
                         disabled={currentUser?.id === staffMember.id}
@@ -493,6 +476,21 @@ export default function StaffPage() {
           editingStaff={editingStaff}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setStaffToDelete(null);
+        }}
+        onConfirm={handleDeleteStaff}
+        title="Delete Staff Member"
+        message={`Are you sure you want to delete "${staffToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={deletingLoad}
+      />
     </div>
   );
 }

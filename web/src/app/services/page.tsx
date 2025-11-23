@@ -6,11 +6,14 @@ import AddServiceModal from './AddServiceModal';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import servicesService, { Service, CreateServiceDto, UpdateServiceDto } from '../../services/servicesService';
 
 export default function ServicesPage() {
   const { setTitle } = useTitle();
   const { addToast } = useToast();
+  const { showSuccess, showError } = useNotification();
   const { user } = useAuth();
 
   const canManageServices = user?.role === 'ADMIN';
@@ -33,6 +36,9 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [totalServices, setTotalServices] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [deletingLoad, setDeletingLoad] = useState(false);
 
   const serviceCategories = [
     'HAIR_TREATMENTS',
@@ -75,11 +81,11 @@ export default function ServicesPage() {
         // Extract unique categories
         // const uniqueCategories = [...new Set(response.data.map(service => service.category))];
       } else {
-        addToast({ type: 'error', title: response.message || 'Failed to load services' });
+        showError(response.message || 'Failed to load services');
       }
     } catch (error) {
       console.error('Failed to load services:', error);
-      addToast({ type: 'error', title: 'Failed to load services' });
+      showError('Failed to load services. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -108,15 +114,15 @@ export default function ServicesPage() {
     try {
       const response = await servicesService.create(serviceData as CreateServiceDto);
       if (response.success) {
-        addToast({ type: 'success', title: 'Service added successfully' });
+        showSuccess('Service added successfully!');
         setShowAddModal(false);
         loadServices();
       } else {
-        addToast({ type: 'error', title: response.message || 'Failed to add service' });
+        showError(response.message || 'Failed to add service');
       }
     } catch (error) {
       console.error('Failed to add service:', error);
-      addToast({ type: 'error', title: 'Failed to add service' });
+      showError('Failed to add service. Please try again.');
     }
   };
 
@@ -126,34 +132,44 @@ export default function ServicesPage() {
     try {
       const response = await servicesService.update(editingService.id, serviceData as UpdateServiceDto);
       if (response.success) {
-        addToast({ type: 'success', title: 'Service updated successfully' });
+        showSuccess('Service updated successfully!');
         setShowEditModal(false);
         setEditingService(null);
         loadServices();
       } else {
-        addToast({ type: 'error', title: response.message || 'Failed to update service' });
+        showError(response.message || 'Failed to update service');
       }
     } catch (error) {
       console.error('Failed to update service:', error);
-      addToast({ type: 'error', title: 'Failed to update service' });
+      showError('Failed to update service. Please try again.');
     }
   };
 
-  const handleDeleteService = async (serviceId: string) => {
-    if (!confirm('Are you sure you want to delete this service?')) return;
+  const handleDeleteService = async () => {
+    if (!serviceToDelete) return;
 
     try {
-      const response = await servicesService.delete(serviceId);
+      setDeletingLoad(true);
+      const response = await servicesService.delete(serviceToDelete.id);
       if (response.success) {
-        addToast({ type: 'success', title: 'Service deleted successfully' });
+        showSuccess('Service deleted successfully!');
+        setShowDeleteModal(false);
+        setServiceToDelete(null);
         loadServices();
       } else {
-        addToast({ type: 'error', title: response.message || 'Failed to delete service' });
+        showError(response.message || 'Failed to delete service');
       }
     } catch (error) {
       console.error('Failed to delete service:', error);
-      addToast({ type: 'error', title: 'Failed to delete service' });
+      showError('Failed to delete service. Please try again.');
+    } finally {
+      setDeletingLoad(false);
     }
+  };
+
+  const confirmDelete = (service: Service) => {
+    setServiceToDelete(service);
+    setShowDeleteModal(true);
   };
 
   const openEditModal = (service: Service) => {
@@ -358,7 +374,7 @@ export default function ServicesPage() {
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
-                            onClick={() => handleDeleteService(service.id)}
+                            onClick={() => confirmDelete(service)}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -404,6 +420,21 @@ export default function ServicesPage() {
           editingService={editingService}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setServiceToDelete(null);
+        }}
+        onConfirm={handleDeleteService}
+        title="Delete Service"
+        message={`Are you sure you want to delete "${serviceToDelete?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={deletingLoad}
+      />
     </div>
   );
 }

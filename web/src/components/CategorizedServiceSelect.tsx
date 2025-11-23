@@ -63,7 +63,7 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
     );
   }, [services, searchTerm]);
 
-  // Group filtered services by category
+  // Group filtered services by category only when not searching
   const servicesByCategory = filteredServices.reduce((acc, service) => {
     if (!acc[service.category]) {
       acc[service.category] = [];
@@ -71,6 +71,9 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
     acc[service.category].push(service);
     return acc;
   }, {} as Record<string, ServiceOption[]>);
+
+  // When searching, show services directly without categories
+  const shouldShowDirectServices = searchTerm.trim().length > 0;
 
   const getCategoryDisplayName = (category: string) => {
     const categoryNames: Record<string, string> = {
@@ -193,68 +196,112 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
 
           {/* Services List */}
           <div className="max-h-80 overflow-y-auto">
-          {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
-            <div key={category} className="border-b border-gray-100 last:border-0">
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left font-medium text-gray-700"
-              >
-                <span>{getCategoryDisplayName(category)}</span>
-                <div className="flex items-center">
-                  <span className="text-sm text-gray-500 mr-2">
-                    {categoryServices.length} services
-                  </span>
-                  {expandedCategories.includes(category) ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </div>
-              </button>
+          {shouldShowDirectServices ? (
+            // Show services directly when searching
+            filteredServices.length > 0 ? (
+              filteredServices.map(service => {
+                const isSelected = selectedServices.some(s => s.serviceId === service.id);
 
-              {expandedCategories.includes(category) && (
-                <div>
-                  {categoryServices.map(service => {
-                    const isSelected = selectedServices.some(s => s.serviceId === service.id);
-                    const selectedService = selectedServices.find(s => s.serviceId === service.id);
+                return (
+                  <div key={service.id} className="px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                    <button
+                      onClick={() => toggleService(service.id)}
+                      className="w-full flex items-center justify-between text-left"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <div className={`w-4 h-4 border rounded mr-3 flex items-center justify-center ${
+                            isSelected
+                              ? 'bg-[#5A8621] border-[#5A8621]'
+                              : 'border-gray-300'
+                          }`}>
+                            {isSelected && (
+                              <Check className="h-3 w-3 text-white" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{service.name}</div>
+                            <div className="text-sm text-gray-500">
+                              {getCategoryDisplayName(service.category)} • Single: {formatPrice(service.singlePrice)}
+                              {service.combinedPrice && (
+                                <> • Combined: {formatPrice(service.combinedPrice)}</>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="px-4 py-8 text-center text-gray-500">
+                No services found matching "{searchTerm}"
+              </div>
+            )
+          ) : (
+            // Show categorized services when not searching
+            Object.entries(servicesByCategory).map(([category, categoryServices]) => (
+              <div key={category} className="border-b border-gray-100 last:border-0">
+                <button
+                  onClick={() => toggleCategory(category)}
+                  className="w-full px-4 py-3 bg-gray-50 hover:bg-gray-100 flex items-center justify-between text-left font-medium text-gray-700"
+                >
+                  <span>{getCategoryDisplayName(category)}</span>
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-500 mr-2">
+                      {categoryServices.length} services
+                    </span>
+                    {expandedCategories.includes(category) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </div>
+                </button>
 
-                    return (
-                      <div key={service.id} className="px-6 py-3 hover:bg-gray-50">
-                        <button
-                          onClick={() => toggleService(service.id)}
-                          className="w-full flex items-center justify-between text-left"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center">
-                              <div className={`w-4 h-4 border rounded mr-3 flex items-center justify-center ${
-                                isSelected
-                                  ? 'bg-[#5A8621] border-[#5A8621]'
-                                  : 'border-gray-300'
-                              }`}>
-                                {isSelected && (
-                                  <Check className="h-3 w-3 text-white" />
-                                )}
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900">{service.name}</div>
-                                <div className="text-sm text-gray-500">
-                                  Single: {formatPrice(service.singlePrice)}
-                                  {service.combinedPrice && (
-                                    <> • Combined: {formatPrice(service.combinedPrice)}</>
+                {expandedCategories.includes(category) && (
+                  <div>
+                    {categoryServices.map(service => {
+                      const isSelected = selectedServices.some(s => s.serviceId === service.id);
+
+                      return (
+                        <div key={service.id} className="px-6 py-3 hover:bg-gray-50">
+                          <button
+                            onClick={() => toggleService(service.id)}
+                            className="w-full flex items-center justify-between text-left"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <div className={`w-4 h-4 border rounded mr-3 flex items-center justify-center ${
+                                  isSelected
+                                    ? 'bg-[#5A8621] border-[#5A8621]'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {isSelected && (
+                                    <Check className="h-3 w-3 text-white" />
                                   )}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900">{service.name}</div>
+                                  <div className="text-sm text-gray-500">
+                                    Single: {formatPrice(service.singlePrice)}
+                                    {service.combinedPrice && (
+                                      <> • Combined: {formatPrice(service.combinedPrice)}</>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </button>
-
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
           </div>
         </div>
       )}

@@ -13,19 +13,29 @@ import salesService, { Sale, GetSalesParams, CreateSaleDto, UpdateSaleDto } from
 import customersService, { Customer } from '../../services/customersService';
 import AddSalesModal from './AddSalesModal';
 import { useTitle } from '../../contexts/TitleContext';
+import { useNotification } from '../../contexts/NotificationContext';
+import ConfirmationModal from '../../components/ConfirmationModal';
 
 const SalesPage: React.FC = () => {
   const { setTitle } = useTitle();
+  const { showSuccess, showError } = useNotification();
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerFilter, setCustomerFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  // Confirmation modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
+  const [deletingLoad, setDeletingLoad] = useState(false);
 
   const itemsPerPage = 10;
 
@@ -41,7 +51,8 @@ const SalesPage: React.FC = () => {
         limit: itemsPerPage,
         search: searchTerm || undefined,
         customerId: customerFilter || undefined,
-        startDate: dateFilter || undefined,
+        startDate: startDateFilter || undefined,
+        endDate: endDateFilter || undefined,
       };
 
       const response = await salesService.getAll(params);
@@ -88,7 +99,7 @@ const SalesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, customerFilter, dateFilter]);
+  }, [currentPage, itemsPerPage, searchTerm, customerFilter, startDateFilter, endDateFilter]);
 
   useEffect(() => {
     fetchSales();
@@ -110,8 +121,10 @@ const SalesPage: React.FC = () => {
       await salesService.create(saleData);
       setIsModalOpen(false);
       fetchSales();
+      showSuccess('Sale recorded successfully', 'The sale has been added to the system.');
     } catch (error: any) {
       console.error('Failed to add sale:', error);
+      showError('Failed to record sale', error.response?.data?.error || error.message || 'Please try again.');
       throw error;
     }
   };
@@ -124,21 +137,54 @@ const SalesPage: React.FC = () => {
       setIsModalOpen(false);
       setEditingSale(null);
       fetchSales();
+      showSuccess('Sale updated successfully', 'The sale has been updated in the system.');
     } catch (error: any) {
       console.error('Failed to update sale:', error);
+      showError('Failed to update sale', error.response?.data?.error || error.message || 'Please try again.');
       throw error;
     }
   };
 
-  const handleDeleteSale = async (saleId: string) => {
-    if (!confirm('Are you sure you want to delete this sale?')) return;
+  const handleEditClick = async (saleId: string) => {
+    try {
+      setLoadingEdit(true);
+      const response = await salesService.getById(saleId);
+      setEditingSale(response.data);
+      setIsModalOpen(true);
+    } catch (error: any) {
+      console.error('Failed to fetch sale details:', error);
+      showError('Failed to load sale details', error.response?.data?.error || error.message || 'Please try again.');
+    } finally {
+      setLoadingEdit(false);
+    }
+  };
+
+  const handleDeleteClick = (saleId: string) => {
+    setSaleToDelete(saleId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteSale = async () => {
+    if (!saleToDelete) return;
 
     try {
-      await salesService.delete(saleId);
+      setDeletingLoad(true);
+      await salesService.delete(saleToDelete);
       fetchSales();
-    } catch (error) {
+      setShowDeleteModal(false);
+      setSaleToDelete(null);
+      showSuccess('Sale deleted successfully', 'The sale has been removed from the system.');
+    } catch (error: any) {
       console.error('Failed to delete sale:', error);
+      showError('Failed to delete sale', error.response?.data?.error || error.message || 'Please try again.');
+    } finally {
+      setDeletingLoad(false);
     }
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setSaleToDelete(null);
   };
 
 
@@ -181,12 +227,12 @@ const SalesPage: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search sales..."
+                placeholder="Search by customer name, phone..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -212,18 +258,105 @@ const SalesPage: React.FC = () => {
               ))}
             </select>
 
-
             <input
               type="date"
-              value={dateFilter}
+              value={startDateFilter}
               onChange={(e) => {
-                setDateFilter(e.target.value);
+                setStartDateFilter(e.target.value);
                 setCurrentPage(1);
               }}
               className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
-              placeholder="Select date"
+              placeholder="Start date"
+              title="Start date"
+            />
+
+            <input
+              type="date"
+              value={endDateFilter}
+              onChange={(e) => {
+                setEndDateFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621]"
+              placeholder="End date"
+              title="End date"
             />
           </div>
+
+          {(searchTerm || customerFilter || startDateFilter || endDateFilter) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {searchTerm && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                  Search: "{searchTerm}"
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {customerFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                  Customer: {customers.find(c => c.id === customerFilter)?.fullName || customers.find(c => c.id === customerFilter)?.name}
+                  <button
+                    onClick={() => {
+                      setCustomerFilter('');
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 text-green-600 hover:text-green-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {startDateFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
+                  From: {new Date(startDateFilter).toLocaleDateString()}
+                  <button
+                    onClick={() => {
+                      setStartDateFilter('');
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 text-purple-600 hover:text-purple-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {endDateFilter && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800">
+                  To: {new Date(endDateFilter).toLocaleDateString()}
+                  <button
+                    onClick={() => {
+                      setEndDateFilter('');
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 text-purple-600 hover:text-purple-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {(searchTerm || customerFilter || startDateFilter || endDateFilter) && (
+                <button
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCustomerFilter('');
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                    setCurrentPage(1);
+                  }}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800 hover:bg-gray-200"
+                >
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -280,16 +413,14 @@ const SalesPage: React.FC = () => {
 
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => {
-                          setEditingSale(sale);
-                          setIsModalOpen(true);
-                        }}
-                        className="p-2 text-gray-400 hover:text-[#BCF099]"
+                        onClick={() => handleEditClick(sale.id)}
+                        disabled={loadingEdit}
+                        className="p-2 text-gray-400 hover:text-[#BCF099] disabled:opacity-50"
                       >
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteSale(sale.id)}
+                        onClick={() => handleDeleteClick(sale.id)}
                         className="p-2 text-gray-400 hover:text-red-600"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -412,6 +543,18 @@ const SalesPage: React.FC = () => {
           editingSale={editingSale}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={cancelDelete}
+        onConfirm={confirmDeleteSale}
+        title="Delete Sale"
+        message="Are you sure you want to delete this sale? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={deletingLoad}
+      />
     </div>
   );
 };

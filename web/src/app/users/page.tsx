@@ -6,12 +6,15 @@ import { useTitle } from '../../contexts/TitleContext';
 import AddUserModal from './AddUserModal';
 import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
+import { useNotification } from '../../contexts/NotificationContext';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import usersService, { User, CreateUserDto, UpdateUserDto } from '../../services/usersService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function UsersPage() {
   const { setTitle } = useTitle();
   const { addToast } = useToast();
+  const { showSuccess, showError } = useNotification();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
@@ -31,6 +34,9 @@ export default function UsersPage() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [hasError, setHasError] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deletingLoad, setDeletingLoad] = useState(false);
 
   const addToastRef = React.useRef(addToast);
   addToastRef.current = addToast;
@@ -59,11 +65,7 @@ export default function UsersPage() {
       setUsers([]);
       
       if (showError) {
-        addToastRef.current({
-          type: 'error',
-          title: 'Error loading users',
-          message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to load users. Please check your permissions or try again later.'
-        });
+        showError('Failed to load users. Please check your permissions or try again later.');
       }
     } finally {
       setLoading(false);
@@ -78,20 +80,12 @@ export default function UsersPage() {
     try {
       const response = await usersService.create(newUser as CreateUserDto);
       if (response.success) {
-        addToast({
-          type: 'success',
-          title: 'User added successfully',
-          message: `${(newUser as CreateUserDto).names} has been added to the system.`
-        });
+        showSuccess(`${(newUser as CreateUserDto).names} has been added successfully!`);
         setShowAddModal(false);
         loadUsers();
       }
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Error adding user',
-        message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to add user. Please try again.'
-      });
+      showError('Failed to add user. Please try again.');
     }
   };
 
@@ -106,53 +100,42 @@ export default function UsersPage() {
     try {
       const response = await usersService.update(editingUser.user_id, updatedUser as UpdateUserDto);
       if (response.success) {
-        addToast({
-          type: 'success',
-          title: 'User updated successfully',
-          message: `${(updatedUser as UpdateUserDto).names || editingUser.names} has been updated.`
-        });
+        showSuccess(`${(updatedUser as UpdateUserDto).names || editingUser.names} has been updated successfully!`);
         setShowEditModal(false);
         setEditingUser(null);
         loadUsers();
       }
     } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Error updating user',
-        message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to update user. Please try again.'
-      });
+      showError('Failed to update user. Please try again.');
     }
   };
 
-  const handleDeleteUser = async (id: number, name: string) => {
-    if (currentUser?.user_id === String(id)) {
-      addToast({
-        type: 'error',
-        title: 'Cannot delete',
-        message: 'You cannot delete your own account.'
-      });
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    try {
+      setDeletingLoad(true);
+      const response = await usersService.delete(userToDelete.user_id);
+      if (response.success) {
+        showSuccess(`${userToDelete.names} has been deleted successfully!`);
+        setShowDeleteModal(false);
+        setUserToDelete(null);
+        loadUsers();
+      }
+    } catch (error) {
+      showError('Failed to delete user. Please try again.');
+    } finally {
+      setDeletingLoad(false);
+    }
+  };
+
+  const confirmDelete = (user: User) => {
+    if (currentUser?.user_id === String(user.user_id)) {
+      showError('You cannot delete your own account.');
       return;
     }
-
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      try {
-        const response = await usersService.delete(id);
-        if (response.success) {
-          addToast({
-            type: 'success',
-            title: 'User deleted successfully',
-            message: 'The user has been removed from the system.'
-          });
-          loadUsers();
-        }
-      } catch (error) {
-        addToast({
-          type: 'error',
-          title: 'Error deleting user',
-          message: (error as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete user. Please try again.'
-        });
-      }
-    }
+    setUserToDelete(user);
+    setShowDeleteModal(true);
   };
 
 
@@ -338,8 +321,8 @@ export default function UsersPage() {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-3">
-                      <button 
-                        onClick={() => handleDeleteUser(user.user_id, user.names)}
+                      <button
+                        onClick={() => confirmDelete(user)}
                         className="p-2 text-gray-400 hover:text-red-600 transition-colors"
                         title="Delete user"
                         disabled={currentUser?.user_id === String(user.user_id)}
@@ -386,8 +369,8 @@ export default function UsersPage() {
       )}
 
       {showEditModal && editingUser && (
-        <AddUserModal 
-          isOpen={showEditModal} 
+        <AddUserModal
+          isOpen={showEditModal}
           onClose={() => {
             setShowEditModal(false);
             setEditingUser(null);
@@ -396,6 +379,21 @@ export default function UsersPage() {
           editingUser={editingUser}
         />
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setUserToDelete(null);
+        }}
+        onConfirm={handleDeleteUser}
+        title="Delete User"
+        message={`Are you sure you want to delete "${userToDelete?.names}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={deletingLoad}
+      />
     </div>
   );
 }

@@ -26,9 +26,12 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       serviceShampooOptions, // Object mapping serviceId to shampoo preference
       staffIds, // Array of staff IDs
       notes,
-      paymentMethod = 'CASH',
+      paymentMethod = 'CASH', // Legacy single payment method
+      payments, // New: Array of payment methods with amounts
       ownShampooDiscount = false,
-      addShampoo = false // Legacy global shampoo option
+      addShampoo = false, // Legacy global shampoo option
+      manualDiscountAmount = 0,
+      manualDiscountReason
     } = req.body;
 
     const normalizedServices: any[] = Array.isArray(services) && services.length > 0
@@ -118,8 +121,47 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
 
     // Calculate discounts
     const discounts = await calculateDiscounts(customer, normalizedServices, serviceDetails, totalAmount, ownShampooDiscount);
+
+    // Add manual discount if provided
+    if (manualDiscountAmount > 0 && manualDiscountReason) {
+      discounts.push({
+        type: 'MANUAL_DISCOUNT',
+        amount: Number(manualDiscountAmount),
+        description: manualDiscountReason
+      });
+    }
+
     const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
     const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
+
+    // Process payments - support both old single payment method and new multiple payments
+    let normalizedPayments: Array<{paymentMethod: string, amount: number}> = [];
+
+    if (Array.isArray(payments) && payments.length > 0) {
+      // Use new payments array
+      normalizedPayments = payments.map((p: any) => ({
+        paymentMethod: p.paymentMethod || 'CASH',
+        amount: Number(p.amount || 0)
+      }));
+
+      // Validate total payment amount matches final amount
+      const totalPaymentAmount = normalizedPayments.reduce((sum, p) => sum + p.amount, 0);
+      if (Math.abs(totalPaymentAmount - finalAmount) > 0.01) {
+        res.status(400).json({
+          error: `Payment amounts total (${totalPaymentAmount}) must equal final amount (${finalAmount})`
+        });
+        return;
+      }
+    } else {
+      // Fallback to single payment method for backward compatibility
+      normalizedPayments = [{
+        paymentMethod: paymentMethod || 'CASH',
+        amount: finalAmount
+      }];
+    }
+
+    // Determine primary payment method for legacy field
+    const primaryPaymentMethod = normalizedPayments[0]?.paymentMethod || paymentMethod;
 
     // Check if birth month discount was applied
     const birthMonthDiscount = discounts.some(d => d.type === 'BIRTHDAY_MONTH');
@@ -138,7 +180,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           finalAmount,
           loyaltyPointsEarned,
           notes,
-          paymentMethod: paymentMethod as any,
+          paymentMethod: primaryPaymentMethod as any,
           ownShampooDiscount,
           birthMonthDiscount,
           createdById: req.user!.id
@@ -156,6 +198,15 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           isChild: vs.isChild,
           isCombined: vs.isCombined,
           addShampoo: vs.addShampoo
+        }))
+      });
+
+      // Create sale payments
+      await tx.salePayment.createMany({
+        data: normalizedPayments.map(payment => ({
+          saleId: sale.id,
+          paymentMethod: payment.paymentMethod as any,
+          amount: payment.amount
         }))
       });
 
@@ -244,7 +295,8 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           include: {
             discountRule: true
           }
-        }
+        },
+        payments: true
       }
     });
 
@@ -339,7 +391,7 @@ async function calculateDiscounts(
 
 export const getAllSales = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { page = '1', limit = '10', customerId, staffId, startDate, endDate } = req.query;
+    const { page = '1', limit = '10', customerId, staffId, startDate, endDate, search } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
@@ -362,6 +414,16 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
           some: { staffId }
         };
       }
+    }
+
+    // Add search functionality for customer names
+    if (search) {
+      whereClause.customer = {
+        fullName: {
+          contains: search as string,
+          mode: 'insensitive'
+        }
+      };
     }
 
     if (startDate || endDate) {
@@ -433,7 +495,8 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
               id: true,
               name: true
             }
-          }
+          },
+          payments: true
         }
       }),
       prisma.sale.count({ where: whereClause })
@@ -491,7 +554,8 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
             id: true,
             name: true
           }
-        }
+        },
+        payments: true
       }
     });
 
@@ -513,7 +577,19 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
 export const updateSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { services, staffIds, notes, isCompleted } = req.body;
+    const { services, serviceIds, staffIds, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
+
+    console.log('🔄 UPDATE SALE REQUEST:', {
+      saleId: id,
+      services: services?.length || 0,
+      serviceIds: serviceIds?.length || 0,
+      staffIds: staffIds?.length || 0,
+      ownShampooDiscount,
+      manualDiscountAmount,
+      manualDiscountReason,
+      payments: payments?.length || 0,
+      requestBody: req.body
+    });
 
     const existingSale = await prisma.sale.findUnique({ where: { id } });
     if (!existingSale) {
@@ -522,20 +598,25 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
     }
 
     await prisma.$transaction(async (tx) => {
-      // Update services if provided
-      if (Array.isArray(services)) {
+      // Update services if provided (handle both serviceIds and services format)
+      const servicesToProcess = Array.isArray(services) ? services :
+        Array.isArray(serviceIds) ? serviceIds.map((id: string) => ({ serviceId: id, quantity: 1, isChild: false })) : null;
+
+      if (servicesToProcess) {
+        console.log('🔧 PROCESSING SERVICES:', { servicesToProcess });
         // Delete existing sale services and recalc totals
         await tx.saleService.deleteMany({ where: { saleId: id } });
 
-        if (services.length > 0) {
-          const serviceIds = services.map((s: any) => s.serviceId);
-          const serviceDetails = await tx.service.findMany({ where: { id: { in: serviceIds } } });
+        if (servicesToProcess.length > 0) {
+          const serviceIdList = servicesToProcess.map((s: any) => s.serviceId || s);
+          const serviceDetails = await tx.service.findMany({ where: { id: { in: serviceIdList } } });
 
           let totalAmount = 0;
           const saleServices: any[] = [];
 
-          for (const service of services) {
-            const detail = serviceDetails.find(s => s.id === service.serviceId);
+          for (const service of servicesToProcess) {
+            const serviceId = service.serviceId || service;
+            const detail = serviceDetails.find(s => s.id === serviceId);
             if (!detail) continue;
 
             const shouldAddShampoo = service.addShampoo || false;
@@ -559,7 +640,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
             totalAmount += lineTotal;
             saleServices.push({
               saleId: id,
-              serviceId: service.serviceId,
+              serviceId: serviceId,
               quantity: service.quantity || 1,
               unitPrice,
               totalPrice: lineTotal,
@@ -573,10 +654,39 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 
           // Recalculate discounts
           const customer = await tx.customer.findUnique({ where: { id: existingSale.customerId } });
-          const discounts = await calculateDiscounts(customer as any, services, serviceDetails as any[], totalAmount);
+          console.log('🔍 RECALCULATING DISCOUNTS:', {
+            customerId: customer?.id,
+            totalAmount,
+            ownShampooDiscount,
+            servicesCount: servicesToProcess.length
+          });
+          const discounts = await calculateDiscounts(customer as any, servicesToProcess, serviceDetails as any[], totalAmount, ownShampooDiscount);
+          console.log('💰 CALCULATED DISCOUNTS:', discounts);
+
+          // Add manual discount if provided
+          if (manualDiscountAmount > 0 && manualDiscountReason) {
+            discounts.push({
+              type: 'MANUAL_DISCOUNT',
+              amount: Number(manualDiscountAmount),
+              description: manualDiscountReason
+            });
+          }
+
           const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
           const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
           const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
+
+          // Check if birthday discount is applied
+          const birthMonthDiscount = discounts.some(d => d.type === 'BIRTHDAY_MONTH');
+
+          console.log('📊 UPDATING SALE TOTALS:', {
+            totalAmount,
+            totalDiscountAmount,
+            finalAmount,
+            loyaltyPointsEarned,
+            ownShampooDiscount,
+            birthMonthDiscount
+          });
 
           await tx.sale.update({
             where: { id },
@@ -584,7 +694,9 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
               totalAmount,
               discountAmount: totalDiscountAmount,
               finalAmount,
-              loyaltyPointsEarned
+              loyaltyPointsEarned,
+              ownShampooDiscount,
+              birthMonthDiscount
             }
           });
 
@@ -618,6 +730,19 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
 
+      // Update payments if provided
+      if (Array.isArray(payments)) {
+        await tx.salePayment.deleteMany({ where: { saleId: id } });
+        if (payments.length > 0) {
+          const normalizedPayments = payments.map((payment: any) => ({
+            saleId: id,
+            paymentMethod: payment.paymentMethod,
+            amount: Number(payment.amount)
+          }));
+          await tx.salePayment.createMany({ data: normalizedPayments });
+        }
+      }
+
       // Update basic fields
       const updateData: any = {};
       if (notes !== undefined) updateData.notes = notes;
@@ -633,7 +758,8 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         customer: true,
         services: { include: { service: true } },
         staff: { include: { staff: { select: { id: true, name: true } } } },
-        discounts: { include: { discountRule: true } }
+        discounts: { include: { discountRule: true } },
+        payments: true
       }
     });
 
@@ -657,6 +783,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
       await tx.saleDiscount.deleteMany({ where: { saleId: id } });
       await tx.saleStaff.deleteMany({ where: { saleId: id } });
       await tx.saleService.deleteMany({ where: { saleId: id } });
+      await tx.salePayment.deleteMany({ where: { saleId: id } });
       await tx.sale.delete({ where: { id } });
     });
 

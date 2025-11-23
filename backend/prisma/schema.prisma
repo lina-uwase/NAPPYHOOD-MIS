@@ -91,6 +91,7 @@ model Sale {
   discounts           SaleDiscount[]
   services            SaleService[]
   staff               SaleStaff[]
+  payments            SalePayment[]
   createdBy           User           @relation(fields: [createdById], references: [id])
   customer            Customer       @relation(fields: [customerId], references: [id])
 
@@ -168,6 +169,17 @@ model CustomerDiscount {
   @@map("customer_discounts")
 }
 
+model SalePayment {
+  id            String        @id @default(cuid())
+  saleId        String
+  paymentMethod PaymentMethod
+  amount        Decimal       @db.Decimal(10, 2)
+  createdAt     DateTime      @default(now())
+  sale          Sale          @relation(fields: [saleId], references: [id])
+
+  @@map("sale_payments")
+}
+
 enum Role {
   ADMIN
   MANAGER
@@ -195,6 +207,7 @@ enum DiscountType {
   LOYALTY_POINTS
   SERVICE_COMBO
   BRING_OWN_PRODUCT
+  MANUAL_DISCOUNT
 }
 
 enum PaymentMethod {

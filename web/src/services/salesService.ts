@@ -20,6 +20,13 @@ export interface SaleStaff {
   staffName: string;
 }
 
+export interface SalePayment {
+  id: string;
+  paymentMethod: string;
+  amount: number;
+  createdAt: string;
+}
+
 export interface Sale {
   id: string;
   customerId: string;
@@ -36,6 +43,7 @@ export interface Sale {
   loyaltyPointsEarned: number;
   notes?: string;
   paymentMethod?: string;
+  payments?: SalePayment[];
   ownShampooDiscount?: boolean;
   birthMonthDiscount?: boolean;
   isCompleted: boolean;

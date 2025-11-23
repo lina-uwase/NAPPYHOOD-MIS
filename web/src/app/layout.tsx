@@ -3,6 +3,7 @@ import './globals.css';
 import { TitleProvider } from '../contexts/TitleContext';
 import { ToastProvider } from '../components/Toast';
 import { AuthProvider } from '../contexts/AuthContext';
+import { NotificationProvider } from '../contexts/NotificationContext';
 import ClientLayout from '../components/ClientLayout';
 
 export const metadata = {
@@ -20,13 +21,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <AuthProvider>
-          <ToastProvider>
-            <TitleProvider>
-              <ClientLayout>
-                {children}
-              </ClientLayout>
-            </TitleProvider>
-          </ToastProvider>
+          <NotificationProvider>
+            <ToastProvider>
+              <TitleProvider>
+                <ClientLayout>
+                  {children}
+                </ClientLayout>
+              </TitleProvider>
+            </ToastProvider>
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>

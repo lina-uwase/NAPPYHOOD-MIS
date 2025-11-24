@@ -1,17 +1,27 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSalesByCustomer = exports.getSalesSummary = exports.completeSale = exports.deleteSale = exports.updateSale = exports.getSaleById = exports.getAllSales = exports.createSale = void 0;
+exports.getDailyPaymentSummary = exports.getSalesByCustomer = exports.getSalesSummary = exports.completeSale = exports.deleteSale = exports.updateSale = exports.getSaleById = exports.getAllSales = exports.createSale = void 0;
 const database_1 = require("../utils/database");
 const createSale = async (req, res) => {
     try {
+        console.log('🔍 DEBUGGING SALE CREATION - Full request body:', JSON.stringify(req.body, null, 2));
         const { customerId, services, // Array of SaleService
         serviceIds, // Optional: Array<string> (frontend simplified payload)
         serviceShampooOptions, // Object mapping serviceId to shampoo preference
         staffIds, // Array of staff IDs
+        customStaffNames, // Array of custom staff names
         notes, paymentMethod = 'CASH', // Legacy single payment method
         payments, // New: Array of payment methods with amounts
         ownShampooDiscount = false, addShampoo = false, // Legacy global shampoo option
         manualDiscountAmount = 0, manualDiscountReason } = req.body;
+        console.log('🔍 DEBUGGING STAFF DATA:', {
+            staffIds,
+            customStaffNames,
+            staffIdsType: typeof staffIds,
+            customStaffNamesType: typeof customStaffNames,
+            staffIdsLength: Array.isArray(staffIds) ? staffIds.length : 'not array',
+            customStaffNamesLength: Array.isArray(customStaffNames) ? customStaffNames.length : 'not array'
+        });
         const normalizedServices = Array.isArray(services) && services.length > 0
             ? services
             : Array.isArray(serviceIds) && serviceIds.length > 0
@@ -168,12 +178,23 @@ const createSale = async (req, res) => {
                     amount: payment.amount
                 }))
             });
-            // Create sale staff relationships
+            // Create sale staff relationships for system staff
             if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
                 await tx.saleStaff.createMany({
                     data: staffIds.map((staffId) => ({
                         saleId: sale.id,
                         staffId
+                    }))
+                });
+            }
+            // Create sale staff relationships for custom staff names
+            if (customStaffNames && Array.isArray(customStaffNames) && customStaffNames.length > 0) {
+                await tx.saleStaff.createMany({
+                    data: customStaffNames
+                        .filter((customName) => customName != null && customName.trim().length > 0)
+                        .map((customName) => ({
+                        saleId: sale.id,
+                        customName: customName.trim()
                     }))
                 });
             }
@@ -503,7 +524,7 @@ exports.getSaleById = getSaleById;
 const updateSale = async (req, res) => {
     try {
         const { id } = req.params;
-        const { services, serviceIds, staffIds, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
+        const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
         console.log('🔄 UPDATE SALE REQUEST:', {
             saleId: id,
             services: services?.length || 0,
@@ -633,11 +654,25 @@ const updateSale = async (req, res) => {
                     }
                 }
             }
-            // Update staff if provided
-            if (Array.isArray(staffIds)) {
+            // Update staff if provided (handle both system staff and custom staff)
+            if (Array.isArray(staffIds) || Array.isArray(customStaffNames)) {
                 await tx.saleStaff.deleteMany({ where: { saleId: id } });
-                if (staffIds.length > 0) {
-                    await tx.saleStaff.createMany({ data: staffIds.map((sid) => ({ saleId: id, staffId: sid })) });
+                // Add system staff
+                if (Array.isArray(staffIds) && staffIds.length > 0) {
+                    await tx.saleStaff.createMany({
+                        data: staffIds.map((sid) => ({ saleId: id, staffId: sid }))
+                    });
+                }
+                // Add custom staff names
+                if (Array.isArray(customStaffNames) && customStaffNames.length > 0) {
+                    await tx.saleStaff.createMany({
+                        data: customStaffNames
+                            .filter((customName) => customName != null && customName.trim().length > 0)
+                            .map((customName) => ({
+                            saleId: id,
+                            customName: customName.trim()
+                        }))
+                    });
                 }
             }
             // Update payments if provided
@@ -796,4 +831,73 @@ const getSalesByCustomer = async (req, res) => {
     }
 };
 exports.getSalesByCustomer = getSalesByCustomer;
+const getDailyPaymentSummary = async (req, res) => {
+    try {
+        const { date } = req.query;
+        // Use provided date or default to today
+        const targetDate = date ? new Date(date) : new Date();
+        const startOfDay = new Date(targetDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(targetDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        const whereClause = {
+            saleDate: {
+                gte: startOfDay,
+                lte: endOfDay
+            }
+        };
+        // If user is STAFF, only show their own sales
+        if (req.user?.role === 'STAFF') {
+            whereClause.staff = {
+                some: { staffId: req.user.id }
+            };
+        }
+        // Get all payments for the day grouped by payment method
+        const payments = await database_1.prisma.salePayment.findMany({
+            where: {
+                sale: whereClause
+            },
+            select: {
+                paymentMethod: true,
+                amount: true
+            }
+        });
+        // Group payments by method and calculate totals
+        const paymentSummary = payments.reduce((acc, payment) => {
+            const method = payment.paymentMethod;
+            if (!acc[method]) {
+                acc[method] = {
+                    method,
+                    total: 0,
+                    count: 0
+                };
+            }
+            acc[method].total += Number(payment.amount);
+            acc[method].count += 1;
+            return acc;
+        }, {});
+        // Convert to array and ensure all payment methods are represented
+        const allMethods = ['CASH', 'BANK_TRANSFER', 'MOMO'];
+        const summary = allMethods.map(method => ({
+            method,
+            total: paymentSummary[method]?.total || 0,
+            count: paymentSummary[method]?.count || 0
+        }));
+        // Calculate grand total
+        const grandTotal = summary.reduce((sum, item) => sum + item.total, 0);
+        res.json({
+            success: true,
+            data: {
+                date: targetDate.toISOString().split('T')[0],
+                summary,
+                grandTotal
+            }
+        });
+    }
+    catch (error) {
+        console.error('Get daily payment summary error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+exports.getDailyPaymentSummary = getDailyPaymentSummary;
 //# sourceMappingURL=salesController.js.map

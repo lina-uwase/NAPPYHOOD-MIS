@@ -228,6 +228,7 @@ const router = (0, express_1.Router)();
 router.get('/', auth_1.authenticateToken, salesController_1.getAllSales);
 router.post('/', auth_1.authenticateToken, salesController_1.createSale);
 router.get('/summary', auth_1.authenticateToken, salesController_1.getSalesSummary);
+router.get('/payment-summary', auth_1.authenticateToken, salesController_1.getDailyPaymentSummary);
 router.get('/customer/:customerId', auth_1.authenticateToken, salesController_1.getSalesByCustomer);
 /**
  * @swagger
@@ -259,6 +260,16 @@ router.get('/customer/:customerId', auth_1.authenticateToken, salesController_1.
  *       404:
  *         description: Sale not found
  */
+// DEBUG ENDPOINT - REMOVE AFTER TESTING (moved before /:id routes)
+router.post('/debug', auth_1.authenticateToken, (req, res) => {
+    console.log('=== CUSTOM STAFF DEBUG ===');
+    console.log('FULL BODY:', JSON.stringify(req.body, null, 2));
+    console.log('customStaffNames:', req.body.customStaffNames);
+    console.log('Type:', typeof req.body.customStaffNames);
+    console.log('Is Array:', Array.isArray(req.body.customStaffNames));
+    console.log('Length:', req.body.customStaffNames?.length);
+    res.json({ received: req.body });
+});
 router.get('/:id', auth_1.authenticateToken, salesController_1.getSaleById);
 router.put('/:id', auth_1.authenticateToken, salesController_1.updateSale);
 router.delete('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['ADMIN', 'MANAGER']), salesController_1.deleteSale);

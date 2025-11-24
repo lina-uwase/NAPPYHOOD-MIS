@@ -7,9 +7,13 @@ import {
   User,
   Star,
   Edit,
-  Trash2
+  Trash2,
+  Banknote,
+  CreditCard,
+  Smartphone,
+  DollarSign
 } from 'lucide-react';
-import salesService, { Sale, GetSalesParams, CreateSaleDto, UpdateSaleDto } from '../../services/salesService';
+import salesService, { Sale, GetSalesParams, CreateSaleDto, UpdateSaleDto, DailyPaymentSummary } from '../../services/salesService';
 import customersService, { Customer } from '../../services/customersService';
 import AddSalesModal from './AddSalesModal';
 import { useTitle } from '../../contexts/TitleContext';
@@ -36,6 +40,10 @@ const SalesPage: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<string | null>(null);
   const [deletingLoad, setDeletingLoad] = useState(false);
+
+  // Payment summary state
+  const [paymentSummary, setPaymentSummary] = useState<DailyPaymentSummary | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const itemsPerPage = 10;
 
@@ -101,11 +109,6 @@ const SalesPage: React.FC = () => {
     }
   }, [currentPage, itemsPerPage, searchTerm, customerFilter, startDateFilter, endDateFilter]);
 
-  useEffect(() => {
-    fetchSales();
-    fetchCustomers();
-  }, [fetchSales]);
-
   const fetchCustomers = async () => {
     try {
       const response = await customersService.getAll({ limit: 1000 });
@@ -116,11 +119,31 @@ const SalesPage: React.FC = () => {
     }
   };
 
+  const fetchPaymentSummary = useCallback(async () => {
+    try {
+      const response = await salesService.getDailyPaymentSummary(selectedDate);
+      setPaymentSummary(response.data);
+    } catch (error) {
+      console.error('Failed to fetch payment summary:', error);
+      setPaymentSummary(null);
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchSales();
+    fetchCustomers();
+  }, [fetchSales]);
+
+  useEffect(() => {
+    fetchPaymentSummary();
+  }, [fetchPaymentSummary]);
+
   const handleAddSale = async (saleData: CreateSaleDto) => {
     try {
       await salesService.create(saleData);
       setIsModalOpen(false);
       fetchSales();
+      fetchPaymentSummary(); // Refresh payment summary when a sale is added
       showSuccess('Sale recorded successfully', 'The sale has been added to the system.');
     } catch (error: any) {
       console.error('Failed to add sale:', error);
@@ -210,8 +233,22 @@ const SalesPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-4">
-        <div className="flex items-center justify-end">
+      {/* Date Selector and Record Sale Button */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Calendar className="h-4 w-4" />
+              <span>Payment Summary for:</span>
+            </div>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-transparent"
+            />
+          </div>
+
           <button
             onClick={() => {
               setEditingSale(null);
@@ -224,6 +261,81 @@ const SalesPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Payment Summary Cards */}
+      {paymentSummary && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {paymentSummary.summary.map((payment) => {
+            const getPaymentConfig = (method: string) => {
+              switch (method) {
+                case 'CASH':
+                  return {
+                    icon: <Banknote className="w-6 h-6 text-yellow-600" />,
+                    label: 'Cash Payments',
+                    bgColor: 'bg-yellow-100',
+                    textColor: 'text-yellow-600'
+                  };
+                case 'BANK_TRANSFER':
+                  return {
+                    icon: <CreditCard className="w-6 h-6 text-blue-600" />,
+                    label: 'Bank Transfer',
+                    bgColor: 'bg-blue-100',
+                    textColor: 'text-blue-600'
+                  };
+                case 'MOMO':
+                  return {
+                    icon: <Smartphone className="w-6 h-6 text-green-600" />,
+                    label: 'Mobile Money',
+                    bgColor: 'bg-green-100',
+                    textColor: 'text-green-600'
+                  };
+                default:
+                  return {
+                    icon: <Banknote className="w-6 h-6 text-gray-600" />,
+                    label: method,
+                    bgColor: 'bg-gray-100',
+                    textColor: 'text-gray-600'
+                  };
+              }
+            };
+
+            const config = getPaymentConfig(payment.method);
+
+            return (
+              <div key={payment.method} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className={`w-12 h-12 ${config.bgColor} rounded-full flex items-center justify-center`}>
+                    {config.icon}
+                  </div>
+                  <div>
+                    <p className="text-gray-700 text-sm">{config.label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(payment.total)}</p>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-500">
+                  {payment.count} transaction{payment.count !== 1 ? 's' : ''}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Grand Total Card */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-[#5A8621]" />
+              </div>
+              <div>
+                <p className="text-gray-700 text-sm">Total Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(paymentSummary.grandTotal)}</p>
+              </div>
+            </div>
+            <div className="text-sm text-[#5A8621] font-medium">
+              All payment methods
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">

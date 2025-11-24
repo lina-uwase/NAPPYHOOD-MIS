@@ -379,7 +379,7 @@ const getAllUsers = async (req, res) => {
             }),
             database_1.prisma.user.count({ where: whereClause })
         ]);
-        const formattedUsers = users.map(user => ({
+        const formattedUsers = users.map((user) => ({
             user_id: user.id,
             names: user.name,
             email: user.email,

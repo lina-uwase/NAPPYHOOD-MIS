@@ -8,4 +8,5 @@ export declare const deleteSale: (req: AuthenticatedRequest, res: Response) => P
 export declare const completeSale: (req: AuthenticatedRequest, res: Response) => Promise<void>;
 export declare const getSalesSummary: (req: AuthenticatedRequest, res: Response) => Promise<void>;
 export declare const getSalesByCustomer: (req: Request, res: Response) => Promise<void>;
+export declare const getDailyPaymentSummary: (req: AuthenticatedRequest, res: Response) => Promise<void>;
 //# sourceMappingURL=salesController.d.ts.map

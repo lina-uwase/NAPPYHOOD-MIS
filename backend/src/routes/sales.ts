@@ -7,7 +7,8 @@ import {
   deleteSale,
   completeSale,
   getSalesSummary,
-  getSalesByCustomer
+  getSalesByCustomer,
+  getDailyPaymentSummary
 } from '../controllers/salesController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -238,6 +239,7 @@ const router = Router();
 router.get('/', authenticateToken, getAllSales);
 router.post('/', authenticateToken, createSale);
 router.get('/summary', authenticateToken, getSalesSummary);
+router.get('/payment-summary', authenticateToken, getDailyPaymentSummary);
 router.get('/customer/:customerId', authenticateToken, getSalesByCustomer);
 
 /**
@@ -270,6 +272,17 @@ router.get('/customer/:customerId', authenticateToken, getSalesByCustomer);
  *       404:
  *         description: Sale not found
  */
+// DEBUG ENDPOINT - REMOVE AFTER TESTING (moved before /:id routes)
+router.post('/debug', authenticateToken, (req: any, res: any) => {
+  console.log('=== CUSTOM STAFF DEBUG ===');
+  console.log('FULL BODY:', JSON.stringify(req.body, null, 2));
+  console.log('customStaffNames:', req.body.customStaffNames);
+  console.log('Type:', typeof req.body.customStaffNames);
+  console.log('Is Array:', Array.isArray(req.body.customStaffNames));
+  console.log('Length:', req.body.customStaffNames?.length);
+  res.json({ received: req.body });
+});
+
 router.get('/:id', authenticateToken, getSaleById);
 router.put('/:id', authenticateToken, updateSale);
 router.delete('/:id', authenticateToken, requireRole(['ADMIN', 'MANAGER']), deleteSale);

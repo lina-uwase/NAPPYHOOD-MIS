@@ -192,7 +192,10 @@
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_XyswD0/**)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_gxCyHA/**)",
       "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_U3y8iE/**)",
-      "WebFetch(domain:nappyhood.boutique.com)"
+      "WebFetch(domain:nappyhood.boutique.com)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_a5ZZIS/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_gQ1Wrl/**)",
+      "Read(//var/folders/wh/2_tsvlyd4rl7qc0w_cjrkl4c0000gn/T/TemporaryItems/NSIRD_screencaptureui_Qj618i/**)"
     ],
     "deny": [],
     "ask": []

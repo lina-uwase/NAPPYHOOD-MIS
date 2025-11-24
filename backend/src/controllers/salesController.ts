@@ -929,3 +929,80 @@ export const getSalesByCustomer = async (req: Request, res: Response): Promise<v
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { date } = req.query;
+
+    // Use provided date or default to today
+    const targetDate = date ? new Date(date as string) : new Date();
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const whereClause: any = {
+      saleDate: {
+        gte: startOfDay,
+        lte: endOfDay
+      }
+    };
+
+    // If user is STAFF, only show their own sales
+    if (req.user?.role === 'STAFF') {
+      whereClause.staff = {
+        some: { staffId: req.user.id }
+      };
+    }
+
+    // Get all payments for the day grouped by payment method
+    const payments = await prisma.salePayment.findMany({
+      where: {
+        sale: whereClause
+      },
+      select: {
+        paymentMethod: true,
+        amount: true
+      }
+    });
+
+    // Group payments by method and calculate totals
+    const paymentSummary = payments.reduce((acc: any, payment) => {
+      const method = payment.paymentMethod;
+      if (!acc[method]) {
+        acc[method] = {
+          method,
+          total: 0,
+          count: 0
+        };
+      }
+      acc[method].total += Number(payment.amount);
+      acc[method].count += 1;
+      return acc;
+    }, {});
+
+    // Convert to array and ensure all payment methods are represented
+    const allMethods = ['CASH', 'BANK_TRANSFER', 'MOMO'];
+    const summary = allMethods.map(method => ({
+      method,
+      total: paymentSummary[method]?.total || 0,
+      count: paymentSummary[method]?.count || 0
+    }));
+
+    // Calculate grand total
+    const grandTotal = summary.reduce((sum, item) => sum + item.total, 0);
+
+    res.json({
+      success: true,
+      data: {
+        date: targetDate.toISOString().split('T')[0],
+        summary,
+        grandTotal
+      }
+    });
+  } catch (error) {
+    console.error('Get daily payment summary error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

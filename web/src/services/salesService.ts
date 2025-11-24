@@ -122,6 +122,18 @@ export interface SaleSummary {
   averageSaleValue: number;
 }
 
+export interface PaymentMethodSummary {
+  method: string;
+  total: number;
+  count: number;
+}
+
+export interface DailyPaymentSummary {
+  date: string;
+  summary: PaymentMethodSummary[];
+  grandTotal: number;
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
@@ -215,6 +227,14 @@ class SalesService {
     if (params.limit) queryParams.append('limit', params.limit.toString());
 
     const response = await api.get<ApiResponse<Sale[]>>(`/sales/customer/${customerId}?${queryParams.toString()}`);
+    return response.data;
+  }
+
+  async getDailyPaymentSummary(date?: string): Promise<ApiResponse<DailyPaymentSummary>> {
+    const queryParams = new URLSearchParams();
+    if (date) queryParams.append('date', date);
+
+    const response = await api.get<ApiResponse<DailyPaymentSummary>>(`/sales/payment-summary?${queryParams.toString()}`);
     return response.data;
   }
 }

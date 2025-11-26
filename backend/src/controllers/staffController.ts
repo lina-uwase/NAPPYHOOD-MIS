@@ -173,15 +173,15 @@ export const getStaffPerformance = async (req: Request, res: Response): Promise<
 
     // Service categories served
     const serviceCategories = new Map();
-    sales.forEach(sale => {
-      sale.services.forEach(vs => {
+    sales.forEach((sale: any) => {
+      sale.services.forEach((vs: any) => {
         const category = vs.service.category;
         serviceCategories.set(category, (serviceCategories.get(category) || 0) + 1);
       });
     });
 
     // Daily performance (for charts)
-    const dailyPerformance = sales.reduce((acc: any, sale) => {
+    const dailyPerformance = sales.reduce((acc: any, sale: any) => {
       const date = sale.saleDate.toISOString().split('T')[0];
       if (!acc[date]) {
         acc[date] = { sales: 0, revenue: 0 };
@@ -272,7 +272,7 @@ export const getAllStaffPerformance = async (req: Request, res: Response): Promi
 
     // Get performance data for each staff member
     const staffPerformance = await Promise.all(
-      allStaff.map(async (staff) => {
+      allStaff.map(async (staff: any) => {
         const sales = await prisma.sale.findMany({
           where: {
             staff: {
@@ -283,8 +283,8 @@ export const getAllStaffPerformance = async (req: Request, res: Response): Promi
         });
 
         const totalSales = sales.length;
-        const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
-        const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
+        const totalRevenue = sales.reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
+        const uniqueCustomers = new Set(sales.map((v: any) => v.customerId)).size;
 
         return {
           staff,

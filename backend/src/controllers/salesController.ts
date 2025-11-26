@@ -95,7 +95,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     const saleServices: any[] = [];
 
     for (const service of normalizedServices) {
-      const serviceDetail = serviceDetails.find(s => s.id === service.serviceId);
+      const serviceDetail = serviceDetails.find((s: any) => s.id === service.serviceId);
       if (!serviceDetail) continue;
 
       let unitPrice = 0;
@@ -202,7 +202,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
 
     // Create sale in transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create sale
       const sale = await tx.sale.create({
         data: {
@@ -267,7 +267,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         where: { saleId: sale.id },
         select: { paymentMethod: true, amount: true }
       });
-      console.log('🔍 Verified payments in database:', verifyPayments.map(p => ({
+      console.log('🔍 Verified payments in database:', verifyPayments.map((p: any) => ({
         method: p.paymentMethod,
         amount: Number(p.amount)
       })));
@@ -677,7 +677,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // Update services if provided (handle both serviceIds and services format)
       const servicesToProcess = Array.isArray(services) ? services :
         Array.isArray(serviceIds) ? serviceIds.map((id: string) => ({ serviceId: id, quantity: 1, isChild: false })) : null;
@@ -696,7 +696,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 
           for (const service of servicesToProcess) {
             const serviceId = service.serviceId || service;
-            const detail = serviceDetails.find(s => s.id === serviceId);
+            const detail = serviceDetails.find((s: any) => s.id === serviceId);
             if (!detail) continue;
 
             const shouldAddShampoo = service.addShampoo || false;
@@ -891,7 +891,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.saleDiscount.deleteMany({ where: { saleId: id } });
       await tx.saleStaff.deleteMany({ where: { saleId: id } });
       await tx.saleService.deleteMany({ where: { saleId: id } });
@@ -1103,7 +1103,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     if (allDirectPayments.length > 0) {
       // Group by payment method for logging
       const paymentBreakdown: Record<string, { count: number; total: number }> = {};
-      allDirectPayments.forEach(p => {
+      allDirectPayments.forEach((p: any) => {
         const method = p.paymentMethod;
         if (!paymentBreakdown[method]) {
           paymentBreakdown[method] = { count: 0, total: 0 };
@@ -1118,7 +1118,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
         total: data.total
       })));
       
-      console.log('📊 All payments details:', allDirectPayments.map(p => ({
+      console.log('📊 All payments details:', allDirectPayments.map((p: any) => ({
         method: p.paymentMethod,
         amount: Number(p.amount),
         saleId: p.saleId,
@@ -1130,7 +1130,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     
     console.log('📊 Total sales for date:', allSalesForDate.length);
     if (allSalesForDate.length > 0) {
-      console.log('📊 Sales details:', allSalesForDate.map(s => ({
+      console.log('📊 Sales details:', allSalesForDate.map((s: any) => ({
         id: s.id,
         saleDate: s.saleDate?.toISOString(),
         paymentMethod: s.paymentMethod,
@@ -1143,7 +1143,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     const payments: any[] = [];
     
     // Process all payments from SalePayment table
-    allDirectPayments.forEach(payment => {
+    allDirectPayments.forEach((payment: any) => {
       const method = payment.paymentMethod;
       // Normalize payment method to ensure consistency
       const normalizedMethod = method ? method.toUpperCase().trim() : 'CASH';
@@ -1159,7 +1159,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     
     // Handle legacy sales (sales without payment entries in SalePayment table)
     // These sales only have the paymentMethod field on the Sale table
-    allSalesForDate.forEach(sale => {
+    allSalesForDate.forEach((sale: any) => {
       // Only process sales that don't have entries in SalePayment table
       if (!salesWithPayments.has(sale.id)) {
         // This is a legacy sale - use Sale.paymentMethod
@@ -1204,7 +1204,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
           }
         }
       });
-      console.log('📊 Recent payments (last 50, all dates):', recentPayments.map(p => ({
+      console.log('📊 Recent payments (last 50, all dates):', recentPayments.map((p: any) => ({
         method: p.paymentMethod,
         amount: Number(p.amount),
         saleDate: p.sale.saleDate?.toISOString()

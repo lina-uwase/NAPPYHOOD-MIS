@@ -94,7 +94,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     // Get service details for top services
     const topServices = await Promise.all(
-      topServicesData.map(async (item) => {
+      topServicesData.map(async (item: any) => {
         const service = await prisma.service.findUnique({
           where: { id: item.serviceId },
           select: { name: true, category: true }
@@ -134,8 +134,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         const monthStr = date.toISOString().substring(0, 7); // YYYY-MM
 
         const monthRevenue = revenueTrendData
-          .filter(sale => sale.saleDate.toISOString().substring(0, 7) === monthStr)
-          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+          .filter((sale: any) => sale.saleDate.toISOString().substring(0, 7) === monthStr)
+          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
 
         return {
           date: monthStr,
@@ -151,8 +151,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         const dayStr = date.toISOString().split('T')[0];
 
         const dayRevenue = revenueTrendData
-          .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
-          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+          .filter((sale: any) => sale.saleDate.toISOString().split('T')[0] === dayStr)
+          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
 
         return {
           date: dayStr,
@@ -168,8 +168,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         const dayStr = date.toISOString().split('T')[0];
 
         const dayRevenue = revenueTrendData
-          .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
-          .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+          .filter((sale: any) => sale.saleDate.toISOString().split('T')[0] === dayStr)
+          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
 
         return {
           date: dayStr,
@@ -327,7 +327,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response): Promise<
       select: { saleDate: true, finalAmount: true }
     });
 
-    const hourlyStats = hourlySales.reduce((acc: any, sale) => {
+    const hourlyStats = hourlySales.reduce((acc: any, sale: any) => {
       const hour = sale.saleDate.getHours();
       if (!acc[hour]) {
         acc[hour] = { sales: 0, revenue: 0 };

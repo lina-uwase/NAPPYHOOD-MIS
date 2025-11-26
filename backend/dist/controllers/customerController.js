@@ -63,10 +63,12 @@ const getAllCustomers = async (req, res) => {
             data: {
                 customers: transformedCustomers,
                 pagination: {
-                    page: pageNum,
+                    currentPage: pageNum,
+                    page: pageNum, // Keep for backward compatibility
                     limit: limitNum,
                     total,
-                    pages: Math.ceil(total / limitNum)
+                    totalPages: Math.ceil(total / limitNum),
+                    pages: Math.ceil(total / limitNum) // Keep for backward compatibility
                 }
             }
         });
@@ -574,7 +576,9 @@ const getDiscountEligibility = async (req, res) => {
                 birthdayDiscountUsed = true;
             }
         }
-        const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed;
+        // Birthday discount is only available if customer has at least 1 sale (more than 0 sales)
+        const hasAtLeastOneSale = customer.saleCount >= 1;
+        const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed && hasAtLeastOneSale;
         res.json({
             success: true,
             data: {

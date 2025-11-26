@@ -115,7 +115,7 @@ const getDashboardStats = async (req, res) => {
                 date.setMonth(date.getMonth() - (11 - i));
                 const monthStr = date.toISOString().substring(0, 7); // YYYY-MM
                 const monthRevenue = revenueTrendData
-                    .filter(sale => sale.saleDate.toISOString().substring(0, 7) === monthStr)
+                    .filter((sale) => sale.saleDate.toISOString().substring(0, 7) === monthStr)
                     .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
                 return {
                     date: monthStr,
@@ -131,7 +131,7 @@ const getDashboardStats = async (req, res) => {
                 date.setDate(date.getDate() - (29 - i));
                 const dayStr = date.toISOString().split('T')[0];
                 const dayRevenue = revenueTrendData
-                    .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
+                    .filter((sale) => sale.saleDate.toISOString().split('T')[0] === dayStr)
                     .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
                 return {
                     date: dayStr,
@@ -147,7 +147,7 @@ const getDashboardStats = async (req, res) => {
                 date.setDate(date.getDate() - (6 - i));
                 const dayStr = date.toISOString().split('T')[0];
                 const dayRevenue = revenueTrendData
-                    .filter(sale => sale.saleDate.toISOString().split('T')[0] === dayStr)
+                    .filter((sale) => sale.saleDate.toISOString().split('T')[0] === dayStr)
                     .reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
                 return {
                     date: dayStr,

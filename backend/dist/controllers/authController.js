@@ -501,6 +501,41 @@ exports.updateUser = updateUser;
 const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;
+        // Check if user has created any sales (foreign key constraint)
+        const salesCount = await database_1.prisma.sale.count({
+            where: { createdById: id }
+        });
+        if (salesCount > 0) {
+            // User has created sales, we need to reassign or deactivate instead
+            // Option 1: Find another admin user to reassign sales to
+            const adminUser = await database_1.prisma.user.findFirst({
+                where: {
+                    role: 'ADMIN',
+                    id: { not: id },
+                    isActive: true
+                }
+            });
+            if (adminUser) {
+                // Reassign all sales to the admin user
+                await database_1.prisma.sale.updateMany({
+                    where: { createdById: id },
+                    data: { createdById: adminUser.id }
+                });
+            }
+            else {
+                // No admin available, deactivate the user instead of deleting
+                await database_1.prisma.user.update({
+                    where: { id },
+                    data: { isActive: false }
+                });
+                res.json({
+                    success: true,
+                    message: 'User deactivated successfully (cannot delete user with sales records)'
+                });
+                return;
+            }
+        }
+        // Now safe to delete the user
         await database_1.prisma.user.delete({
             where: { id }
         });
@@ -511,7 +546,28 @@ const deleteUser = async (req, res) => {
     }
     catch (error) {
         console.error('Delete user error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        // Handle foreign key constraint error
+        if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+            // Try to deactivate instead
+            try {
+                await database_1.prisma.user.update({
+                    where: { id: req.params.id },
+                    data: { isActive: false }
+                });
+                res.json({
+                    success: true,
+                    message: 'User deactivated successfully (cannot delete user with related records)'
+                });
+                return;
+            }
+            catch (updateError) {
+                console.error('Failed to deactivate user:', updateError);
+            }
+        }
+        res.status(500).json({
+            error: 'Internal server error',
+            message: error.message || 'Failed to delete user'
+        });
     }
 };
 exports.deleteUser = deleteUser;

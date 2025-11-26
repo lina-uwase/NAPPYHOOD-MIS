@@ -159,8 +159,8 @@ const getStaffPerformance = async (req, res) => {
         const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
         // Service categories served
         const serviceCategories = new Map();
-        sales.forEach(sale => {
-            sale.services.forEach(vs => {
+        sales.forEach((sale) => {
+            sale.services.forEach((vs) => {
                 const category = vs.service.category;
                 serviceCategories.set(category, (serviceCategories.get(category) || 0) + 1);
             });
@@ -263,7 +263,7 @@ const getAllStaffPerformance = async (req, res) => {
             });
             const totalSales = sales.length;
             const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
-            const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
+            const uniqueCustomers = new Set(sales.map((v) => v.customerId)).size;
             return {
                 staff,
                 metrics: {

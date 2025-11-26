@@ -592,7 +592,7 @@ async function main() {
           where: { customerId: customer.id, isCompleted: true }
         });
 
-        const totalSpent = customerSales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+        const totalSpent = customerSales.reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
         const saleCount = customerSales.length;
         const lastSale = customerSales.length > 0 ? customerSales[customerSales.length - 1].saleDate : null;
 

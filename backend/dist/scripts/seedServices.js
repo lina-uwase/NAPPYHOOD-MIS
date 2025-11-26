@@ -376,7 +376,7 @@ async function seedServices() {
             }
         });
         console.log('\n📋 Services by category:');
-        servicesByCategory.forEach(category => {
+        servicesByCategory.forEach((category) => {
             console.log(`   ${category.category}: ${category._count.id} services`);
         });
     }

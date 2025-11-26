@@ -166,10 +166,10 @@ export const getStaffPerformance = async (req: Request, res: Response): Promise<
 
     // Calculate performance metrics
     const totalSales = sales.length;
-    const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
+    const totalRevenue = sales.reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
     const averageRevenuePerSale = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
+    const uniqueCustomers = new Set(sales.map((v: any) => v.customerId)).size;
 
     // Service categories served
     const serviceCategories = new Map();

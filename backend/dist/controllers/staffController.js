@@ -156,7 +156,7 @@ const getStaffPerformance = async (req, res) => {
         const totalSales = sales.length;
         const totalRevenue = sales.reduce((sum, sale) => sum + Number(sale.finalAmount), 0);
         const averageRevenuePerSale = totalSales > 0 ? totalRevenue / totalSales : 0;
-        const uniqueCustomers = new Set(sales.map(v => v.customerId)).size;
+        const uniqueCustomers = new Set(sales.map((v) => v.customerId)).size;
         // Service categories served
         const serviceCategories = new Map();
         sales.forEach((sale) => {

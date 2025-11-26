@@ -974,7 +974,7 @@ const getDailyPaymentSummary = async (req, res) => {
             }
         });
         // Get sale IDs that have payments
-        const salesWithPayments = new Set(allDirectPayments.map(p => p.saleId));
+        const salesWithPayments = new Set(allDirectPayments.map((p) => p.saleId));
         console.log('📊 Direct payments query found:', allDirectPayments.length, 'payments');
         if (allDirectPayments.length > 0) {
             // Group by payment method for logging
@@ -1115,7 +1115,7 @@ const getDailyPaymentSummary = async (req, res) => {
         console.log('📊 Processing legacy sales (sales without payment entries):');
         // Process all sales - if they have payments in salePayment, those are already counted above
         // If they don't have payments, use the paymentMethod from Sale table
-        allSalesForDate.forEach(sale => {
+        allSalesForDate.forEach((sale) => {
             // Skip sales that already have payments in SalePayment table (already counted above)
             if (salesWithPayments.has(sale.id)) {
                 return;

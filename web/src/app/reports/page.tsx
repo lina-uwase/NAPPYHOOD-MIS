@@ -259,7 +259,13 @@ const ReportsPage: React.FC = () => {
         return [date, customer, services, amount, paymentDisplay, recordedBy];
       });
 
-      // Generate table using autoTable
+      // Calculate margins with more padding from edges
+      const tableContentWidth = 175; // Reduced width to allow more margins
+      const minMargin = 20; // Minimum margin from edges
+      const calculatedMargin = (pageWidth - tableContentWidth) / 2;
+      const equalMargin = Math.max(minMargin, calculatedMargin); // Use at least 20mm margin
+      
+      // Generate table using autoTable with centered layout and equal margins
       autoTable(pdf, {
         head: [['Date', 'Customer', 'Services', 'Amount', 'Payment', 'Recorded by']],
         body: tableData,
@@ -268,19 +274,33 @@ const ReportsPage: React.FC = () => {
         headStyles: {
           fillColor: [90, 134, 33],
           textColor: [255, 255, 255],
-          fontSize: 10,
-          fontStyle: 'bold'
+          fontSize: 9,
+          fontStyle: 'bold',
+          cellPadding: 2
         },
         bodyStyles: {
-          fontSize: 9,
-          cellPadding: 3
+          fontSize: 8,
+          cellPadding: 2,
+          overflow: 'linebreak',
+          cellWidth: 'wrap'
         },
         alternateRowStyles: {
           fillColor: [245, 245, 245]
         },
-        margin: { left: 20, right: 20 },
-        tableWidth: 'wrap',
-        // halign: 'center',
+        margin: { left: equalMargin, right: equalMargin, top: 5, bottom: 10 },
+        tableWidth: tableContentWidth,
+        columnStyles: {
+          0: { cellWidth: 25 }, // Date
+          1: { cellWidth: 40 }, // Customer
+          2: { cellWidth: 50 }, // Services
+          3: { cellWidth: 25 }, // Amount
+          4: { cellWidth: 25 }, // Payment
+          5: { cellWidth: 30 }  // Recorded by
+        },
+        styles: {
+          overflow: 'linebreak',
+          cellPadding: 2
+        },
         didDrawPage: function (data: any) {
           // Add page numbers if needed
         }
@@ -323,7 +343,13 @@ const ReportsPage: React.FC = () => {
         return [date, name, phone, location];
       });
 
-      // Generate customer table using autoTable
+      // Calculate margins with more padding from edges for customer table
+      const customerTableContentWidth = 160; // Reduced width to allow more margins
+      const customerMinMargin = 20; // Minimum margin from edges
+      const customerCalculatedMargin = (pageWidth - customerTableContentWidth) / 2;
+      const customerEqualMargin = Math.max(customerMinMargin, customerCalculatedMargin); // Use at least 20mm margin
+      
+      // Generate customer table using autoTable with centered layout
       autoTable(pdf, {
         head: [['Date Registered', 'Name', 'Phone', 'Location']],
         body: customerTableData,
@@ -342,9 +368,8 @@ const ReportsPage: React.FC = () => {
         alternateRowStyles: {
           fillColor: [245, 245, 245]
         },
-        margin: { left: 20, right: 20 },
-        tableWidth: 'wrap',
-        // halign: 'center',
+        margin: { left: customerEqualMargin, right: customerEqualMargin, top: 5, bottom: 10 },
+        tableWidth: customerTableContentWidth
       });
     }
 

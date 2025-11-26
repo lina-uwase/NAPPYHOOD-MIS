@@ -106,9 +106,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
     const { name, email, phone, role = 'STAFF' } = req.body;
 
-    if (!name || !email || !phone) {
+    if (!name || !phone) {
       console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
-      res.status(400).json({ error: 'Name, email, and phone number are all required' });
+      res.status(400).json({ error: 'Name and phone number are required' });
       return;
     }
 
@@ -118,8 +118,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate email format
-    if (!email.includes('@')) {
+    // Validate email format if provided
+    if (email && !email.includes('@')) {
       res.status(400).json({ error: 'Invalid email format' });
       return;
     }
@@ -155,7 +155,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: email || null, // Email is optional
         password: hashedPassword,
         phone,
         role: role as any,
@@ -171,24 +171,36 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Send welcome email with credentials (email is now required)
+    // Send welcome email with credentials (only if email is provided)
     let notificationResult = false;
     let notificationMethod = '';
 
-    // Send email notification (primary method)
-    notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
-    notificationMethod = 'email';
+    if (email) {
+      // Send email notification (primary method if email provided)
+      notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
+      notificationMethod = 'email';
 
-    if (!notificationResult) {
-      console.warn(`Failed to send welcome email to ${email} for user ${name}`);
+      if (!notificationResult) {
+        console.warn(`Failed to send welcome email to ${email} for user ${name}`);
 
-      // Fallback to SMS if email fails
+        // Fallback to SMS if email fails
+        if (phone) {
+          notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
+          notificationMethod = notificationResult ? 'SMS' : '';
+
+          if (!notificationResult) {
+            console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
+          }
+        }
+      }
+    } else {
+      // If no email, try SMS only
       if (phone) {
         notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
         notificationMethod = notificationResult ? 'SMS' : '';
 
         if (!notificationResult) {
-          console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
+          console.warn(`Failed to send SMS to ${phone} for user ${name}`);
         }
       }
     }
@@ -527,6 +539,43 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
 
+    // Check if user has created any sales (foreign key constraint)
+    const salesCount = await prisma.sale.count({
+      where: { createdById: id }
+    });
+
+    if (salesCount > 0) {
+      // User has created sales, we need to reassign or deactivate instead
+      // Option 1: Find another admin user to reassign sales to
+      const adminUser = await prisma.user.findFirst({
+        where: {
+          role: 'ADMIN',
+          id: { not: id },
+          isActive: true
+        }
+      });
+
+      if (adminUser) {
+        // Reassign all sales to the admin user
+        await prisma.sale.updateMany({
+          where: { createdById: id },
+          data: { createdById: adminUser.id }
+        });
+      } else {
+        // No admin available, deactivate the user instead of deleting
+        await prisma.user.update({
+          where: { id },
+          data: { isActive: false }
+        });
+        res.json({
+          success: true,
+          message: 'User deactivated successfully (cannot delete user with sales records)'
+        });
+        return;
+      }
+    }
+
+    // Now safe to delete the user
     await prisma.user.delete({
       where: { id }
     });
@@ -535,8 +584,30 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
       success: true,
       message: 'User deleted successfully'
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete user error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    
+    // Handle foreign key constraint error
+    if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
+      // Try to deactivate instead
+      try {
+        await prisma.user.update({
+          where: { id: req.params.id },
+          data: { isActive: false }
+        });
+        res.json({
+          success: true,
+          message: 'User deactivated successfully (cannot delete user with related records)'
+        });
+        return;
+      } catch (updateError) {
+        console.error('Failed to deactivate user:', updateError);
+      }
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message || 'Failed to delete user'
+    });
   }
 };

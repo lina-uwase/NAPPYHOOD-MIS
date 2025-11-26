@@ -4,6 +4,7 @@ export interface User {
   user_id: number;
   names: string;
   phone: string;
+  email?: string;
   role: 'ADMIN' | 'STAFF';
   created_at: string;
   updated_at: string;
@@ -12,6 +13,7 @@ export interface User {
 export interface CreateUserDto {
   names: string;
   phone: string;
+  email?: string;
   password: string;
   role?: 'ADMIN' | 'STAFF';
 }

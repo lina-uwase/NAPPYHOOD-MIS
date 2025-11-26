@@ -187,13 +187,26 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const capitalizeName = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
 
+    // Capitalize full name as user types
+    let processedValue = value;
+    if (name === 'fullName' && value) {
+      processedValue = capitalizeName(value);
+    }
+
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : processedValue
     }));
 
     // Reset district when province changes (only for new customers, not when editing)
@@ -237,8 +250,8 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     // Phone is optional for dependents
     if (!formData.isDependent && !formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (formData.phone && !/^(\+250|0)?[0-9]{9}$/.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Please enter a valid Rwandan phone number';
+    } else if (formData.phone && formData.phone.trim().length < 5) {
+      newErrors.phone = 'Please enter a valid phone number (minimum 5 characters)';
     }
 
     if (formData.isDependent && !formData.parentId) {

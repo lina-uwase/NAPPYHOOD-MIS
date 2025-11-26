@@ -65,7 +65,14 @@ const CustomersPage: React.FC = () => {
 
       // Get pagination from service response
       const pagination = response.meta;
-      setTotalPages(pagination?.totalPages || 1);
+      if (pagination) {
+        // Use totalPages if available
+        setTotalPages(pagination.totalPages || 1);
+      } else {
+        // Fallback: calculate total pages from data length (not ideal, but better than nothing)
+        const calculatedPages = Math.ceil((response.data?.length || 0) / itemsPerPage);
+        setTotalPages(calculatedPages || 1);
+      }
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       showError('Failed to load customers. Please try again.');
@@ -77,8 +84,11 @@ const CustomersPage: React.FC = () => {
 
   useEffect(() => {
     fetchCustomers();
-    fetchProvinces();
   }, [fetchCustomers]);
+
+  useEffect(() => {
+    fetchProvinces();
+  }, []);
 
   useEffect(() => {
     if (provinceFilter) {
@@ -409,16 +419,32 @@ const CustomersPage: React.FC = () => {
             </div>
             <div className="flex space-x-2">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                onClick={() => {
+                  if (currentPage > 1) {
+                    setCurrentPage(prev => prev - 1);
+                  }
+                }}
+                disabled={currentPage <= 1 || loading}
+                className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium ${
+                  currentPage <= 1 || loading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-gray-100 cursor-pointer'
+                }`}
               >
                 Previous
               </button>
               <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                onClick={() => {
+                  if (currentPage < totalPages) {
+                    setCurrentPage(prev => prev + 1);
+                  }
+                }}
+                disabled={currentPage >= totalPages || loading}
+                className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium ${
+                  currentPage >= totalPages || loading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-gray-100 cursor-pointer'
+                }`}
               >
                 Next
               </button>

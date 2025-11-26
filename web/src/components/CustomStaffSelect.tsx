@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown, X, Plus } from 'lucide-react';
+import { Search, ChevronDown, X } from 'lucide-react';
 
 interface StaffOption {
   id: string;
@@ -35,8 +35,6 @@ const CustomStaffSelect: React.FC<CustomStaffSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showCustomInput, setShowCustomInput] = useState(false);
-  const [customName, setCustomName] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -49,8 +47,6 @@ const CustomStaffSelect: React.FC<CustomStaffSelectProps> = ({
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        setShowCustomInput(false);
-        setCustomName('');
       }
     };
 
@@ -72,31 +68,9 @@ const CustomStaffSelect: React.FC<CustomStaffSelectProps> = ({
     }
   };
 
-  const addCustomStaff = () => {
-    if (customName.trim()) {
-      const customStaff: CustomStaff = {
-        id: `custom-${Date.now()}-${Math.random()}`,
-        name: customName.trim(),
-        isCustom: true
-      };
-
-      const newSelection = [...selectedStaff, customStaff];
-      onSelectionChange(newSelection);
-      setCustomName('');
-      setShowCustomInput(false);
-    }
-  };
-
   const removeStaff = (staffId: string) => {
     const newSelection = selectedStaff.filter(s => s.id !== staffId);
     onSelectionChange(newSelection);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addCustomStaff();
-    }
   };
 
   return (
@@ -161,51 +135,6 @@ const CustomStaffSelect: React.FC<CustomStaffSelectProps> = ({
             </div>
           </div>
 
-          {/* Custom Staff Input */}
-          {showCustomInput ? (
-            <div className="p-3 border-b border-gray-200 bg-blue-50">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="text"
-                  placeholder="Enter custom staff name..."
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={addCustomStaff}
-                  className="px-3 py-2 bg-[#5A8621] text-white rounded-lg hover:bg-[#4A7318] disabled:opacity-50"
-                  disabled={!customName.trim()}
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCustomInput(false);
-                    setCustomName('');
-                  }}
-                  className="px-3 py-2 text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-3 border-b border-gray-200">
-              <button
-                type="button"
-                onClick={() => setShowCustomInput(true)}
-                className="w-full flex items-center px-3 py-2 text-[#5A8621] hover:bg-gray-50 rounded-lg"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add Custom Staff Member
-              </button>
-            </div>
-          )}
 
           {/* Staff Options */}
           <div className="max-h-60 overflow-y-auto">

@@ -99,9 +99,9 @@ const register = async (req, res) => {
     try {
         console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
         const { name, email, phone, role = 'STAFF' } = req.body;
-        if (!name || !email || !phone) {
+        if (!name || !phone) {
             console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
-            res.status(400).json({ error: 'Name, email, and phone number are all required' });
+            res.status(400).json({ error: 'Name and phone number are required' });
             return;
         }
         // Validate phone number format if provided
@@ -109,8 +109,8 @@ const register = async (req, res) => {
             res.status(400).json({ error: 'Invalid phone number format. Use +250XXXXXXXXX' });
             return;
         }
-        // Validate email format
-        if (!email.includes('@')) {
+        // Validate email format if provided
+        if (email && !email.includes('@')) {
             res.status(400).json({ error: 'Invalid email format' });
             return;
         }
@@ -141,7 +141,7 @@ const register = async (req, res) => {
         const user = await database_1.prisma.user.create({
             data: {
                 name,
-                email,
+                email: email || null, // Email is optional
                 password: hashedPassword,
                 phone,
                 role: role,
@@ -156,20 +156,32 @@ const register = async (req, res) => {
                 createdAt: true
             }
         });
-        // Send welcome email with credentials (email is now required)
+        // Send welcome email with credentials (only if email is provided)
         let notificationResult = false;
         let notificationMethod = '';
-        // Send email notification (primary method)
-        notificationResult = await emailService_1.emailService.sendWelcomeEmail(email, name, randomPassword, phone);
-        notificationMethod = 'email';
-        if (!notificationResult) {
-            console.warn(`Failed to send welcome email to ${email} for user ${name}`);
-            // Fallback to SMS if email fails
+        if (email) {
+            // Send email notification (primary method if email provided)
+            notificationResult = await emailService_1.emailService.sendWelcomeEmail(email, name, randomPassword, phone);
+            notificationMethod = 'email';
+            if (!notificationResult) {
+                console.warn(`Failed to send welcome email to ${email} for user ${name}`);
+                // Fallback to SMS if email fails
+                if (phone) {
+                    notificationResult = await smsService_1.smsService.sendWelcomeMessage(phone, name, randomPassword);
+                    notificationMethod = notificationResult ? 'SMS' : '';
+                    if (!notificationResult) {
+                        console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
+                    }
+                }
+            }
+        }
+        else {
+            // If no email, try SMS only
             if (phone) {
                 notificationResult = await smsService_1.smsService.sendWelcomeMessage(phone, name, randomPassword);
                 notificationMethod = notificationResult ? 'SMS' : '';
                 if (!notificationResult) {
-                    console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
+                    console.warn(`Failed to send SMS to ${phone} for user ${name}`);
                 }
             }
         }

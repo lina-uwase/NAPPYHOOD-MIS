@@ -1,5 +1,6 @@
 "use client"
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Staff, CreateStaffDto, UpdateStaffDto } from '../../services/staffService';
 
@@ -40,7 +41,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.email.trim()) {
+    if (!formData.name.trim() || !formData.phone.trim()) {
       return;
     }
 
@@ -48,7 +49,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     try {
       await onAddStaff({
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        email: formData.email.trim() || undefined, // Email is optional
         phone: formData.phone.trim(),
         role: formData.role,
       });
@@ -57,12 +58,19 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
     }
   };
 
-  if (!isOpen) return null;
+  const [mounted, setMounted] = useState(false);
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-6">
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ marginTop: 0, margin: 0 }}>
+      <div className="bg-white rounded-lg w-full max-w-md mx-4">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
             {editingStaff ? 'Edit Staff Member' : 'Add New Staff Member'}
           </h2>
@@ -74,8 +82,8 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="mb-4" style={{ marginTop: 0 }}>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Full Name *
             </label>
@@ -89,7 +97,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             />
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Phone Number *
             </label>
@@ -103,21 +111,20 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             />
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email *
+              Email <span className="text-gray-400 text-xs">(optional)</span>
             </label>
             <input
               type="email"
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
-              placeholder="Enter email address"
-              required
+              placeholder="Enter email address (optional)"
             />
           </div>
 
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Role *
             </label>
@@ -133,12 +140,6 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </select>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-sm text-green-800">
-              📧 <strong>Password will be auto-generated</strong> and sent via email to the address provided.
-            </p>
-          </div>
-
           <div className="flex gap-3 pt-4">
             <button
               type="button"
@@ -150,7 +151,7 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.name.trim() || !formData.phone.trim() || !formData.email.trim()}
+              disabled={loading || !formData.name.trim() || !formData.phone.trim()}
               className="flex-1 px-4 py-2 bg-[#5A8621] text-white rounded-lg hover:bg-[#4A7219] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
               {loading ? (
@@ -164,4 +165,6 @@ export default function AddStaffModal({ isOpen, onClose, onAddStaff, editingStaf
       </div>
     </div>
   );
+
+  return typeof window !== 'undefined' ? createPortal(modalContent, document.body) : null;
 }

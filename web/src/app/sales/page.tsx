@@ -122,6 +122,55 @@ const SalesPage: React.FC = () => {
   const fetchPaymentSummary = useCallback(async () => {
     try {
       const response = await salesService.getDailyPaymentSummary(selectedDate);
+      
+      if (response.data && response.data.summary) {
+        // Ensure all 5 payment methods are present
+        const allMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+        
+        // Create a map of existing methods for quick lookup (case-insensitive)
+        const existingMethodsMap = new Map<string, { method: string; total: number; count: number }>();
+        
+        // Process the received summary - filter out any invalid entries
+        if (Array.isArray(response.data.summary)) {
+          response.data.summary.forEach((p: any) => {
+            if (p && p.method && typeof p.method === 'string') {
+              const methodKey = p.method.toUpperCase().trim();
+              existingMethodsMap.set(methodKey, {
+                method: methodKey,
+                total: Number(p.total) || 0,
+                count: Number(p.count) || 0
+              });
+            }
+          });
+        }
+        
+        // Build the final summary ensuring all methods are present in correct order
+        const finalSummary = allMethods.map(method => {
+          const existing = existingMethodsMap.get(method);
+          if (existing) {
+            return existing;
+          }
+          // Method not found, add with zero values
+          return { method, total: 0, count: 0 };
+        });
+        
+        // Update the response data with the complete summary
+        response.data.summary = finalSummary;
+      } else {
+        console.error('No summary in response data!', response);
+        // Create empty summary if no data
+        if (response.data) {
+          response.data.summary = [
+            { method: 'CASH', total: 0, count: 0 },
+            { method: 'MOBILE_MONEY', total: 0, count: 0 },
+            { method: 'MOMO', total: 0, count: 0 },
+            { method: 'BANK_CARD', total: 0, count: 0 },
+            { method: 'BANK_TRANSFER', total: 0, count: 0 }
+          ];
+          response.data.grandTotal = 0;
+        }
+      }
+      
       setPaymentSummary(response.data);
     } catch (error) {
       console.error('Failed to fetch payment summary:', error);
@@ -140,10 +189,24 @@ const SalesPage: React.FC = () => {
 
   const handleAddSale = async (saleData: CreateSaleDto) => {
     try {
-      await salesService.create(saleData);
+      const response = await salesService.create(saleData);
       setIsModalOpen(false);
-      fetchSales();
-      fetchPaymentSummary(); // Refresh payment summary when a sale is added
+      
+      // Get the sale date from the created sale and update selectedDate to match
+      if (response.data && response.data.saleDate) {
+        const saleDate = new Date(response.data.saleDate);
+        const saleDateString = saleDate.toISOString().split('T')[0];
+        setSelectedDate(saleDateString);
+      }
+      
+      // Refresh data
+      await fetchSales();
+      // Force refresh payment summary immediately and again after delay
+      fetchPaymentSummary();
+      setTimeout(() => {
+        fetchPaymentSummary();
+      }, 1000);
+      
       showSuccess('Sale recorded successfully', 'The sale has been added to the system.');
     } catch (error: any) {
       console.error('Failed to add sale:', error);
@@ -156,10 +219,25 @@ const SalesPage: React.FC = () => {
     if (!editingSale) return;
 
     try {
-      await salesService.update(editingSale.id, saleData);
+      const response = await salesService.update(editingSale.id, saleData);
       setIsModalOpen(false);
       setEditingSale(null);
-      fetchSales();
+      
+      // Update selectedDate to match the sale date if it changed
+      if (response.data && response.data.saleDate) {
+        const saleDate = new Date(response.data.saleDate);
+        const saleDateString = saleDate.toISOString().split('T')[0];
+        setSelectedDate(saleDateString);
+      }
+      
+      // Refresh data
+      await fetchSales();
+      // Force refresh payment summary immediately and again after delay
+      fetchPaymentSummary();
+      setTimeout(() => {
+        fetchPaymentSummary();
+      }, 1000);
+      
       showSuccess('Sale updated successfully', 'The sale has been updated in the system.');
     } catch (error: any) {
       console.error('Failed to update sale:', error);
@@ -172,6 +250,21 @@ const SalesPage: React.FC = () => {
     try {
       setLoadingEdit(true);
       const response = await salesService.getById(saleId);
+      console.log('🔍 Sale fetched for editing:', {
+        saleId,
+        responseData: response.data,
+        staff: response.data?.staff,
+        staffType: typeof response.data?.staff,
+        staffIsArray: Array.isArray(response.data?.staff),
+        staffLength: response.data?.staff?.length,
+        staffDetails: response.data?.staff?.map((s: any) => ({
+          id: s.id,
+          staffId: s.staffId,
+          customName: s.customName,
+          staff: s.staff,
+          fullObject: s
+        }))
+      });
       setEditingSale(response.data);
       setIsModalOpen(true);
     } catch (error: any) {
@@ -193,7 +286,10 @@ const SalesPage: React.FC = () => {
     try {
       setDeletingLoad(true);
       await salesService.delete(saleToDelete);
-      fetchSales();
+      await fetchSales();
+      setTimeout(() => {
+        fetchPaymentSummary(); // Refresh payment summary when a sale is deleted
+      }, 500);
       setShowDeleteModal(false);
       setSaleToDelete(null);
       showSuccess('Sale deleted successfully', 'The sale has been removed from the system.');
@@ -233,9 +329,9 @@ const SalesPage: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* Date Selector and Record Sale Button */}
+      {/* Date Selector, Record Sale Button, and Payment Summary Cards */}
       <div className="mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2 text-sm text-gray-600">
               <Calendar className="h-4 w-4" />
@@ -260,38 +356,51 @@ const SalesPage: React.FC = () => {
             <span>Record Sale</span>
           </button>
         </div>
-      </div>
 
-      {/* Payment Summary Cards */}
-      {paymentSummary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Payment Summary Cards - Same line as Add Sale button */}
+        {paymentSummary && paymentSummary.summary && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {paymentSummary.summary.map((payment) => {
             const getPaymentConfig = (method: string) => {
               switch (method) {
                 case 'CASH':
                   return {
-                    icon: <Banknote className="w-6 h-6 text-yellow-600" />,
+                    icon: <Banknote className="w-4 h-4 text-yellow-600" />,
                     label: 'Cash Payments',
                     bgColor: 'bg-yellow-100',
                     textColor: 'text-yellow-600'
                   };
                 case 'BANK_TRANSFER':
                   return {
-                    icon: <CreditCard className="w-6 h-6 text-blue-600" />,
+                    icon: <CreditCard className="w-4 h-4 text-blue-600" />,
                     label: 'Bank Transfer',
                     bgColor: 'bg-blue-100',
                     textColor: 'text-blue-600'
                   };
                 case 'MOMO':
                   return {
-                    icon: <Smartphone className="w-6 h-6 text-green-600" />,
-                    label: 'Mobile Money',
+                    icon: <Smartphone className="w-4 h-4 text-green-600" />,
+                    label: 'MoMo',
                     bgColor: 'bg-green-100',
                     textColor: 'text-green-600'
                   };
+                case 'MOBILE_MONEY':
+                  return {
+                    icon: <Smartphone className="w-4 h-4 text-purple-600" />,
+                    label: 'Mobile Money',
+                    bgColor: 'bg-purple-100',
+                    textColor: 'text-purple-600'
+                  };
+                case 'BANK_CARD':
+                  return {
+                    icon: <CreditCard className="w-4 h-4 text-indigo-600" />,
+                    label: 'Bank Card',
+                    bgColor: 'bg-indigo-100',
+                    textColor: 'text-indigo-600'
+                  };
                 default:
                   return {
-                    icon: <Banknote className="w-6 h-6 text-gray-600" />,
+                    icon: <Banknote className="w-4 h-4 text-gray-600" />,
                     label: method,
                     bgColor: 'bg-gray-100',
                     textColor: 'text-gray-600'
@@ -302,17 +411,17 @@ const SalesPage: React.FC = () => {
             const config = getPaymentConfig(payment.method);
 
             return (
-              <div key={payment.method} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className={`w-12 h-12 ${config.bgColor} rounded-full flex items-center justify-center`}>
+              <div key={payment.method} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <div className={`w-8 h-8 ${config.bgColor} rounded-full flex items-center justify-center`}>
                     {config.icon}
                   </div>
-                  <div>
-                    <p className="text-gray-700 text-sm">{config.label}</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(payment.total)}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-gray-700 text-xs font-medium truncate">{config.label}</p>
+                    <p className="text-base font-bold text-gray-900">{formatCurrency(payment.total)}</p>
                   </div>
                 </div>
-                <div className="text-sm text-gray-500">
+                <div className="text-xs text-gray-500">
                   {payment.count} transaction{payment.count !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -320,22 +429,23 @@ const SalesPage: React.FC = () => {
           })}
 
           {/* Grand Total Card */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-12 h-12 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-[#5A8621]" />
+          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+            <div className="flex items-center space-x-2 mb-2">
+              <div className="w-8 h-8 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-[#5A8621]" />
               </div>
-              <div>
-                <p className="text-gray-700 text-sm">Total Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(paymentSummary.grandTotal)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-700 text-xs font-medium">Total Revenue</p>
+                <p className="text-base font-bold text-gray-900">{formatCurrency(paymentSummary.grandTotal)}</p>
               </div>
             </div>
-            <div className="text-sm text-[#5A8621] font-medium">
+            <div className="text-xs text-[#5A8621] font-medium">
               All payment methods
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">

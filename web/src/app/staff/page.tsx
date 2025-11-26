@@ -42,7 +42,7 @@ export default function StaffPage() {
   const addToastRef = React.useRef(addToast);
   addToastRef.current = addToast;
 
-  const loadStaff = useCallback(async (showError = true) => {
+  const loadStaff = useCallback(async (shouldShowError = true) => {
     try {
       setLoading(true);
       setHasError(false);
@@ -62,13 +62,13 @@ export default function StaffPage() {
       setHasError(true);
       setStaff([]);
 
-      if (showError) {
+      if (shouldShowError) {
         showError('Failed to load staff. Please check your permissions or try again later.');
       }
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, searchTerm]);
+  }, [roleFilter, searchTerm, showError]);
 
   useEffect(() => {
     loadStaff();
@@ -230,12 +230,12 @@ export default function StaffPage() {
         const phone = (n['phone'] || '') as string;
         const role = (n['role'] || '') as 'ADMIN' | 'MANAGER' | 'STAFF' | '';
 
-        if (!name || !email) { fail += 1; continue; }
+        if (!name || !phone) { fail += 1; continue; }
 
         try {
           const res = await staffService.create({
             name: name.trim(),
-            email: email.trim(),
+            email: email?.trim() || undefined,
             phone: phone?.trim() || '',
             role: role || 'STAFF'
           });
@@ -252,6 +252,7 @@ export default function StaffPage() {
   };
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -457,40 +458,42 @@ export default function StaffPage() {
         )}
       </div>
 
-      {showAddModal && (
-        <AddStaffModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          onAddStaff={handleAddStaff}
-        />
-      )}
-
-      {showEditModal && editingStaff && (
-        <AddStaffModal
-          isOpen={showEditModal}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingStaff(null);
-          }}
-          onAddStaff={handleUpdateStaff}
-          editingStaff={editingStaff}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setStaffToDelete(null);
-        }}
-        onConfirm={handleDeleteStaff}
-        title="Delete Staff Member"
-        message={`Are you sure you want to delete "${staffToDelete?.name}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        type="danger"
-        loading={deletingLoad}
-      />
     </div>
+
+    {showAddModal && (
+      <AddStaffModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAddStaff={handleAddStaff}
+      />
+    )}
+
+    {showEditModal && editingStaff && (
+      <AddStaffModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingStaff(null);
+        }}
+        onAddStaff={handleUpdateStaff}
+        editingStaff={editingStaff}
+      />
+    )}
+
+    <ConfirmationModal
+      isOpen={showDeleteModal}
+      onClose={() => {
+        setShowDeleteModal(false);
+        setStaffToDelete(null);
+      }}
+      onConfirm={handleDeleteStaff}
+      title="Delete Staff Member"
+      message={`Are you sure you want to delete "${staffToDelete?.name}"? This action cannot be undone.`}
+      confirmText="Delete"
+      cancelText="Cancel"
+      type="danger"
+      loading={deletingLoad}
+    />
+    </>
   );
 }

@@ -18,11 +18,11 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   const allMenuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['ADMIN', 'MANAGER'] },
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/', roles: ['ADMIN'] },
     { name: 'Services', icon: Scissors, href: '/services', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Customers', icon: Users2, href: '/customers', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { name: 'Sales', icon: Calendar, href: '/sales', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
-    { name: 'Staff', icon: Users, href: '/staff', roles: ['ADMIN', 'MANAGER'] },
+    { name: 'Staff', icon: Users, href: '/staff', roles: ['ADMIN'] },
     { name: 'Reports', icon: FileText, href: '/reports', roles: ['ADMIN', 'MANAGER'] },
   ];
 

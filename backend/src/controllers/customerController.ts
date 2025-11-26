@@ -71,10 +71,12 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
       data: {
         customers: transformedCustomers,
         pagination: {
-          page: pageNum,
+          currentPage: pageNum,
+          page: pageNum, // Keep for backward compatibility
           limit: limitNum,
           total,
-          pages: Math.ceil(total / limitNum)
+          totalPages: Math.ceil(total / limitNum),
+          pages: Math.ceil(total / limitNum) // Keep for backward compatibility
         }
       }
     });
@@ -258,8 +260,17 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
 
     // Parent existence already verified above if isDependent
 
+    // Capitalize first letter of each name
+    const capitalizeName = (name: string): string => {
+      return name
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+    const capitalizedFullName = capitalizeName(fullName.trim());
+
     console.log('🚀 Creating customer with data:', {
-      fullName,
+      fullName: capitalizedFullName,
       gender,
       location,
       district,
@@ -278,7 +289,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
 
     const customer = await prisma.customer.create({
       data: {
-        fullName,
+        fullName: capitalizedFullName,
         gender,
         location,
         district,
@@ -368,8 +379,16 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
       }
     }
 
+    // Capitalize first letter of each name if fullName is being updated
+    const capitalizeName = (name: string): string => {
+      return name
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+
     const updateData: any = {};
-    if (fullName !== undefined) updateData.fullName = fullName;
+    if (fullName !== undefined) updateData.fullName = capitalizeName(fullName.trim());
     if (gender !== undefined) updateData.gender = gender;
     if (location !== undefined) updateData.location = location;
     if (district !== undefined) updateData.district = district;
@@ -625,7 +644,9 @@ export const getDiscountEligibility = async (req: Request, res: Response): Promi
       }
     }
 
-    const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed;
+    // Birthday discount is only available if customer has at least 1 sale (more than 0 sales)
+    const hasAtLeastOneSale = customer.saleCount >= 1;
+    const birthdayDiscountAvailable = isBirthdayMonth && !birthdayDiscountUsed && hasAtLeastOneSale;
 
     res.json({
       success: true,

@@ -220,8 +220,16 @@ const createCustomer = async (req, res) => {
             }
         }
         // Parent existence already verified above if isDependent
+        // Capitalize first letter of each name
+        const capitalizeName = (name) => {
+            return name
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        };
+        const capitalizedFullName = capitalizeName(fullName.trim());
         console.log('🚀 Creating customer with data:', {
-            fullName,
+            fullName: capitalizedFullName,
             gender,
             location,
             district,
@@ -239,7 +247,7 @@ const createCustomer = async (req, res) => {
         });
         const customer = await database_1.prisma.customer.create({
             data: {
-                fullName,
+                fullName: capitalizedFullName,
                 gender,
                 location,
                 district,
@@ -308,9 +316,16 @@ const updateCustomer = async (req, res) => {
                 return;
             }
         }
+        // Capitalize first letter of each name if fullName is being updated
+        const capitalizeName = (name) => {
+            return name
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        };
         const updateData = {};
         if (fullName !== undefined)
-            updateData.fullName = fullName;
+            updateData.fullName = capitalizeName(fullName.trim());
         if (gender !== undefined)
             updateData.gender = gender;
         if (location !== undefined)

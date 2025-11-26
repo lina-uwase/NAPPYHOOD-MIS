@@ -39,6 +39,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [metrics, setMetrics] = useState<SalonMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
+  const [salesData, setSalesData] = useState<{ day: string; value: number }[]>([]);
   const [topServices, setTopServices] = useState<{ count: number; revenue: number; name: string }[]>([]);
   const [topCustomers, setTopCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,12 +167,36 @@ export default function Dashboard() {
     }
   };
 
+  const fetchSalesData = async (period: string) => {
+    // Don't make API calls during build time
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const dashboardRes = await api.get(`/dashboard/stats?period=${period}`);
+      const data = dashboardRes.data.data;
+
+      let salesByDay = [];
+      if (data.revenueTrend && data.revenueTrend.length > 0) {
+        salesByDay = data.revenueTrend.map((item: any) => ({
+          day: item.day,
+          value: item.revenue || 0
+        }));
+      }
+      setSalesData(salesByDay);
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+    }
+  };
+
   useEffect(() => {
     // Only run on client side and when authenticated
     if (typeof window !== 'undefined' && isAuthenticated) {
       setLoading(true);
       fetchDashboardData();
       fetchRevenueData(revenuePeriod);
+      fetchSalesData(salesPeriod);
     }
   }, [isAuthenticated]);
 
@@ -181,6 +206,13 @@ export default function Dashboard() {
       fetchRevenueData(revenuePeriod);
     }
   }, [revenuePeriod, isAuthenticated]);
+
+  useEffect(() => {
+    // Only run on client side and when authenticated
+    if (typeof window !== 'undefined' && isAuthenticated) {
+      fetchSalesData(salesPeriod);
+    }
+  }, [salesPeriod, isAuthenticated]);
 
   if (authLoading) {
     return (
@@ -412,7 +444,10 @@ export default function Dashboard() {
               <h3 className="text-lg font-semibold text-gray-900">Sales Trends</h3>
               <select
                 value={salesPeriod}
-                onChange={(e) => setSalesPeriod(e.target.value)}
+                onChange={(e) => {
+                  setSalesPeriod(e.target.value);
+                  fetchSalesData(e.target.value);
+                }}
                 className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]"
               >
                 <option value="week">This Week</option>
@@ -422,7 +457,7 @@ export default function Dashboard() {
             </div>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData} margin={{ top: 16, right: 12, left: 12, bottom: 16 }}>
+                <LineChart data={salesData} margin={{ top: 16, right: 12, left: 12, bottom: 16 }}>
                   <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
                   <XAxis
                     dataKey="day"

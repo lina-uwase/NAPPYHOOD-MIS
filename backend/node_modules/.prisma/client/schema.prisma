@@ -214,6 +214,7 @@ enum DiscountType {
 enum PaymentMethod {
   CASH
   MOBILE_MONEY
+  MOMO
   BANK_CARD
   BANK_TRANSFER
 }

@@ -14,6 +14,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
   const [formData, setFormData] = useState({
     names: '',
     phone: '',
+    email: '',
     password: '',
     role: 'STAFF' as 'ADMIN' | 'STAFF'
   });
@@ -26,6 +27,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
       setFormData({
         names: editingUser.names || '',
         phone: editingUser.phone || '',
+        email: editingUser.email || '',
         password: '', // Don't populate password when editing
         role: editingUser.role || 'STAFF'
       });
@@ -33,6 +35,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
       setFormData({
         names: '',
         phone: '',
+        email: '',
         password: '',
         role: 'STAFF'
       });
@@ -100,16 +103,25 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         
         await onAddUser(updateData);
       } else {
-        await onAddUser(formData as CreateUserDto);
+        const createData: CreateUserDto = {
+          names: formData.names,
+          phone: formData.phone,
+          role: formData.role,
+          email: formData.email.trim() || undefined, // Email is optional - only send if provided
+          password: formData.password
+        };
+        await onAddUser(createData);
       }
       
       onClose();
       setFormData({
         names: '',
         phone: '',
+        email: '',
         password: '',
         role: 'STAFF'
       });
+      setErrors({});
       setErrors({});
     } catch {
     } finally {
@@ -124,6 +136,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         setFormData({
           names: '',
           phone: '',
+          email: '',
           password: '',
           role: 'STAFF'
         });
@@ -138,8 +151,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-5 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-lg w-full max-w-md mx-4">
+        <div className="flex items-center justify-between p-5 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
             {editingUser ? 'Edit User' : 'Add New User'}
           </h2>
@@ -151,8 +164,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
+        <form onSubmit={handleSubmit} className="p-5">
+              <div className="mb-4" style={{ marginTop: 0 }}>
                 <label htmlFor="names" className="block text-sm text-gray-600 mb-1">
                   Full Name
                 </label>
@@ -174,7 +187,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                 )}
               </div>
 
-              <div>
+              <div className="mb-4">
                 <label htmlFor="phone" className="block text-sm text-gray-600 mb-1">
                   Phone Number
                 </label>
@@ -196,7 +209,30 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                 )}
               </div>
 
-              <div>
+              <div className="mb-4">
+                <label htmlFor="email" className="block text-sm text-gray-600 mb-1">
+                  Email Address <span className="text-xs text-gray-500">(Optional)</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required={false}
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009900] focus:border-transparent ${
+                    errors.email 
+                      ? 'border-red-500' 
+                      : 'border-gray-200'
+                  }`}
+                  placeholder="Enter email address (optional)"
+                />
+                {errors.email && (
+                  <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+                )}
+              </div>
+
+              <div className="mb-4">
                 <label htmlFor="password" className="block text-sm text-gray-600 mb-1">
                   Password {editingUser && <span className="text-xs text-gray-500">(leave blank to keep current)</span>}
                 </label>
@@ -231,7 +267,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                 )}
               </div>
 
-              <div>
+              <div className="mb-4">
                 <label htmlFor="role" className="block text-sm text-gray-600 mb-1">
                   Role
                 </label>
@@ -246,7 +282,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                   <option value="ADMIN">Admin</option>
                 </select>
               </div>
-          <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleClose}
@@ -262,7 +298,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
               >
                 {isSubmitting ? 'Saving...' : editingUser ? 'Update User' : 'Add User'}
               </button>
-          </div>
+            </div>
         </form>
       </div>
     </div>

@@ -123,7 +123,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   const fetchStaff = async () => {
     try {
-      const response = await staffService.getActiveStaff();
+      // Fetch all staff (including inactive) for sales recording
+      const response = await staffService.getAll();
       setStaff(response.data);
     } catch (error) {
       console.error('Failed to fetch staff:', error);
@@ -473,16 +474,16 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       );
 
       // Extract staff IDs and custom staff names for editing
+      // Note: This is just for formData, actual staff selection is handled in separate useEffect
       const systemStaffIds: string[] = [];
       const customStaffNames: string[] = [];
 
       if (editingSale.staff) {
-        editingSale.staff.forEach(saleStaff => {
-          if (saleStaff.staffId && staff.some(s => s.id === saleStaff.staffId)) {
-            // System staff
-            systemStaffIds.push(saleStaff.staffId);
+        editingSale.staff.forEach((saleStaff: any) => {
+          const staffId = saleStaff.staffId || saleStaff.staff?.id;
+          if (staffId) {
+            systemStaffIds.push(staffId);
           } else if (saleStaff.customName) {
-            // Custom staff
             customStaffNames.push(saleStaff.customName);
           }
         });
@@ -522,32 +523,6 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         setServiceShampooOptions(shampooOptions);
       }
 
-      // Set selected staff (combine system staff with custom staff names if any)
-      if (editingSale.staff) {
-        const staffSelections: (StaffOption | CustomStaff)[] = [];
-
-        editingSale.staff.forEach(saleStaff => {
-          // First try to find in system staff
-          const systemStaff = staff.find(s => s.id === saleStaff.staffId);
-          if (systemStaff) {
-            staffSelections.push({
-              id: systemStaff.id,
-              name: systemStaff.name,
-              role: systemStaff.role
-            });
-          } else if (saleStaff.customName) {
-            // If not found in system and has custom name, treat as custom staff
-            staffSelections.push({
-              id: `custom-${Date.now()}-${Math.random()}`,
-              name: saleStaff.customName,
-              isCustom: true as const
-            });
-          }
-        });
-
-        setSelectedStaff(staffSelections);
-      }
-
       // Set payments - use actual payments array from backend if available
       if (editingSale.payments && Array.isArray(editingSale.payments) && editingSale.payments.length > 0) {
         // Use the actual payments from the backend
@@ -563,7 +538,157 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         }]);
       }
     }
-  }, [editingSale]);
+  }, [editingSale, staff]); // Added staff to dependencies
+
+  // Separate useEffect to populate staff when editingSale is available
+  useEffect(() => {
+    console.log('🔍 Staff population useEffect triggered:', {
+      hasEditingSale: !!editingSale,
+      editingSaleId: editingSale?.id,
+      hasStaffArray: !!editingSale?.staff,
+      staffArrayType: Array.isArray(editingSale?.staff),
+      staffArrayLength: editingSale?.staff?.length,
+      availableStaffCount: staff.length,
+      editingSaleStaffDetails: editingSale?.staff?.map((s: any) => ({
+        id: s.id,
+        staffId: s.staffId,
+        customName: s.customName,
+        staff: s.staff,
+        fullObject: s
+      }))
+    });
+
+    if (editingSale && editingSale.staff && Array.isArray(editingSale.staff) && editingSale.staff.length > 0) {
+      console.log('🔍 Populating staff for editing sale:', {
+        editingSaleStaff: editingSale.staff,
+        availableStaff: staff,
+        staffCount: staff.length,
+        editingSaleStaffLength: editingSale.staff.length
+      });
+
+      const staffSelections: (StaffOption | CustomStaff)[] = [];
+
+      editingSale.staff.forEach((saleStaff: any) => {
+        console.log('🔍 Processing saleStaff item:', saleStaff);
+        
+        // Handle custom staff first
+        if (saleStaff.customName) {
+          console.log('✅ Adding custom staff:', saleStaff.customName);
+          staffSelections.push({
+            id: `custom-${Date.now()}-${Math.random()}`,
+            name: saleStaff.customName,
+            isCustom: true as const
+          });
+          return;
+        }
+
+        // Handle system staff
+        // Get staffId from either direct field or nested staff object
+        const staffId = saleStaff.staffId || saleStaff.staff?.id;
+        // Get staff name from nested staff object
+        const staffName = saleStaff.staff?.name || saleStaff.staff?.fullName || saleStaff.staffName;
+        const staffRole = saleStaff.staff?.role;
+
+        console.log('🔍 Extracted staff data:', {
+          staffId,
+          staffName,
+          staffRole,
+          saleStaffObject: saleStaff
+        });
+
+        if (!staffId) {
+          console.warn('⚠️ No staffId found in saleStaff:', saleStaff);
+          return;
+        }
+
+        // Try to find in system staff by ID to get the role (if staff array is loaded)
+        if (staff.length > 0) {
+          const systemStaff = staff.find(s => s.id === staffId);
+          if (systemStaff) {
+            console.log('✅ Found system staff by ID:', systemStaff);
+            staffSelections.push({
+              id: systemStaff.id,
+              name: systemStaff.name,
+              role: systemStaff.role
+            });
+            return;
+          }
+        }
+
+        // If not found in system staff or staff array not loaded, use data from sale
+        if (staffName) {
+          console.log('✅ Using staff data from sale:', { staffId, staffName, staffRole });
+          staffSelections.push({
+            id: staffId,
+            name: staffName,
+            role: staffRole || 'STAFF'
+          });
+        } else {
+          // If we only have staffId but no name, create placeholder (will be updated when staff loads)
+          console.log('⚠️ Only have staffId, creating placeholder:', staffId);
+          staffSelections.push({
+            id: staffId,
+            name: 'Loading...',
+            role: staffRole || 'STAFF'
+          });
+        }
+      });
+
+      console.log('✅ Final staff selections:', staffSelections);
+      console.log('✅ Setting selectedStaff with', staffSelections.length, 'items');
+      // Always set staff selections, even if empty (to clear previous state)
+      setSelectedStaff(staffSelections);
+    } else if (editingSale && (!editingSale.staff || !Array.isArray(editingSale.staff) || editingSale.staff.length === 0)) {
+      console.log('⚠️ Editing sale has no staff array or staff is empty:', {
+        hasStaff: !!editingSale.staff,
+        isArray: Array.isArray(editingSale.staff),
+        length: editingSale.staff?.length
+      });
+      setSelectedStaff([]);
+    } else if (!editingSale) {
+      // Clear staff when not editing
+      setSelectedStaff([]);
+    }
+  }, [editingSale, staff]);
+
+  // Update staff selections when staff list loads (in case it loads after editingSale)
+  useEffect(() => {
+    if (editingSale && editingSale.staff && Array.isArray(editingSale.staff) && editingSale.staff.length > 0 && staff.length > 0 && selectedStaff.length > 0) {
+      // Check if any selected staff has placeholder name and update it
+      const updatedStaff = selectedStaff.map(selected => {
+        if (selected.name === 'Loading...' || !selected.name) {
+          const systemStaff = staff.find(s => s.id === selected.id);
+          if (systemStaff) {
+            console.log('🔄 Updating placeholder staff with real data:', systemStaff);
+            return {
+              id: systemStaff.id,
+              name: systemStaff.name,
+              role: systemStaff.role
+            };
+          }
+        }
+        return selected;
+      });
+
+      // Check if we need to update any staff
+      const needsUpdate = updatedStaff.some((updated, index) => {
+        const current = selectedStaff[index];
+        if (!current) return true;
+        if ('isCustom' in updated && updated.isCustom) {
+          return updated.name !== (current && 'isCustom' in current ? current.name : '');
+        }
+        if ('isCustom' in current && current.isCustom) {
+          return true; // Converting from custom to system staff
+        }
+        return updated.name !== current.name || ('role' in updated && 'role' in current && updated.role !== current.role);
+      });
+
+      if (needsUpdate) {
+        console.log('🔄 Updating staff selections with loaded staff data');
+        setSelectedStaff(updatedStaff);
+      }
+    }
+  }, [staff, editingSale]); // Only depend on staff and editingSale, not selectedStaff to avoid loops
 
   // Update payment amounts when final amount changes
   useEffect(() => {
@@ -592,7 +717,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Customer Selection */}
             <div className="space-y-4">
@@ -752,6 +877,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                     >
                       <option value="CASH">Cash</option>
                       <option value="MOBILE_MONEY">Mobile Money</option>
+                      <option value="MOMO">MoMo</option>
                       <option value="BANK_CARD">Bank Card</option>
                       <option value="BANK_TRANSFER">Bank Transfer</option>
                     </select>

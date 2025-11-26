@@ -147,14 +147,26 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
 
     // Process payments - support both old single payment method and new multiple payments
+    // Normalize payment methods to ensure consistency
+    const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+    
     let normalizedPayments: Array<{paymentMethod: string, amount: number}> = [];
 
     if (Array.isArray(payments) && payments.length > 0) {
       // Use new payments array
-      normalizedPayments = payments.map((p: any) => ({
-        paymentMethod: p.paymentMethod || 'CASH',
+      normalizedPayments = payments.map((p: any) => {
+        const method = (p.paymentMethod || 'CASH').toUpperCase().trim();
+        const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
+        
+        if (method !== normalizedMethod) {
+          console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}"`);
+        }
+        
+        return {
+          paymentMethod: normalizedMethod,
         amount: Number(p.amount || 0)
-      }));
+        };
+      });
 
       // Validate total payment amount matches final amount
       const totalPaymentAmount = normalizedPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -166,11 +178,19 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       }
     } else {
       // Fallback to single payment method for backward compatibility
+      const method = (paymentMethod || 'CASH').toUpperCase().trim();
+      const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
+      
       normalizedPayments = [{
-        paymentMethod: paymentMethod || 'CASH',
+        paymentMethod: normalizedMethod,
         amount: finalAmount
       }];
     }
+    
+    console.log('💳 Normalized payments for sale:', normalizedPayments.map(p => ({
+      method: p.paymentMethod,
+      amount: p.amount
+    })));
 
     // Determine primary payment method for legacy field
     const primaryPaymentMethod = normalizedPayments[0]?.paymentMethod || paymentMethod;
@@ -213,14 +233,44 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         }))
       });
 
-      // Create sale payments
-      await tx.salePayment.createMany({
-        data: normalizedPayments.map(payment => ({
+      // Create sale payments - normalize payment methods to ensure consistency
+      const paymentData = normalizedPayments.map(payment => {
+        const method = (payment.paymentMethod || 'CASH').toUpperCase().trim();
+        // Validate payment method
+        const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+        const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
+        
+        if (method !== normalizedMethod) {
+          console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}"`);
+        }
+        
+        return {
           saleId: sale.id,
-          paymentMethod: payment.paymentMethod as any,
+          paymentMethod: normalizedMethod as any,
           amount: payment.amount
-        }))
+        };
       });
+      
+      console.log('💳 Creating sale payments:', paymentData.map(p => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount)
+      })));
+      
+      const createdPayments = await tx.salePayment.createMany({
+        data: paymentData
+      });
+      
+      console.log('✅ Successfully created', createdPayments.count, 'payment entries for sale', sale.id);
+      
+      // Verify payments were created
+      const verifyPayments = await tx.salePayment.findMany({
+        where: { saleId: sale.id },
+        select: { paymentMethod: true, amount: true }
+      });
+      console.log('🔍 Verified payments in database:', verifyPayments.map(p => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount)
+      })));
 
       // Create sale staff relationships for system staff
       if (staffIds && Array.isArray(staffIds) && staffIds.length > 0) {
@@ -357,7 +407,8 @@ async function calculateDiscounts(
   }
 
   // 2. Birthday month discount (20%)
-  if (customer.birthMonth === currentMonth) {
+  // Only eligible if customer has at least 1 sale (more than 0 sales)
+  if (customer.birthMonth === currentMonth && customer.saleCount >= 1) {
     // Check if customer hasn't used birthday discount this month
     const thisMonth = new Date();
     thisMonth.setDate(1);
@@ -540,7 +591,12 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
     });
   } catch (error) {
     console.error('Get sales error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', error instanceof Error ? error.message : error);
+    console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -774,11 +830,27 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
       if (Array.isArray(payments)) {
         await tx.salePayment.deleteMany({ where: { saleId: id } });
         if (payments.length > 0) {
-          const normalizedPayments = payments.map((payment: any) => ({
+          const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+          const normalizedPayments = payments.map((payment: any) => {
+            const method = (payment.paymentMethod || 'CASH').toUpperCase().trim();
+            const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
+            
+            if (method !== normalizedMethod) {
+              console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}" for sale ${id}`);
+            }
+            
+            return {
             saleId: id,
-            paymentMethod: payment.paymentMethod,
+              paymentMethod: normalizedMethod as any,
             amount: Number(payment.amount)
-          }));
+            };
+          });
+          
+          console.log('💳 Updating sale payments:', normalizedPayments.map(p => ({
+            method: p.paymentMethod,
+            amount: Number(p.amount)
+          })));
+          
           await tx.salePayment.createMany({ data: normalizedPayments });
         }
       }
@@ -935,12 +1007,33 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     const { date } = req.query;
 
     // Use provided date or default to today
-    const targetDate = date ? new Date(date as string) : new Date();
+    // Handle date string in YYYY-MM-DD format (from date input)
+    // IMPORTANT: Parse as UTC to match database storage
+    let targetDate: Date;
+    if (date) {
+      // Parse date string as UTC to avoid timezone issues
+      const dateStr = date as string;
+      // Create date in UTC: YYYY-MM-DD becomes YYYY-MM-DD 00:00:00 UTC
+      targetDate = new Date(dateStr + 'T00:00:00.000Z');
+    } else {
+      targetDate = new Date();
+    }
+    
+    // Set start and end of day in UTC
     const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    startOfDay.setUTCHours(0, 0, 0, 0);
 
     const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    endOfDay.setUTCHours(23, 59, 59, 999);
+
+    console.log('📊 Payment Summary Query:', {
+      date: date,
+      targetDate: targetDate.toISOString(),
+      startOfDay: startOfDay.toISOString(),
+      endOfDay: endOfDay.toISOString(),
+      startOfDayLocal: startOfDay.toLocaleString(),
+      endOfDayLocal: endOfDay.toLocaleString()
+    });
 
     const whereClause: any = {
       saleDate: {
@@ -956,53 +1049,285 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
       };
     }
 
-    // Get all payments for the day grouped by payment method
-    const payments = await prisma.salePayment.findMany({
+    // Query payments directly by sale date - this is the most reliable approach
+    // It gets ALL payments for sales on this date in a single query
+    const allDirectPayments = await prisma.salePayment.findMany({
       where: {
-        sale: whereClause
+        sale: {
+          saleDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          },
+          ...(req.user?.role === 'STAFF' ? {
+            staff: {
+              some: { staffId: req.user.id }
+            }
+          } : {})
+        }
       },
       select: {
         paymentMethod: true,
-        amount: true
+        amount: true,
+        saleId: true,
+        createdAt: true,
+        sale: {
+          select: {
+            saleDate: true,
+            id: true,
+            paymentMethod: true, // Legacy payment method for fallback
+            finalAmount: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+    
+    // Get all sales for the date to handle legacy sales (sales without payment entries)
+    const allSalesForDate = await prisma.sale.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        paymentMethod: true,
+        finalAmount: true,
+        saleDate: true
+      }
+    });
+    
+    // Get sale IDs that have payments
+    const salesWithPayments = new Set(allDirectPayments.map(p => p.saleId));
+    
+    console.log('📊 Direct payments query found:', allDirectPayments.length, 'payments');
+
+    if (allDirectPayments.length > 0) {
+      // Group by payment method for logging
+      const paymentBreakdown: Record<string, { count: number; total: number }> = {};
+      allDirectPayments.forEach(p => {
+        const method = p.paymentMethod;
+        if (!paymentBreakdown[method]) {
+          paymentBreakdown[method] = { count: 0, total: 0 };
+        }
+        paymentBreakdown[method].count++;
+        paymentBreakdown[method].total += Number(p.amount);
+      });
+      
+      console.log('📊 Payment breakdown by method:', Object.entries(paymentBreakdown).map(([method, data]) => ({
+        method,
+        count: data.count,
+        total: data.total
+      })));
+      
+      console.log('📊 All payments details:', allDirectPayments.map(p => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount),
+        saleId: p.saleId,
+        saleDate: p.sale.saleDate?.toISOString()
+      })));
+    } else {
+      console.log('⚠️ No payments found in SalePayment table for this date');
+    }
+    
+    console.log('📊 Total sales for date:', allSalesForDate.length);
+    if (allSalesForDate.length > 0) {
+      console.log('📊 Sales details:', allSalesForDate.map(s => ({
+        id: s.id,
+        saleDate: s.saleDate?.toISOString(),
+        paymentMethod: s.paymentMethod,
+        finalAmount: Number(s.finalAmount),
+        hasPaymentsInTable: salesWithPayments.has(s.id)
+      })));
+    }
+
+    // Extract all payments from the direct query
+    const payments: any[] = [];
+    
+    // Process all payments from SalePayment table
+    allDirectPayments.forEach(payment => {
+      const method = payment.paymentMethod;
+      // Normalize payment method to ensure consistency
+      const normalizedMethod = method ? method.toUpperCase().trim() : 'CASH';
+      payments.push({
+        paymentMethod: normalizedMethod,
+        amount: payment.amount,
+        sale: {
+          id: payment.saleId,
+          saleDate: payment.sale.saleDate
+        }
+      });
+    });
+    
+    // Handle legacy sales (sales without payment entries in SalePayment table)
+    // These sales only have the paymentMethod field on the Sale table
+    allSalesForDate.forEach(sale => {
+      // Only process sales that don't have entries in SalePayment table
+      if (!salesWithPayments.has(sale.id)) {
+        // This is a legacy sale - use Sale.paymentMethod
+        const method = sale.paymentMethod?.toUpperCase().trim();
+        if (method) {
+          payments.push({
+            paymentMethod: method,
+            amount: sale.finalAmount,
+            sale: {
+              id: sale.id,
+              saleDate: sale.saleDate
+            }
+          });
+        }
       }
     });
 
-    // Group payments by method and calculate totals
-    const paymentSummary = payments.reduce((acc: any, payment) => {
+    console.log('📊 Payments found:', payments.length);
+    if (payments.length > 0) {
+      console.log('📊 Payment details:', payments.map(p => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount),
+        saleId: p.sale.id,
+        saleDate: p.sale.saleDate?.toISOString()
+      })));
+    } else {
+      // Debug: Check if there are any sales for this date
+      const salesCount = await prisma.sale.count({ where: whereClause });
+      console.log('📊 Sales count for date range:', salesCount);
+      
+      // Also check all recent payments to see what payment methods exist
+      const recentPayments = await prisma.salePayment.findMany({
+        take: 50,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          paymentMethod: true,
+          amount: true,
+          sale: {
+            select: {
+              saleDate: true
+            }
+          }
+        }
+      });
+      console.log('📊 Recent payments (last 50, all dates):', recentPayments.map(p => ({
+        method: p.paymentMethod,
+        amount: Number(p.amount),
+        saleDate: p.sale.saleDate?.toISOString()
+      })));
+    }
+
+    // Group payments by method and calculate totals from salePayment table
+    const paymentSummary: Record<string, { method: string; total: number; count: number }> = {};
+    const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+    
+    payments.forEach(payment => {
       const method = payment.paymentMethod;
-      if (!acc[method]) {
-        acc[method] = {
-          method,
+      // Ensure method is uppercase and valid
+      let normalizedMethod = method?.toUpperCase().trim();
+      
+      if (!normalizedMethod) {
+        console.warn('⚠️ Payment with invalid method:', payment);
+        return;
+      }
+      
+      // Validate and normalize the method
+      if (!validMethods.includes(normalizedMethod)) {
+        console.warn(`⚠️ Invalid payment method "${normalizedMethod}" found, defaulting to CASH`);
+        normalizedMethod = 'CASH';
+      }
+      
+      if (!paymentSummary[normalizedMethod]) {
+        paymentSummary[normalizedMethod] = {
+          method: normalizedMethod,
           total: 0,
           count: 0
         };
       }
-      acc[method].total += Number(payment.amount);
-      acc[method].count += 1;
-      return acc;
-    }, {});
+      paymentSummary[normalizedMethod].total += Number(payment.amount);
+      paymentSummary[normalizedMethod].count += 1;
+    });
+
+    console.log('📊 Payment summary after salePayment:', Object.keys(paymentSummary).map(k => ({
+      method: k,
+      total: paymentSummary[k].total,
+      count: paymentSummary[k].count
+    })));
+
+    // Process legacy sales (sales without payment entries in SalePayment table)
+    console.log('📊 Processing legacy sales (sales without payment entries):');
+    
+    // Process all sales - if they have payments in salePayment, those are already counted above
+    // If they don't have payments, use the paymentMethod from Sale table
+    allSalesForDate.forEach(sale => {
+      // Skip sales that already have payments in SalePayment table (already counted above)
+      if (salesWithPayments.has(sale.id)) {
+        return;
+      }
+      
+      // This is a legacy sale or sale without payment entries - use Sale.paymentMethod
+      const method = sale.paymentMethod?.toUpperCase().trim();
+      if (!method) {
+        console.warn('⚠️ Sale with invalid paymentMethod:', sale.id, sale.paymentMethod);
+        return;
+      }
+      
+      // Normalize the method to ensure it matches our enum values
+      const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
+      const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
+      
+      if (method !== normalizedMethod) {
+        console.warn(`⚠️ Legacy sale ${sale.id} has paymentMethod "${method}" normalized to "${normalizedMethod}"`);
+      }
+      
+      if (!paymentSummary[normalizedMethod]) {
+        paymentSummary[normalizedMethod] = {
+          method: normalizedMethod,
+          total: 0,
+          count: 0
+        };
+      }
+      paymentSummary[normalizedMethod].total += Number(sale.finalAmount);
+      paymentSummary[normalizedMethod].count += 1;
+    });
+
+    console.log('📊 Final payment summary:', Object.keys(paymentSummary).map(k => ({
+      method: k,
+      total: paymentSummary[k].total,
+      count: paymentSummary[k].count
+    })));
 
     // Convert to array and ensure all payment methods are represented
-    const allMethods = ['CASH', 'BANK_TRANSFER', 'MOMO'];
+    const allMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
     const summary = allMethods.map(method => ({
       method,
       total: paymentSummary[method]?.total || 0,
       count: paymentSummary[method]?.count || 0
     }));
 
+    console.log('📊 Summary array before sending:', summary.map(s => ({
+      method: s.method,
+      total: s.total,
+      count: s.count
+    })));
+    console.log('📊 Summary array length:', summary.length, '(should be 5)');
+
     // Calculate grand total
     const grandTotal = summary.reduce((sum, item) => sum + item.total, 0);
 
-    res.json({
+    const responseData = {
       success: true,
       data: {
         date: targetDate.toISOString().split('T')[0],
         summary,
         grandTotal
       }
-    });
+    };
+
+    console.log('📊 Final response data:', JSON.stringify(responseData, null, 2));
+
+    res.json(responseData);
   } catch (error) {
     console.error('Get daily payment summary error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', error instanceof Error ? error.message : error);
+    console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };

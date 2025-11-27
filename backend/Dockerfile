@@ -28,15 +28,17 @@ WORKDIR /app
 # Copy package files
 COPY --from=builder /app/package.json /app/package-lock.json* ./
 
-# Install only production dependencies
+# Install only production dependencies (but keep prisma for generate)
 RUN npm install --only=production && npm cache clean --force
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+
+# Copy generated Prisma Client from builder
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Generate Prisma Client in production stage
+# Generate Prisma Client in production stage (needs DATABASE_URL from env)
 RUN npx prisma generate
 
 # Expose the port

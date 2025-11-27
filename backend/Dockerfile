@@ -34,6 +34,10 @@ RUN npm install --only=production && npm cache clean --force
 # Copy built application
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
+# Generate Prisma Client in production stage
+RUN npx prisma generate
 
 # Expose the port
 EXPOSE 5001

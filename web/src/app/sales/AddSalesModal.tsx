@@ -37,11 +37,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     addShampoo: false,
     manualDiscountAmount: 0,
     manualDiscountReason: '',
-    applyManualDiscount: false
+    applyManualDiscount: false,
+    manualIncrementAmount: 0,
+    manualIncrementReason: '',
+    applyManualIncrement: false
   });
 
   const [payments, setPayments] = useState([
-    { paymentMethod: 'CASH', amount: 0 }
+    { paymentMethod: 'MOMO', amount: 0 }
   ]);
 
   const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
@@ -53,6 +56,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showKidsServices, setShowKidsServices] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -69,6 +73,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     fetchServices();
     fetchStaff();
   }, []);
+
+  // Re-fetch services when toggle changes to ensure fresh data
+  useEffect(() => {
+    if (services.length === 0) {
+      fetchServices();
+    }
+  }, [showKidsServices]);
 
   // Fetch discount eligibility when customer is selected
   useEffect(() => {
@@ -114,12 +125,94 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   const fetchServices = async () => {
     try {
-      const response = await servicesService.getAll({ limit: 1000, isActive: true });
-      setServices(response.data);
-    } catch (error) {
-      console.error('Failed to fetch services:', error);
+      // First try to fetch active services
+      let response = await servicesService.getAll({ limit: 1000, isActive: true });
+      console.log('🔍 Full API Response (active):', response);
+      console.log('🔍 Response data type:', typeof response.data, Array.isArray(response.data));
+      
+      let servicesData = Array.isArray(response.data) ? response.data : [];
+      
+      // If no active services found, try fetching all services (including inactive)
+      if (servicesData.length === 0) {
+        console.warn('⚠️ No active services found, trying to fetch all services...');
+        response = await servicesService.getAll({ limit: 1000 });
+        servicesData = Array.isArray(response.data) ? response.data : [];
+      }
+      
+      console.log('Fetched services:', {
+        total: servicesData.length,
+        categories: [...new Set(servicesData.map((s: Service) => s.category))],
+        kidsServices: servicesData.filter((s: Service) => s.category === 'KIDS_SERVICES').length,
+        sampleService: servicesData[0] || null,
+        allServiceNames: servicesData.slice(0, 5).map((s: Service) => s.name)
+      });
+      
+      if (servicesData.length === 0) {
+        console.error('❌ No services found in database! Please seed services.');
+        setSubmitError('No services available. Please ensure services are seeded in the database.');
+      }
+      
+      setServices(servicesData);
+    } catch (error: any) {
+      console.error('❌ Failed to fetch services:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      setServices([]);
+      setSubmitError(`Failed to load services: ${error.message || 'Unknown error'}`);
     }
   };
+
+  // Filter services based on kids/adults toggle
+  const filteredServices = useMemo(() => {
+    console.log('🔍 Filtering services:', {
+      showKidsServices,
+      totalServices: services.length,
+      serviceCategories: [...new Set(services.map(s => s.category))]
+    });
+    
+    if (showKidsServices) {
+      // Show only kids services
+      const kidsServices = services.filter(service => {
+        const matches = service.category === 'KIDS_SERVICES';
+        // Only log mismatches when we're looking for kids services to reduce noise
+        return matches;
+      });
+      console.log('Kids services filter:', { 
+        totalServices: services.length, 
+        kidsServicesCount: kidsServices.length,
+        allCategories: [...new Set(services.map(s => s.category))],
+        kidsServicesNames: kidsServices.map(s => s.name)
+      });
+      return kidsServices;
+    } else {
+      // Show all services except kids services
+      const adultServices = services.filter(service => {
+        // If category is undefined or null, include it (for backward compatibility)
+        if (!service.category) {
+          return true;
+        }
+        return service.category !== 'KIDS_SERVICES';
+      });
+      console.log('Adult services filter:', {
+        totalServices: services.length,
+        adultServicesCount: adultServices.length,
+        excludedKids: services.filter(s => s.category === 'KIDS_SERVICES').length,
+        allCategories: [...new Set(services.map(s => s.category))]
+      });
+      
+      // If filtering removed all services, show all services (fallback)
+      if (adultServices.length === 0 && services.length > 0) {
+        console.warn('⚠️ Filtering removed all services, showing all services as fallback');
+        console.warn('⚠️ This might indicate a category issue. Showing all services.');
+        return services;
+      }
+      
+      return adultServices;
+    }
+  }, [services, showKidsServices]);
 
   const fetchStaff = async () => {
     try {
@@ -262,6 +355,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         return;
       }
 
+      if (formData.applyManualIncrement && !formData.manualIncrementReason.trim()) {
+        setSubmitError('Reason for increment is required');
+        setLoading(false);
+        return;
+      }
+
       // Prepare staff data for submission
       const submitStaffData = {
         staffIds: selectedStaff.filter(s => !('isCustom' in s)).map(s => s.id),
@@ -280,15 +379,28 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         addShampoo: formData.addShampoo,
         payments: payments,
         manualDiscountAmount: formData.applyManualDiscount ? formData.manualDiscountAmount : 0,
-        manualDiscountReason: formData.applyManualDiscount ? formData.manualDiscountReason : undefined
+        manualDiscountReason: formData.applyManualDiscount ? (formData.manualDiscountReason?.trim() || undefined) : undefined,
+        manualIncrementAmount: formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0,
+        manualIncrementReason: formData.applyManualIncrement ? (formData.manualIncrementReason?.trim() || undefined) : undefined
       };
+
+      console.log('📤 SUBMITTING SALE DATA:', {
+        applyManualIncrement: formData.applyManualIncrement,
+        manualIncrementAmount: submitData.manualIncrementAmount,
+        manualIncrementReason: submitData.manualIncrementReason,
+        payments: submitData.payments,
+        paymentsTotal: submitData.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
+      });
 
 
       await onSubmit(submitData);
       onClose();
     } catch (error: any) {
       console.error('Failed to submit sale:', error);
-      setSubmitError(error.response?.data?.error || error.message || 'Failed to record sale. Please try again.');
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to record sale. Please try again.';
+      console.error('Backend error message:', errorMessage);
+      console.error('Full error response:', error.response?.data);
+      setSubmitError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -379,9 +491,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
         // Manual discount is always editable
         const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+        
+        // Manual increment (add money to total)
+        const manualIncrement = formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0;
 
         const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
-        const finalAmount = Math.max(0, subtotal - totalDiscounts);
+        const finalAmount = Math.max(0, subtotal - totalDiscounts + manualIncrement);
 
         return {
           subtotal,
@@ -414,32 +529,37 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
       // Manual discount
       const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+      
+      // Manual increment (add money to total)
+      const manualIncrement = formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0;
 
       const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
-      const finalAmount = Math.max(0, subtotal - totalDiscounts);
+      const finalAmount = Math.max(0, subtotal - totalDiscounts + manualIncrement);
 
       return {
         subtotal,
         ownProductDiscount,
         birthdayDiscount,
         sixthVisitDiscount,
-        manualDiscount,
-        finalAmount
-      };
-    } catch (error) {
-      console.error('Error in calculateTotals:', error);
-      return {
-        subtotal: 0,
-        ownProductDiscount: 0,
-        birthdayDiscount: 0,
-        sixthVisitDiscount: 0,
-        manualDiscount: 0,
-        finalAmount: 0
-      };
-    }
-  };
+          manualDiscount,
+          manualIncrement: manualIncrement || 0,
+          finalAmount
+        };
+      } catch (error) {
+        console.error('Error in calculateTotals:', error);
+        return {
+          subtotal: 0,
+          ownProductDiscount: 0,
+          birthdayDiscount: 0,
+          sixthVisitDiscount: 0,
+          manualDiscount: 0,
+          manualIncrement: 0,
+          finalAmount: 0
+        };
+      }
+    };
 
-  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, manualDiscount, finalAmount } = calculateTotals();
+  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, manualDiscount, manualIncrement = 0, finalAmount } = calculateTotals();
 
   // Populate form data when editing a sale
   useEffect(() => {
@@ -501,7 +621,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         addShampoo: false, // TODO: Add this to sale model if needed
         manualDiscountAmount: manualDiscountAmount,
         manualDiscountReason: manualDiscountReason,
-        applyManualDiscount: hasManualDiscount
+        applyManualDiscount: hasManualDiscount,
+        manualIncrementAmount: 0,
+        manualIncrementReason: '',
+        applyManualIncrement: false
       });
 
       // Set selected services
@@ -566,7 +689,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         editingSaleStaffLength: editingSale.staff.length
       });
 
-      const staffSelections: (StaffOption | CustomStaff)[] = [];
+        const staffSelections: (StaffOption | CustomStaff)[] = [];
 
       editingSale.staff.forEach((saleStaff: any) => {
         console.log('🔍 Processing saleStaff item:', saleStaff);
@@ -618,7 +741,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         // If not found in system staff or staff array not loaded, use data from sale
         if (staffName) {
           console.log('✅ Using staff data from sale:', { staffId, staffName, staffRole });
-          staffSelections.push({
+            staffSelections.push({
             id: staffId,
             name: staffName,
             role: staffRole || 'STAFF'
@@ -630,14 +753,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
             id: staffId,
             name: 'Loading...',
             role: staffRole || 'STAFF'
-          });
-        }
-      });
+            });
+          }
+        });
 
       console.log('✅ Final staff selections:', staffSelections);
       console.log('✅ Setting selectedStaff with', staffSelections.length, 'items');
       // Always set staff selections, even if empty (to clear previous state)
-      setSelectedStaff(staffSelections);
+        setSelectedStaff(staffSelections);
     } else if (editingSale && (!editingSale.staff || !Array.isArray(editingSale.staff) || editingSale.staff.length === 0)) {
       console.log('⚠️ Editing sale has no staff array or staff is empty:', {
         hasStaff: !!editingSale.staff,
@@ -857,7 +980,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={() => setPayments([...payments, { paymentMethod: 'CASH', amount: 0 }])}
+                    onClick={() => setPayments([...payments, { paymentMethod: 'MOMO', amount: 0 }])}
                     className="text-sm text-[#5A8621] hover:text-[#4a7219]"
                   >
                     + Add Payment
@@ -875,9 +998,9 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       }}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
                     >
+                      <option value="MOMO">MoMo</option>
                       <option value="CASH">Cash</option>
                       <option value="MOBILE_MONEY">Mobile Money</option>
-                      <option value="MOMO">MoMo</option>
                       <option value="BANK_CARD">Bank Card</option>
                       <option value="BANK_TRANSFER">Bank Transfer</option>
                     </select>
@@ -1006,6 +1129,57 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 )}
               </div>
 
+              {/* Manual Increment */}
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="applyManualIncrement"
+                    checked={formData.applyManualIncrement}
+                    onChange={(e) => {
+                      setFormData({
+                        ...formData,
+                        applyManualIncrement: e.target.checked,
+                        manualIncrementAmount: e.target.checked ? formData.manualIncrementAmount : 0
+                      });
+                    }}
+                    className="h-4 w-4 text-[#5A8621] focus:ring-[#5A8621] border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">Apply manual increment</span>
+                </label>
+
+                {formData.applyManualIncrement && (
+                  <div className="ml-6 space-y-2 mt-2">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Increment Amount (RWF)</label>
+                      <input
+                        type="number"
+                        value={formData.manualIncrementAmount}
+                        onChange={(e) => {
+                          setFormData({ ...formData, manualIncrementAmount: Number(e.target.value) });
+                        }}
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Reason for Increment *</label>
+                      <input
+                        type="text"
+                        value={formData.manualIncrementReason}
+                        onChange={(e) => {
+                          setFormData({ ...formData, manualIncrementReason: e.target.value });
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                        placeholder="e.g., Additional service charge, premium styling"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Notes */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1026,12 +1200,32 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
             <div className="space-y-4">
               {/* Services */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
                   <Scissors className="inline h-4 w-4 mr-1" />
                   Select Services *
                 </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showKidsServices}
+                      onChange={(e) => setShowKidsServices(e.target.checked)}
+                      className="sr-only"
+                    />
+                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      showKidsServices ? 'bg-[#5A8621]' : 'bg-gray-300'
+                    }`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showKidsServices ? 'translate-x-6' : 'translate-x-1'
+                      }`} />
+                    </div>
+                    <span className="ml-2 text-sm text-gray-700">
+                      {showKidsServices ? 'Kids Services' : 'Adult Services'}
+                    </span>
+                  </label>
+                </div>
                 <CategorizedServiceSelect
-                  services={services}
+                  services={filteredServices}
                   selectedServices={selectedServices}
                   onSelectionChange={handleServiceSelectionChange}
                   placeholder="Select services..."
@@ -1171,6 +1365,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   <div className="flex justify-between items-center text-orange-600">
                     <span className="text-sm">Manual Discount:</span>
                     <span className="font-medium">-{manualDiscount.toLocaleString()} RWF</span>
+                  </div>
+                )}
+
+                {manualIncrement > 0 && (
+                  <div className="flex justify-between items-center text-green-600">
+                    <span className="text-sm">Manual Increment:</span>
+                    <span className="font-medium">+{manualIncrement.toLocaleString()} RWF</span>
                   </div>
                 )}
 

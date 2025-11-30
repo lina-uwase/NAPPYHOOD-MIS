@@ -46,6 +46,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [revenuePeriod, setRevenuePeriod] = useState('week');
   const [salesPeriod, setSalesPeriod] = useState('week');
+  const [topServicesSortBy, setTopServicesSortBy] = useState<'revenue' | 'sales'>('revenue');
 
   useEffect(() => {
     setTitle("Dashboard");
@@ -121,7 +122,7 @@ export default function Dashboard() {
 
       setRevenueData(revenueByDay);
 
-      // Set top services from dashboard API
+      // Set top services from dashboard API (default to revenue)
       setTopServices(data.topServices || []);
 
       // Set top customers from dashboard API
@@ -190,6 +191,21 @@ export default function Dashboard() {
     }
   };
 
+  const fetchTopServices = async (sortBy: 'revenue' | 'sales' = 'revenue') => {
+    // Don't make API calls during build time
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    try {
+      const dashboardRes = await api.get(`/dashboard/stats?period=week&sortBy=${sortBy}`);
+      const data = dashboardRes.data.data;
+      setTopServices(data.topServices || []);
+    } catch (error) {
+      console.error('Error fetching top services:', error);
+    }
+  };
+
   useEffect(() => {
     // Only run on client side and when authenticated
     if (typeof window !== 'undefined' && isAuthenticated) {
@@ -197,8 +213,15 @@ export default function Dashboard() {
       fetchDashboardData();
       fetchRevenueData(revenuePeriod);
       fetchSalesData(salesPeriod);
+      fetchTopServices(topServicesSortBy);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && isAuthenticated) {
+      fetchTopServices(topServicesSortBy);
+    }
+  }, [topServicesSortBy]);
 
   useEffect(() => {
     // Only run on client side and when authenticated
@@ -492,8 +515,27 @@ export default function Dashboard() {
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Top Services</h3>
-              <div className="text-sm text-gray-500">
-                By Revenue
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setTopServicesSortBy('revenue')}
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                    topServicesSortBy === 'revenue'
+                      ? 'bg-[#5A8621] text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  By Revenue
+                </button>
+                <button
+                  onClick={() => setTopServicesSortBy('sales')}
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                    topServicesSortBy === 'sales'
+                      ? 'bg-[#5A8621] text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  By Sales
+                </button>
               </div>
             </div>
             <div className="h-64">
@@ -505,8 +547,9 @@ export default function Dashboard() {
                         <Pie
                           data={topServices.map((service) => ({
                             name: service.name,
-                            value: service.revenue,
-                            count: service.count
+                            value: topServicesSortBy === 'sales' ? service.count : service.revenue,
+                            count: service.count,
+                            revenue: service.revenue
                           }))}
                           cx="50%"
                           cy="50%"
@@ -526,7 +569,10 @@ export default function Dashboard() {
                           Total
                         </text>
                         <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" className="text-sm font-bold text-gray-900">
-                          RWF {topServices.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}
+                          {topServicesSortBy === 'sales' 
+                            ? `${topServices.reduce((sum, s) => sum + s.count, 0).toLocaleString()} Sales`
+                            : `RWF ${topServices.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}`
+                          }
                         </text>
                       </PieChart>
                     </ResponsiveContainer>
@@ -544,11 +590,19 @@ export default function Dashboard() {
                             ></div>
                             <div>
                               <div className="text-sm text-gray-900 font-medium">{service.name}</div>
-                              <div className="text-xs text-gray-500">{service.count} visits</div>
+                              <div className="text-xs text-gray-500">
+                                {topServicesSortBy === 'sales' 
+                                  ? `${service.count} sales`
+                                  : `${service.count} visits`
+                                }
+                              </div>
                             </div>
                           </div>
                           <span className="text-sm font-semibold text-gray-900">
-                            RWF {service.revenue.toLocaleString()}
+                            {topServicesSortBy === 'sales'
+                              ? `${service.count} sales`
+                              : `RWF ${service.revenue.toLocaleString()}`
+                            }
                           </span>
                         </div>
                       ))}

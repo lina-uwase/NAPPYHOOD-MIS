@@ -34,7 +34,9 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       ownShampooDiscount = false,
       addShampoo = false, // Legacy global shampoo option
       manualDiscountAmount = 0,
-      manualDiscountReason
+      manualDiscountReason,
+      manualIncrementAmount = 0,
+      manualIncrementReason
     } = req.body;
 
     console.log('🔍 DEBUGGING STAFF DATA:', {
@@ -44,6 +46,16 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       customStaffNamesType: typeof customStaffNames,
       staffIdsLength: Array.isArray(staffIds) ? staffIds.length : 'not array',
       customStaffNamesLength: Array.isArray(customStaffNames) ? customStaffNames.length : 'not array'
+    });
+
+    console.log('🔍 DEBUGGING MANUAL INCREMENT (FROM REQUEST):', {
+      manualIncrementAmount,
+      manualIncrementReason,
+      manualIncrementAmountType: typeof manualIncrementAmount,
+      manualIncrementReasonType: typeof manualIncrementReason,
+      manualIncrementAmountRaw: req.body.manualIncrementAmount,
+      manualIncrementReasonRaw: req.body.manualIncrementReason,
+      applyManualIncrement: req.body.applyManualIncrement
     });
 
     const normalizedServices: any[] = Array.isArray(services) && services.length > 0
@@ -144,7 +156,59 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     }
 
     const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
-    const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
+    
+    // Add manual increment if provided - use EXACT same pattern as manual discount
+    // Check req.body directly first (most reliable)
+    let manualIncrement = 0;
+    const rawIncrementAmount = req.body.manualIncrementAmount;
+    const rawIncrementReason = req.body.manualIncrementReason;
+    
+    // Convert to number - handle both string and number inputs
+    const incrementNum = rawIncrementAmount != null ? Number(rawIncrementAmount) : 0;
+    
+    // Apply increment if amount > 0 AND reason exists and is not empty (same pattern as manual discount)
+    // Trim the reason to handle whitespace-only strings
+    const trimmedReason = rawIncrementReason != null ? String(rawIncrementReason).trim() : '';
+    const shouldApplyIncrement = incrementNum > 0 && trimmedReason.length > 0;
+    
+    if (shouldApplyIncrement) {
+      manualIncrement = incrementNum;
+    }
+    
+    const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
+    
+    console.log('🔍 MANUAL INCREMENT CHECK (DETAILED):', {
+      'req.body.manualIncrementAmount': req.body.manualIncrementAmount,
+      'req.body.manualIncrementReason': req.body.manualIncrementReason,
+      'req.body.applyManualIncrement': req.body.applyManualIncrement,
+      'rawIncrementAmount': rawIncrementAmount,
+      'rawIncrementReason': rawIncrementReason,
+      'rawIncrementReasonType': typeof rawIncrementReason,
+      'trimmedReason': trimmedReason,
+      'trimmedReasonLength': trimmedReason.length,
+      'incrementNum': incrementNum,
+      'incrementNumType': typeof incrementNum,
+      'shouldApplyIncrement': shouldApplyIncrement,
+      'manualIncrement': manualIncrement,
+      'condition1 (incrementNum > 0)': incrementNum > 0,
+      'condition2 (trimmedReason.length > 0)': trimmedReason.length > 0,
+      'finalAmount': finalAmount,
+      'totalAmount': totalAmount,
+      'totalDiscountAmount': totalDiscountAmount,
+      'calculation': `${totalAmount} - ${totalDiscountAmount} + ${manualIncrement} = ${finalAmount}`
+    });
+    
+    console.log('💰 FINAL AMOUNT CALCULATION:', {
+      totalAmount,
+      totalDiscountAmount,
+      manualIncrement,
+      finalAmount,
+      manualIncrementAmount,
+      manualIncrementAmountType: typeof manualIncrementAmount,
+      manualIncrementReason,
+      manualDiscountAmount,
+      manualDiscountReason
+    });
 
     // Process payments - support both old single payment method and new multiple payments
     // Normalize payment methods to ensure consistency
@@ -170,9 +234,28 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
 
       // Validate total payment amount matches final amount
       const totalPaymentAmount = normalizedPayments.reduce((sum, p) => sum + p.amount, 0);
+      console.log('💳 PAYMENT VALIDATION:', {
+        totalPaymentAmount,
+        finalAmount,
+        difference: Math.abs(totalPaymentAmount - finalAmount),
+        manualIncrement,
+        manualIncrementAmount,
+        manualIncrementReason
+      });
+      
       if (Math.abs(totalPaymentAmount - finalAmount) > 0.01) {
+        console.error('❌ PAYMENT VALIDATION FAILED:', {
+          totalPaymentAmount,
+          finalAmount,
+          difference: Math.abs(totalPaymentAmount - finalAmount),
+          totalAmount,
+          totalDiscountAmount,
+          manualIncrement,
+          manualIncrementAmount,
+          manualIncrementReason
+        });
         res.status(400).json({
-          error: `Payment amounts total (${totalPaymentAmount}) must equal final amount (${finalAmount})`
+          error: `Payment amounts total (${totalPaymentAmount}) must equal final amount (${finalAmount}). Manual increment: ${manualIncrement}, Total: ${totalAmount}, Discounts: ${totalDiscountAmount}`
         });
         return;
       }
@@ -204,6 +287,39 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     // Create sale in transaction
     const result = await prisma.$transaction(async (tx: any) => {
       // Create sale
+      // Combine notes with discounts and increment information
+      let saleNotes = notes || '';
+      const noteParts: string[] = [];
+      
+      // Add manual discount note
+      if (manualDiscountAmount > 0 && manualDiscountReason) {
+        noteParts.push(`[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`);
+      }
+      
+      // Add automatic discount notes
+      for (const discount of discounts) {
+        if (discount.type === 'SIXTH_VISIT') {
+          noteParts.push(`[6th Visit Discount: ${discount.amount} RWF]`);
+        } else if (discount.type === 'BIRTHDAY_MONTH') {
+          noteParts.push(`[Birthday Month Discount: ${discount.amount} RWF]`);
+        } else if (discount.type === 'SERVICE_COMBO') {
+          noteParts.push(`[Service Combo Discount: ${discount.amount} RWF]`);
+        } else if (discount.type === 'BRING_OWN_PRODUCT') {
+          noteParts.push(`[Bring Own Product Discount: ${discount.amount} RWF]`);
+        }
+      }
+      
+      // Add manual increment note
+      if (manualIncrementAmount > 0 && manualIncrementReason) {
+        noteParts.push(`[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`);
+      }
+      
+      // Combine all notes
+      if (noteParts.length > 0) {
+        const combinedNotes = noteParts.join('\n');
+        saleNotes = saleNotes ? `${saleNotes}\n${combinedNotes}` : combinedNotes;
+      }
+
       const sale = await tx.sale.create({
         data: {
           customerId,
@@ -211,7 +327,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           discountAmount: totalDiscountAmount,
           finalAmount,
           loyaltyPointsEarned,
-          notes,
+          notes: saleNotes,
           paymentMethod: primaryPaymentMethod as any,
           ownShampooDiscount,
           birthMonthDiscount,
@@ -657,7 +773,7 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
 export const updateSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
+    const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason, ownShampooDiscount = false, payments } = req.body;
 
     console.log('🔄 UPDATE SALE REQUEST:', {
       saleId: id,
@@ -681,8 +797,11 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
       // Update services if provided (handle both serviceIds and services format)
       const servicesToProcess = Array.isArray(services) ? services :
         Array.isArray(serviceIds) ? serviceIds.map((id: string) => ({ serviceId: id, quantity: 1, isChild: false })) : null;
+      
+      let servicesWereUpdated = false;
 
       if (servicesToProcess) {
+        servicesWereUpdated = true;
         console.log('🔧 PROCESSING SERVICES:', { servicesToProcess });
         // Delete existing sale services and recalc totals
         await tx.saleService.deleteMany({ where: { saleId: id } });
@@ -753,7 +872,8 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
           }
 
           const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
-          const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
+          const manualIncrement = (manualIncrementAmount > 0 && manualIncrementReason) ? Number(manualIncrementAmount) : 0;
+          const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
           const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
 
           // Check if birthday discount is applied
@@ -798,6 +918,41 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
             await tx.saleDiscount.create({
               data: { saleId: id, discountRuleId: discountRule.id, discountAmount: discount.amount }
             });
+          }
+          
+          // Update notes with discount and increment information when services are updated
+          const noteParts: string[] = [];
+          
+          // Add manual discount note
+          if (manualDiscountAmount > 0 && manualDiscountReason) {
+            noteParts.push(`[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`);
+          }
+          
+          // Add automatic discount notes
+          for (const discount of discounts) {
+            if (discount.type === 'SIXTH_VISIT') {
+              noteParts.push(`[6th Visit Discount: ${discount.amount} RWF]`);
+            } else if (discount.type === 'BIRTHDAY_MONTH') {
+              noteParts.push(`[Birthday Month Discount: ${discount.amount} RWF]`);
+            } else if (discount.type === 'SERVICE_COMBO') {
+              noteParts.push(`[Service Combo Discount: ${discount.amount} RWF]`);
+            } else if (discount.type === 'BRING_OWN_PRODUCT') {
+              noteParts.push(`[Bring Own Product Discount: ${discount.amount} RWF]`);
+            }
+          }
+          
+          // Add manual increment note
+          if (manualIncrementAmount > 0 && manualIncrementReason) {
+            noteParts.push(`[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`);
+          }
+          
+          // Update notes if there are discount/increment notes
+          if (noteParts.length > 0) {
+            const existingSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
+            const baseNotes = notes || existingSale?.notes || '';
+            const combinedNotes = noteParts.join('\n');
+            const updatedNotes = baseNotes ? `${baseNotes}\n${combinedNotes}` : combinedNotes;
+            await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
           }
         }
       }
@@ -855,9 +1010,12 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
 
-      // Update basic fields
+      // Update basic fields (only if services weren't updated, since notes are handled above)
       const updateData: any = {};
-      if (notes !== undefined) updateData.notes = notes;
+      if (notes !== undefined && !servicesWereUpdated) {
+        // Only update notes if services weren't updated (services update handles notes)
+        updateData.notes = notes;
+      }
       if (isCompleted !== undefined) updateData.isCompleted = !!isCompleted;
       if (Object.keys(updateData).length > 0) {
         await tx.sale.update({ where: { id }, data: updateData });

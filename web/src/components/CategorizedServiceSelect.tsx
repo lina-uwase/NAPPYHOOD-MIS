@@ -82,7 +82,8 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
       'CORNROWS_BRAIDS': 'Cornrows & Braids',
       'STRAWSET_CURLS': 'Strawset & Curls',
       'STYLING_SERVICE': 'Styling Services',
-      'SPECIAL_OFFERS': 'Special Offers'
+      'SPECIAL_OFFERS': 'Special Offers',
+      'KIDS_SERVICES': 'Kids Services'
     };
     return categoryNames[category] || category;
   };
@@ -204,7 +205,19 @@ const CategorizedServiceSelect: React.FC<CategorizedServiceSelectProps> = ({
 
           {/* Services List */}
           <div className="max-h-80 overflow-y-auto">
-          {shouldShowDirectServices ? (
+          {services.length === 0 ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              <p>No services available.</p>
+              <p className="text-xs mt-2">Please ensure services have been seeded in the database.</p>
+              <p className="text-xs mt-1 text-gray-400">Check browser console for debugging information.</p>
+            </div>
+          ) : Object.keys(servicesByCategory).length === 0 && !shouldShowDirectServices ? (
+            <div className="px-4 py-8 text-center text-gray-500">
+              <p>No services found in this category.</p>
+              <p className="text-xs mt-2">Total services loaded: {services.length}</p>
+              <p className="text-xs mt-1">Available categories: {[...new Set(services.map(s => s.category))].join(', ') || 'None'}</p>
+            </div>
+          ) : shouldShowDirectServices ? (
             // Show services directly when searching
             filteredServices.length > 0 ? (
               filteredServices.map(service => {

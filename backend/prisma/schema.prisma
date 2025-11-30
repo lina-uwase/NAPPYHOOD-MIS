@@ -200,6 +200,7 @@ enum ServiceCategory {
   STRAWSET_CURLS
   STYLING_SERVICE
   SPECIAL_OFFERS
+  KIDS_SERVICES
 }
 
 enum DiscountType {

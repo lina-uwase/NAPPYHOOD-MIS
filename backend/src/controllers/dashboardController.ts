@@ -77,6 +77,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     const customerRetentionRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
 
+    // Get sort parameter (default to 'revenue')
+    const sortBy = (req.query.sortBy as string) || 'revenue';
+    
     // Get top services data
     const topServicesData = await prisma.saleService.groupBy({
       by: ['serviceId'],
@@ -88,7 +91,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         totalPrice: true
       },
       _count: { serviceId: true },
-      orderBy: { _sum: { totalPrice: 'desc' } },
+      orderBy: sortBy === 'sales' 
+        ? { _sum: { quantity: 'desc' } }
+        : { _sum: { totalPrice: 'desc' } },
       take: 5
     });
 

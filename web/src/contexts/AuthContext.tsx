@@ -31,18 +31,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const currentUser = authService.getCurrentUser();
-    const authStatus = authService.isAuthenticated();
+    // Set a timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.warn('Auth check timeout - setting loading to false');
+      setLoading(false);
+    }, 5000); // 5 second timeout
 
-    if (currentUser && authStatus) {
-      setUser(currentUser);
-      setIsAuthenticated(true);
-    } else {
-      authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
+    try {
+      const currentUser = authService.getCurrentUser();
+      const authStatus = authService.isAuthenticated();
+
+      if (currentUser && authStatus) {
+        setUser(currentUser);
+        setIsAuthenticated(true);
+      } else {
+        authService.logout();
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+      clearTimeout(timeout);
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      setLoading(false);
+      clearTimeout(timeout);
     }
-    setLoading(false);
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const login = async (credentials: LoginCredentials) => {

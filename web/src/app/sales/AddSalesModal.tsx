@@ -446,60 +446,85 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
       // When editing, preserve original discount structure
       if (editingSale) {
-        const ownProductDiscount = formData.bringOwnProduct ? 1000 : 0;
-
-        // Check if original sale had specific discounts and preserve them
+        // Get original amounts from the sale
+        // Backend returns totalAmount, frontend interface uses subtotal - check both
+        const originalSubtotal = Number((editingSale as any).totalAmount || editingSale.subtotal || subtotal);
+        const originalFinalAmount = Number(editingSale.finalAmount || 0);
+        const calculatedSubtotal = subtotal;
+        
+        // Extract discount amounts from existing discounts
+        let ownProductDiscount = 0;
         let birthdayDiscount = 0;
         let sixthVisitDiscount = 0;
+        let originalManualDiscount = 0;
 
-        // Check original discounts to see what was applied
         if (editingSale.discounts && Array.isArray(editingSale.discounts)) {
-          // Check for sixth visit discount
-          const originalSixthVisit = editingSale.discounts.find((d: SaleDiscount) =>
-            d.discountRule?.type === 'SIXTH_VISIT'
-          );
-          if (originalSixthVisit) {
-            sixthVisitDiscount = Math.round(subtotal * 0.2);
+          editingSale.discounts.forEach((d: SaleDiscount) => {
+            const amount = Number(d.discountAmount || 0);
+            const type = d.discountRule?.type;
+            
+            if (type === 'BRING_OWN_PRODUCT') {
+              ownProductDiscount = amount;
+            } else if (type === 'BIRTHDAY_MONTH') {
+              birthdayDiscount = amount;
+            } else if (type === 'SIXTH_VISIT') {
+              sixthVisitDiscount = amount;
+            } else if (type === 'MANUAL_DISCOUNT') {
+              originalManualDiscount = amount;
+            }
+          });
+        } else {
+          // Fallback: calculate from original sale fields
+          if (editingSale.ownShampooDiscount) {
+            ownProductDiscount = 1000;
           }
-
-          // Check for birthday discount
-          const originalBirthdayDiscount = editingSale.discounts.find((d: SaleDiscount) =>
-            d.discountRule?.type === 'BIRTHDAY_MONTH'
-          );
-          if (originalBirthdayDiscount) {
-            birthdayDiscount = Math.round(subtotal * 0.2);
-          }
-        }
-
-        // If no detailed discount data, fall back to original field checks
-        if (!editingSale.discounts || editingSale.discounts.length === 0) {
           if (editingSale.birthMonthDiscount) {
-            birthdayDiscount = Math.round(subtotal * 0.2);
-          }
-
-          // Calculate sixth visit from remaining discount amount
-          const originalTotalDiscount = Number(editingSale.discountAmount || 0);
-          const originalOwnProductDiscount = editingSale.ownShampooDiscount ? 1000 : 0;
-          const originalManualDiscount = Number(editingSale.discounts?.find((d: SaleDiscount) => d.discountRule?.type === 'MANUAL_DISCOUNT')?.discountAmount || 0);
-          const originalBirthdayDiscount = editingSale.birthMonthDiscount ? Math.round(Number(editingSale.subtotal || subtotal) * 0.2) : 0;
-
-          const remainingDiscount = originalTotalDiscount - originalOwnProductDiscount - originalBirthdayDiscount - originalManualDiscount;
-          if (remainingDiscount > 0) {
-            sixthVisitDiscount = Math.round(subtotal * 0.2);
+            birthdayDiscount = Math.round(originalSubtotal * 0.2);
           }
         }
 
-        // Manual discount is always editable
-        const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
+        // Manual discount - use form data if changed, otherwise use original
+        const manualDiscount = formData.applyManualDiscount 
+          ? Number(formData.manualDiscountAmount) 
+          : originalManualDiscount;
         
-        // Manual increment (add money to total)
-        const manualIncrement = formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0;
+        // Manual increment - check formData first, then extract from notes
+        let manualIncrement = 0;
+        if (formData.applyManualIncrement && formData.manualIncrementAmount > 0) {
+          // Use form data if user changed it
+          manualIncrement = Number(formData.manualIncrementAmount);
+        } else {
+          // Extract from notes if formData doesn't have it yet
+          if (editingSale.notes) {
+            const incrementMatch = editingSale.notes.match(/\[Manual Increment:\s*(\d+)\s*RWF\s*-\s*([^\]]+?)\]/);
+            if (incrementMatch) {
+              manualIncrement = Number(incrementMatch[1]) || 0;
+            }
+          }
+        }
 
+        // Calculate final amount: subtotal - discounts + increment
         const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
-        const finalAmount = Math.max(0, subtotal - totalDiscounts + manualIncrement);
+        const finalAmount = Math.max(0, calculatedSubtotal - totalDiscounts + manualIncrement);
+
+        console.log('💰 Editing sale totals calculation:', {
+          originalSubtotal,
+          calculatedSubtotal,
+          ownProductDiscount,
+          birthdayDiscount,
+          sixthVisitDiscount,
+          manualDiscount,
+          originalManualDiscount,
+          manualIncrement,
+          totalDiscounts,
+          finalAmount,
+          formDataApplyManualIncrement: formData.applyManualIncrement,
+          formDataManualIncrementAmount: formData.manualIncrementAmount,
+          notes: editingSale.notes
+        });
 
         return {
-          subtotal,
+          subtotal: calculatedSubtotal,
           ownProductDiscount,
           birthdayDiscount,
           sixthVisitDiscount,
@@ -601,6 +626,15 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           manualIncrementAmount = Number(incrementMatch[1]) || 0;
           manualIncrementReason = incrementMatch[2]?.trim() || '';
           hasManualIncrement = manualIncrementAmount > 0 && manualIncrementReason.length > 0;
+          console.log('🔍 Extracted manual increment from notes:', {
+            notes: editingSale.notes,
+            match: incrementMatch,
+            amount: manualIncrementAmount,
+            reason: manualIncrementReason,
+            hasManualIncrement
+          });
+        } else {
+          console.log('⚠️ No manual increment found in notes:', editingSale.notes);
         }
       }
 
@@ -642,6 +676,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         manualIncrementAmount: manualIncrementAmount,
         manualIncrementReason: manualIncrementReason,
         applyManualIncrement: hasManualIncrement
+      });
+
+      console.log('🔍 Set formData for editing sale:', {
+        manualIncrementAmount,
+        manualIncrementReason,
+        applyManualIncrement: hasManualIncrement,
+        bringOwnProduct: Boolean(bringOwnProduct),
+        ownShampooDiscount: editingSale.ownShampooDiscount
       });
 
       // Set selected services

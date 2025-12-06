@@ -44,6 +44,17 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         }
       }
     });
+    
+    // Get today's sales count
+    const todaySales = await prisma.sale.count({
+      where: {
+        saleDate: {
+          gte: today,
+          lt: tomorrow
+        }
+      }
+    });
+    
     const totalServices = await prisma.service.count({ where: { isActive: true } });
     const activeStaff = await prisma.user.count({ where: { isActive: true } });
     const allTimeSales = await prisma.sale.count();
@@ -236,6 +247,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           totalServices,
           activeStaff,
           periodSales,
+          todaySales, // Today's sales count
           allTimeSales,
           totalRevenue: Number(totalRevenueResult._sum.finalAmount || 0),
           averageSaleValue: Number(averageSaleResult._avg.finalAmount || 0),

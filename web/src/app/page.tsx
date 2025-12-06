@@ -83,7 +83,7 @@ export default function Dashboard() {
 
       // Use the properly calculated metrics from the backend
       const totalRevenue = data.overview.totalRevenue;
-      const todayVisits = data.overview.periodSales;
+      const todaySales = data.overview.todaySales || data.overview.periodSales; // Use todaySales if available, fallback to periodSales
 
       // Use all data from the dashboard API
       setMetrics({
@@ -93,7 +93,7 @@ export default function Dashboard() {
         totalServices: data.overview.totalServices,
         activeCustomers: data.overview.totalCustomers, // Total customers for reference
         averageVisitValue: data.overview.averageSaleValue,
-        todayVisits,
+        todayVisits: todaySales, // Today's sales count
         monthlyGrowth: 12.5 // This would be calculated from historical data
       });
 
@@ -341,11 +341,11 @@ export default function Dashboard() {
             </div>
             <div>
               <p className="text-gray-700 text-sm">Total Sales</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.totalVisits}</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.todayVisits}</p>
             </div>
           </div>
           <div className="text-sm text-gray-500">
-            {metrics.todayVisits} sales today
+            {metrics.totalVisits} total sales
           </div>
         </div>
 

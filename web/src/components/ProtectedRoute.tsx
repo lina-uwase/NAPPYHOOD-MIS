@@ -17,12 +17,28 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
   useEffect(() => {
     if (!loading) {
       if (!isAuthenticated && pathname !== '/login') {
+        console.log('🔒 Not authenticated, redirecting to login');
         router.push('/login');
       } else if (requiredRole && user?.role !== requiredRole) {
+        console.log('🔒 Insufficient role, redirecting to unauthorized');
         router.push('/unauthorized');
       }
     }
   }, [isAuthenticated, loading, router, pathname, requiredRole, user?.role]);
+
+  // Safety timeout - if loading takes too long, assume not authenticated
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('⚠️ ProtectedRoute: Loading timeout, assuming not authenticated');
+        if (pathname !== '/login') {
+          router.push('/login');
+        }
+      }
+    }, 5000); // 5 second safety timeout
+
+    return () => clearTimeout(timeout);
+  }, [loading, pathname, router]);
 
   if (loading) {
     return (

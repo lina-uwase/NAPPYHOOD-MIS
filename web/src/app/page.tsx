@@ -207,15 +207,18 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    // Only run on client side and when authenticated
-    if (typeof window !== 'undefined' && isAuthenticated) {
+    // Only run on client side, when auth is done loading, and when authenticated
+    if (typeof window !== 'undefined' && !authLoading && isAuthenticated) {
       setLoading(true);
       fetchDashboardData();
       fetchRevenueData(revenuePeriod);
       fetchSalesData(salesPeriod);
       fetchTopServices(topServicesSortBy);
+    } else if (!authLoading && !isAuthenticated) {
+      // Auth loading is done but user is not authenticated - redirect handled by ProtectedRoute
+      setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && isAuthenticated) {

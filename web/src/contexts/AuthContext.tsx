@@ -33,29 +33,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set a timeout to prevent infinite loading
     const timeout = setTimeout(() => {
-      console.warn('Auth check timeout - setting loading to false');
+      console.warn('⚠️ Auth check timeout - setting loading to false');
       setLoading(false);
-    }, 5000); // 5 second timeout
+      setIsAuthenticated(false);
+    }, 3000); // 3 second timeout (reduced from 5)
 
-    try {
-      const currentUser = authService.getCurrentUser();
-      const authStatus = authService.isAuthenticated();
+    // Run auth check immediately (synchronous operation)
+    const checkAuth = () => {
+      try {
+        const currentUser = authService.getCurrentUser();
+        const authStatus = authService.isAuthenticated();
 
-      if (currentUser && authStatus) {
-        setUser(currentUser);
-        setIsAuthenticated(true);
-      } else {
-        authService.logout();
-        setUser(null);
+        console.log('🔍 Auth check:', { 
+          hasUser: !!currentUser, 
+          authStatus, 
+          userRole: currentUser?.role 
+        });
+
+        if (currentUser && authStatus) {
+          setUser(currentUser);
+          setIsAuthenticated(true);
+        } else {
+          // Clear any invalid auth data
+          authService.logout();
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+        setLoading(false);
+        clearTimeout(timeout);
+      } catch (error) {
+        console.error('❌ Error checking authentication:', error);
+        setLoading(false);
         setIsAuthenticated(false);
+        clearTimeout(timeout);
       }
-      setLoading(false);
-      clearTimeout(timeout);
-    } catch (error) {
-      console.error('Error checking authentication:', error);
-      setLoading(false);
-      clearTimeout(timeout);
-    }
+    };
+
+    // Run check immediately
+    checkAuth();
 
     return () => clearTimeout(timeout);
   }, []);

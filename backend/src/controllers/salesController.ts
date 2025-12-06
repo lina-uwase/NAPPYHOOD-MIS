@@ -851,41 +851,55 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 
           await tx.saleService.createMany({ data: saleServices });
 
-          // Recalculate discounts
-          const customer = await tx.customer.findUnique({ where: { id: existingSale.customerId } });
-          console.log('🔍 RECALCULATING DISCOUNTS:', {
-            customerId: customer?.id,
-            totalAmount,
-            ownShampooDiscount,
-            servicesCount: servicesToProcess.length
+          // When editing a sale, preserve original discounts - don't recalculate automatic discounts
+          // Only update manual discounts/increments if provided
+          // Get existing discounts to preserve automatic ones
+          const existingDiscounts = await tx.saleDiscount.findMany({
+            where: { saleId: id },
+            include: { discountRule: true }
           });
-          const discounts = await calculateDiscounts(customer as any, servicesToProcess, serviceDetails as any[], totalAmount, ownShampooDiscount);
-          console.log('💰 CALCULATED DISCOUNTS:', discounts);
 
-          // Add manual discount if provided
+          // Separate automatic discounts from manual discount
+          const automaticDiscounts = existingDiscounts.filter((sd: any) => 
+            sd.discountRule.type !== 'MANUAL_DISCOUNT'
+          );
+          
+          // Calculate automatic discount amounts from existing discounts
+          const automaticDiscountAmount = automaticDiscounts.reduce((sum: number, sd: any) => sum + Number(sd.discountAmount), 0);
+          
+          // Calculate manual discount (use provided value or keep existing)
+          let manualDiscountAmountValue = 0;
           if (manualDiscountAmount > 0 && manualDiscountReason) {
-            discounts.push({
-              type: 'MANUAL_DISCOUNT',
-              amount: Number(manualDiscountAmount),
-              description: manualDiscountReason
-            });
+            manualDiscountAmountValue = Number(manualDiscountAmount);
+          } else {
+            // Find existing manual discount if not provided
+            const existingManualDiscount = existingDiscounts.find((sd: any) => 
+              sd.discountRule.type === 'MANUAL_DISCOUNT'
+            );
+            if (existingManualDiscount) {
+              manualDiscountAmountValue = Number(existingManualDiscount.discountAmount);
+            }
           }
 
-          const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
+          const totalDiscountAmount = automaticDiscountAmount + manualDiscountAmountValue;
           const manualIncrement = (manualIncrementAmount > 0 && manualIncrementReason) ? Number(manualIncrementAmount) : 0;
           const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
           const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
 
-          // Check if birthday discount is applied
-          const birthMonthDiscount = discounts.some(d => d.type === 'BIRTHDAY_MONTH');
+          // Preserve birthMonthDiscount from existing sale
+          const birthMonthDiscount = existingSale.birthMonthDiscount;
 
-          console.log('📊 UPDATING SALE TOTALS:', {
+          console.log('📊 UPDATING SALE TOTALS (PRESERVING ORIGINAL DISCOUNTS):', {
             totalAmount,
+            automaticDiscountAmount,
+            manualDiscountAmountValue,
             totalDiscountAmount,
+            manualIncrement,
             finalAmount,
             loyaltyPointsEarned,
             ownShampooDiscount,
-            birthMonthDiscount
+            birthMonthDiscount,
+            preservedAutomaticDiscounts: automaticDiscounts.length
           });
 
           await tx.sale.update({
@@ -900,59 +914,76 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
             }
           });
 
-          // Refresh discounts: delete and recreate
-          await tx.saleDiscount.deleteMany({ where: { saleId: id } });
-          for (const discount of discounts) {
-            let discountRule = await tx.discountRule.findFirst({ where: { type: discount.type as any, isActive: true } });
+          // Update discounts: preserve automatic discounts, update manual discount if provided
+          if (manualDiscountAmount > 0 && manualDiscountReason) {
+            // Remove existing manual discount
+            const existingManualDiscount = existingDiscounts.find((sd: any) => 
+              sd.discountRule.type === 'MANUAL_DISCOUNT'
+            );
+            if (existingManualDiscount) {
+              await tx.saleDiscount.delete({ where: { id: existingManualDiscount.id } });
+            }
+
+            // Create/update manual discount
+            let discountRule = await tx.discountRule.findFirst({ 
+              where: { type: 'MANUAL_DISCOUNT' as any, isActive: true } 
+            });
             if (!discountRule) {
               discountRule = await tx.discountRule.create({
                 data: {
-                  name: discount.description,
-                  type: discount.type as any,
-                  value: discount.type === 'SERVICE_COMBO' ? 2000 : 20,
-                  isPercentage: discount.type !== 'SERVICE_COMBO',
-                  description: discount.description
+                  name: manualDiscountReason,
+                  type: 'MANUAL_DISCOUNT' as any,
+                  value: 0,
+                  isPercentage: false,
+                  description: manualDiscountReason
                 }
               });
             }
             await tx.saleDiscount.create({
-              data: { saleId: id, discountRuleId: discountRule.id, discountAmount: discount.amount }
+              data: { 
+                saleId: id, 
+                discountRuleId: discountRule.id, 
+                discountAmount: manualDiscountAmountValue 
+              }
             });
           }
           
-          // Update notes with discount and increment information when services are updated
-          const noteParts: string[] = [];
-          
-          // Add manual discount note
+          // Update notes: preserve original discount notes, only update manual discount/increment if provided
           if (manualDiscountAmount > 0 && manualDiscountReason) {
-            noteParts.push(`[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`);
-          }
-          
-          // Add automatic discount notes
-          for (const discount of discounts) {
-            if (discount.type === 'SIXTH_VISIT') {
-              noteParts.push(`[6th Visit Discount: ${discount.amount} RWF]`);
-            } else if (discount.type === 'BIRTHDAY_MONTH') {
-              noteParts.push(`[Birthday Month Discount: ${discount.amount} RWF]`);
-            } else if (discount.type === 'SERVICE_COMBO') {
-              noteParts.push(`[Service Combo Discount: ${discount.amount} RWF]`);
-            } else if (discount.type === 'BRING_OWN_PRODUCT') {
-              noteParts.push(`[Bring Own Product Discount: ${discount.amount} RWF]`);
-            }
-          }
-          
-          // Add manual increment note
-          if (manualIncrementAmount > 0 && manualIncrementReason) {
-            noteParts.push(`[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`);
-          }
-          
-          // Update notes if there are discount/increment notes
-          if (noteParts.length > 0) {
-            const existingSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
-            const baseNotes = notes || existingSale?.notes || '';
-            const combinedNotes = noteParts.join('\n');
-            const updatedNotes = baseNotes ? `${baseNotes}\n${combinedNotes}` : combinedNotes;
+            // Get existing notes
+            const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
+            let existingNotes = currentSale?.notes || '';
+            
+            // Remove old manual discount note if it exists
+            existingNotes = existingNotes.replace(/\[Manual Discount:.*?\]/g, '').trim();
+            
+            // Add new manual discount note
+            const manualDiscountNote = `[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`;
+            const baseNotes = notes || existingNotes || '';
+            const updatedNotes = baseNotes ? `${baseNotes}\n${manualDiscountNote}` : manualDiscountNote;
+            
             await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
+          }
+          
+          // Update manual increment note if provided
+          if (manualIncrementAmount > 0 && manualIncrementReason) {
+            const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
+            let existingNotes = currentSale?.notes || '';
+            
+            // Remove old manual increment note if it exists
+            existingNotes = existingNotes.replace(/\[Manual Increment:.*?\]/g, '').trim();
+            
+            // Add new manual increment note
+            const manualIncrementNote = `[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`;
+            const baseNotes = notes || existingNotes || '';
+            const updatedNotes = baseNotes ? `${baseNotes}\n${manualIncrementNote}` : manualIncrementNote;
+            
+            await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
+          }
+          
+          // If only notes field is being updated (not services), update it
+          if (notes !== undefined && !servicesWereUpdated) {
+            await tx.sale.update({ where: { id }, data: { notes } });
           }
         }
       }
@@ -1010,16 +1041,23 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
 
-      // Update basic fields (only if services weren't updated, since notes are handled above)
+      // Update basic fields
       const updateData: any = {};
+      
+      // Handle notes update - only if services weren't updated (services update handles notes above)
       if (notes !== undefined && !servicesWereUpdated) {
-        // Only update notes if services weren't updated (services update handles notes)
+        // If no manual discount/increment notes were added above, just update notes directly
         updateData.notes = notes;
       }
+      
       if (isCompleted !== undefined) updateData.isCompleted = !!isCompleted;
+      
       if (Object.keys(updateData).length > 0) {
         await tx.sale.update({ where: { id }, data: updateData });
       }
+      
+      // IMPORTANT: Do NOT update customer statistics when editing a sale
+      // This prevents visit count from being incremented and loyalty points from being recalculated
     });
 
     const updated = await prisma.sale.findUnique({

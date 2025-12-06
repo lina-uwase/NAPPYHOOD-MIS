@@ -504,6 +504,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           birthdayDiscount,
           sixthVisitDiscount,
           manualDiscount,
+          manualIncrement: manualIncrement || 0,
           finalAmount
         };
       }
@@ -587,6 +588,22 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         }
       }
 
+      // Extract manual increment from notes
+      let manualIncrementAmount = 0;
+      let manualIncrementReason = '';
+      let hasManualIncrement = false;
+
+      if (editingSale.notes) {
+        // Parse notes for manual increment: [Manual Increment: 700 RWF - reason]
+        // Handle both single line and multi-line notes
+        const incrementMatch = editingSale.notes.match(/\[Manual Increment:\s*(\d+)\s*RWF\s*-\s*([^\]]+?)\]/);
+        if (incrementMatch) {
+          manualIncrementAmount = Number(incrementMatch[1]) || 0;
+          manualIncrementReason = incrementMatch[2]?.trim() || '';
+          hasManualIncrement = manualIncrementAmount > 0 && manualIncrementReason.length > 0;
+        }
+      }
+
       // Check for "bring own product" discount
       const bringOwnProduct = editingSale.ownShampooDiscount || (
         editingSale.discounts &&
@@ -622,9 +639,9 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         manualDiscountAmount: manualDiscountAmount,
         manualDiscountReason: manualDiscountReason,
         applyManualDiscount: hasManualDiscount,
-        manualIncrementAmount: 0,
-        manualIncrementReason: '',
-        applyManualIncrement: false
+        manualIncrementAmount: manualIncrementAmount,
+        manualIncrementReason: manualIncrementReason,
+        applyManualIncrement: hasManualIncrement
       });
 
       // Set selected services

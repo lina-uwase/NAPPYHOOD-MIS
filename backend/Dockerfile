@@ -44,9 +44,9 @@ RUN npx prisma generate
 # Expose the port
 EXPOSE 5001
 
-# Health check
+# Health check (using wget as it's available in Alpine)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:5001/health || exit 1
+  CMD wget --quiet --tries=1 --timeout=5 -O- http://localhost:5001/health | grep -q 'OK' || exit 1
 
 # Set the command to start the application
 CMD ["npm", "run", "start"]

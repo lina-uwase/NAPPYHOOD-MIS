@@ -34,7 +34,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./src:/app/src   # <-- Added this so container sees src folder
+      - ./backend/src:/app/src   # <-- Corrected path to backend/src
     healthcheck:
       test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:5001/health | grep -q 'OK' || exit 1"]
       interval: 30s

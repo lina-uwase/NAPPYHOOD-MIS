@@ -3,7 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+// @ts-ignore - swagger-ui-express doesn't have proper types
 import swaggerUI from 'swagger-ui-express';
+// @ts-ignore - swagger-jsdoc doesn't have proper types
 import swaggerJsdoc from 'swagger-jsdoc';
 
 // Import routes

@@ -6,10 +6,10 @@ import path from 'path';
 
 // Configure multer for profile picture uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
     cb(null, 'uploads/profiles/');
   },
-  filename: (req, file, cb) => {
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
   }
@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
@@ -234,10 +234,17 @@ export const changeMyPassword = async (req: Request, res: Response): Promise<voi
   }
 };
 
+interface FileRequest extends Request {
+  file?: Express.Multer.File;
+  user?: {
+    id: string;
+  };
+}
+
 /**
  * Upload/update profile picture
  */
-export const updateProfilePicture = async (req: Request, res: Response): Promise<void> => {
+export const updateProfilePicture = async (req: FileRequest, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
 

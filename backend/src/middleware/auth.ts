@@ -8,6 +8,7 @@ interface AuthenticatedRequest extends Request {
     phone: string;
     role: string;
   };
+  file?: Express.Multer.File;
 }
 
 export const authenticateToken = async (

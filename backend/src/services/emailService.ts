@@ -1,3 +1,4 @@
+// @ts-ignore - nodemailer types are incomplete
 import nodemailer from 'nodemailer';
 
 class EmailService {

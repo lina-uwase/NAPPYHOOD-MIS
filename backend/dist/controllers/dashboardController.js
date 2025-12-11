@@ -40,6 +40,15 @@ const getDashboardStats = async (req, res) => {
                 }
             }
         });
+        // Get today's sales count
+        const todaySales = await database_1.prisma.sale.count({
+            where: {
+                saleDate: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            }
+        });
         const totalServices = await database_1.prisma.service.count({ where: { isActive: true } });
         const activeStaff = await database_1.prisma.user.count({ where: { isActive: true } });
         const allTimeSales = await database_1.prisma.sale.count();
@@ -66,6 +75,8 @@ const getDashboardStats = async (req, res) => {
             }
         });
         const customerRetentionRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+        // Get sort parameter (default to 'revenue')
+        const sortBy = req.query.sortBy || 'revenue';
         // Get top services data
         const topServicesData = await database_1.prisma.saleService.groupBy({
             by: ['serviceId'],
@@ -77,7 +88,9 @@ const getDashboardStats = async (req, res) => {
                 totalPrice: true
             },
             _count: { serviceId: true },
-            orderBy: { _sum: { totalPrice: 'desc' } },
+            orderBy: sortBy === 'sales'
+                ? { _sum: { quantity: 'desc' } }
+                : { _sum: { totalPrice: 'desc' } },
             take: 5
         });
         // Get service details for top services
@@ -204,6 +217,7 @@ const getDashboardStats = async (req, res) => {
                     totalServices,
                     activeStaff,
                     periodSales,
+                    todaySales, // Today's sales count
                     allTimeSales,
                     totalRevenue: Number(totalRevenueResult._sum.finalAmount || 0),
                     averageSaleValue: Number(averageSaleResult._avg.finalAmount || 0),

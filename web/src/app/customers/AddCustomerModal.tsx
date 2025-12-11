@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Users } from 'lucide-react';
 import { Customer, CreateCustomerDto, UpdateCustomerDto } from '../../services/customersService';
 import customersService from '../../services/customersService';
+import PhoneInput, { validatePhoneNumber } from '../../components/PhoneInput';
 
 interface AddCustomerModalProps {
   onClose: () => void;
@@ -247,11 +248,18 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       newErrors.fullName = 'Customer name is required';
     }
 
-    // Phone is optional for dependents
-    if (!formData.isDependent && !formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (formData.phone && formData.phone.trim().length < 5) {
-      newErrors.phone = 'Please enter a valid phone number (minimum 5 characters)';
+    // Phone validation with country code
+    if (!formData.isDependent) {
+      const phoneError = validatePhoneNumber(formData.phone, true);
+      if (phoneError) {
+        newErrors.phone = phoneError;
+      }
+    } else if (formData.phone && formData.phone.trim()) {
+      // Optional for dependents, but if provided, should be valid
+      const phoneError = validatePhoneNumber(formData.phone, false);
+      if (phoneError) {
+        newErrors.phone = phoneError;
+      }
     }
 
     if (formData.isDependent && !formData.parentId) {
@@ -423,20 +431,24 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number {!formData.isDependent && '*'}
               </label>
-              <input
-                type="tel"
-                name="phone"
+              <PhoneInput
                 value={formData.phone}
-                onChange={handleInputChange}
+                onChange={(value) => {
+                  setFormData(prev => ({ ...prev, phone: value }));
+                  // Clear error when user starts typing
+                  if (errors.phone) {
+                    setErrors(prev => {
+                      const newErrors = { ...prev };
+                      delete newErrors.phone;
+                      return newErrors;
+                    });
+                  }
+                }}
                 disabled={formData.isDependent}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  formData.isDependent ? 'bg-gray-100 cursor-not-allowed' : ''
-                } ${
-                  errors.phone ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder={formData.isDependent ? 'Inherited from parent' : 'e.g., +250 788 123 456'}
+                placeholder={formData.isDependent ? 'Inherited from parent' : 'Enter phone number'}
+                error={errors.phone}
+                required={!formData.isDependent}
               />
-              {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
             </div>
 
             <div>

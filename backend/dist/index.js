@@ -18,6 +18,7 @@ const customers_1 = __importDefault(require("./routes/customers"));
 const sales_1 = __importDefault(require("./routes/sales"));
 const staff_1 = __importDefault(require("./routes/staff"));
 const dashboard_1 = __importDefault(require("./routes/dashboard"));
+const products_1 = __importDefault(require("./routes/products"));
 // Load environment variables
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -123,6 +124,7 @@ app.use('/api/customers', customers_1.default);
 app.use('/api/sales', sales_1.default);
 app.use('/api/staff', staff_1.default);
 app.use('/api/dashboard', dashboard_1.default);
+app.use('/api/products', products_1.default);
 // Root endpoint
 app.get('/', (req, res) => {
     res.json({

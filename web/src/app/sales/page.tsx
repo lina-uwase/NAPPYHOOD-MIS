@@ -83,6 +83,12 @@ const SalesPage: React.FC = () => {
           price: Number(saleService.totalPrice || 0),
           serviceCategory: saleService.service?.category || 'UNKNOWN'
         })) || [],
+        products: sale.products?.map((saleProduct: any) => ({
+          productName: saleProduct.product?.name || 'Unknown Product',
+          quantity: Number(saleProduct.quantity || 1),
+          unitPrice: Number(saleProduct.unitPrice || 0),
+          totalPrice: Number(saleProduct.totalPrice || 0)
+        })) || [],
         staff: sale.staff?.map((saleStaff: any) => ({
           staffName: saleStaff.staff?.name || saleStaff.customName || 'Unknown Staff'
         })) || []
@@ -650,31 +656,54 @@ const SalesPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Services</h4>
-                      <div className="space-y-1">
-                        {sale.services.map((service, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{service.serviceName}</span>
-                            <span className="font-medium">{formatCurrency(service.price)}</span>
-                          </div>
-                        ))}
+                  <div className={`grid gap-6 ${(sale.services && sale.services.length > 0) || (sale.products && sale.products.length > 0) ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                    {/* Services Section */}
+                    {sale.services && sale.services.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Services</h4>
+                        <div className="space-y-1">
+                          {sale.services.map((service, index) => (
+                            <div key={index} className="flex justify-between text-sm">
+                              <span className="text-gray-600">{service.serviceName}</span>
+                              <span className="font-medium">{formatCurrency(service.price)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Staff</h4>
-                      <div className="space-y-1">
-                        {sale.staff && sale.staff.length > 0 ? sale.staff.map((staffRecord, index) => (
-                          <div key={index} className="text-sm text-gray-600">
-                            {staffRecord.staffName || 'Unknown Staff'}
-                          </div>
-                        )) : (
-                          <div className="text-sm text-gray-500">No staff assigned</div>
-                        )}
+                    {/* Products Section */}
+                    {sale.products && sale.products.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Products</h4>
+                        <div className="space-y-1">
+                          {sale.products.map((product: any, index: number) => (
+                            <div key={index} className="flex justify-between text-sm">
+                              <span className="text-gray-600">
+                                {product.productName} (x{product.quantity})
+                              </span>
+                              <span className="font-medium">{formatCurrency(product.totalPrice)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* Staff Section - Only show if there are services */}
+                    {sale.services && sale.services.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-2">Staff</h4>
+                        <div className="space-y-1">
+                          {sale.staff && sale.staff.length > 0 ? sale.staff.map((staffRecord, index) => (
+                            <div key={index} className="text-sm text-gray-600">
+                              {staffRecord.staffName || 'Unknown Staff'}
+                            </div>
+                          )) : (
+                            <div className="text-sm text-gray-500">No staff assigned</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-200">

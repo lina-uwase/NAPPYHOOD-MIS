@@ -1,20 +1,5 @@
+import { ServiceCategory } from '@prisma/client';
 declare const nappyhoodServices: ({
-    name: string;
-    category: "HAIR_TREATMENTS";
-    description: string;
-    singlePrice: number;
-    combinedPrice: null;
-    childPrice: number;
-    childCombinedPrice: null;
-} | {
-    name: string;
-    category: "HAIR_TREATMENTS";
-    description: string;
-    singlePrice: number;
-    combinedPrice: number;
-    childPrice: number;
-    childCombinedPrice: number;
-} | {
     name: string;
     category: "HAIR_TREATMENTS";
     description: string;
@@ -22,14 +7,6 @@ declare const nappyhoodServices: ({
     combinedPrice: number;
     childPrice: null;
     childCombinedPrice: null;
-} | {
-    name: string;
-    category: "TWIST_HAIRSTYLE";
-    description: string;
-    singlePrice: number;
-    combinedPrice: number;
-    childPrice: number;
-    childCombinedPrice: number;
 } | {
     name: string;
     category: "TWIST_HAIRSTYLE";
@@ -78,6 +55,22 @@ declare const nappyhoodServices: ({
     combinedPrice: null;
     childPrice: null;
     childCombinedPrice: null;
+} | {
+    name: string;
+    category: ServiceCategory;
+    description: string;
+    singlePrice: number;
+    combinedPrice: null;
+    childPrice: number;
+    childCombinedPrice: null;
+} | {
+    name: string;
+    category: ServiceCategory;
+    description: string;
+    singlePrice: number;
+    combinedPrice: number;
+    childPrice: number;
+    childCombinedPrice: number;
 })[];
 declare function seedServices(): Promise<void>;
 export { seedServices, nappyhoodServices };

@@ -40,6 +40,19 @@ export interface SaleDiscount {
   discountRule?: DiscountRule;
 }
 
+export interface SaleProduct {
+  id: string;
+  productId: string;
+  product?: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
 export interface Sale {
   id: string;
   customerId: string;
@@ -48,6 +61,7 @@ export interface Sale {
   customerVisitCount: number;
   saleDate: string;
   services: SaleService[];
+  products?: SaleProduct[];
   staff: SaleStaff[];
   subtotal: number;
   discountAmount: number;
@@ -72,7 +86,11 @@ export interface Sale {
 
 export interface CreateSaleDto {
   customerId: string;
-  serviceIds: string[];
+  serviceIds?: string[];
+  products?: Array<{
+    productId: string;
+    quantity: number;
+  }>;
   serviceShampooOptions?: Record<string, boolean>;
   staffIds: string[];
   customStaffNames?: string[];
@@ -87,10 +105,16 @@ export interface CreateSaleDto {
   }>;
   manualDiscountAmount?: number;
   manualDiscountReason?: string;
+  manualIncrementAmount?: number;
+  manualIncrementReason?: string;
 }
 
 export interface UpdateSaleDto {
   serviceIds?: string[];
+  products?: Array<{
+    productId: string;
+    quantity: number;
+  }>;
   staffIds?: string[];
   customStaffNames?: string[];
   saleDate?: string;

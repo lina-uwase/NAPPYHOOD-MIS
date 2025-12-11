@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTitle } from "@/contexts/TitleContext";
 import { Mail, Plus, Pencil, X, Phone, Lock, Eye, EyeOff } from "lucide-react";
+import PhoneInput, { validatePhoneNumber } from "@/components/PhoneInput";
 
 export default function ProfilePage() {
   const { user, updateProfile, changePassword, updateProfilePicture } = useAuth();
@@ -117,14 +118,9 @@ export default function ProfilePage() {
         return;
       }
 
-      if (!editPhone.trim()) {
-        setErrors({ phone: 'Phone number is required' });
-        return;
-      }
-
-      const phoneRegex = /^[0-9+\-\s()]+$/;
-      if (!phoneRegex.test(editPhone.trim())) {
-        setErrors({ phone: 'Please enter a valid phone number' });
+      const phoneError = validatePhoneNumber(editPhone, true);
+      if (phoneError) {
+        setErrors({ phone: phoneError });
         return;
       }
 
@@ -396,18 +392,16 @@ export default function ProfilePage() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                <input 
-                  value={editPhone} 
-                  onChange={(e) => {
-                    setEditPhone(e.target.value);
+                <PhoneInput
+                  value={editPhone}
+                  onChange={(value) => {
+                    setEditPhone(value);
                     if (errors.phone) setErrors(prev => ({ ...prev, phone: '' }));
-                  }} 
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009900] focus:border-transparent ${
-                    errors.phone ? 'border-red-300' : 'border-gray-200'
-                  }`}
+                  }}
                   placeholder="Enter your phone number"
+                  error={errors.phone}
+                  required={true}
                 />
-                {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
               </div>
               
               <div className="flex justify-end gap-3 pt-4">

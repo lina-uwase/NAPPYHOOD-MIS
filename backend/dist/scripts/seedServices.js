@@ -343,25 +343,151 @@ const nappyhoodServices = [
         combinedPrice: null,
         childPrice: null,
         childCombinedPrice: null,
+    },
+    // KIDS SERVICES (Children below 10 years old)
+    {
+        name: "KIDS SHAMPOO",
+        category: 'KIDS_SERVICES',
+        description: "Shampoo service for children below 10 years old",
+        singlePrice: 9000,
+        combinedPrice: null,
+        childPrice: 9000,
+        childCombinedPrice: null,
+    },
+    {
+        name: "KIDS BRAIDS WASH",
+        category: 'KIDS_SERVICES',
+        description: "Braids wash service for children below 10 years old",
+        singlePrice: 12000,
+        combinedPrice: null,
+        childPrice: 12000,
+        childCombinedPrice: null,
+    },
+    {
+        name: "KIDS PROTEIN TREATMENT",
+        category: 'KIDS_SERVICES',
+        description: "Protein treatment for children below 10 years old",
+        singlePrice: 12000,
+        combinedPrice: 17000,
+        childPrice: 12000,
+        childCombinedPrice: 17000,
+    },
+    {
+        name: "KIDS HYDRATION DEEP TREATMENT",
+        category: 'KIDS_SERVICES',
+        description: "Hydration deep treatment for children below 10 years old",
+        singlePrice: 14000,
+        combinedPrice: 19000,
+        childPrice: 14000,
+        childCombinedPrice: 19000,
+    },
+    {
+        name: "KIDS FENUGREEK",
+        category: 'KIDS_SERVICES',
+        description: "Fenugreek treatment for children below 10 years old",
+        singlePrice: 12000,
+        combinedPrice: 17000,
+        childPrice: 12000,
+        childCombinedPrice: 17000,
+    },
+    {
+        name: "KIDS STOP SHREDDING",
+        category: 'KIDS_SERVICES',
+        description: "Stop shredding treatment for children below 10 years old",
+        singlePrice: 14000,
+        combinedPrice: 22000,
+        childPrice: 14000,
+        childCombinedPrice: 22000,
+    },
+    {
+        name: "KIDS DANDRUFF TREATMENT",
+        category: 'KIDS_SERVICES',
+        description: "Dandruff treatment for children below 10 years old",
+        singlePrice: 14000,
+        combinedPrice: 22000,
+        childPrice: 14000,
+        childCombinedPrice: 22000,
+    },
+    {
+        name: "KIDS HOT OIL TREATMENT",
+        category: 'KIDS_SERVICES',
+        description: "Hot oil treatment for children below 10 years old",
+        singlePrice: 14000,
+        combinedPrice: 22000,
+        childPrice: 14000,
+        childCombinedPrice: 22000,
+    },
+    {
+        name: "KIDS HENNA TREATMENT",
+        category: 'KIDS_SERVICES',
+        description: "Henna treatment for children below 10 years old",
+        singlePrice: 14000,
+        combinedPrice: 22000,
+        childPrice: 14000,
+        childCombinedPrice: 22000,
+    },
+    {
+        name: "KIDS TWIST",
+        category: 'KIDS_SERVICES',
+        description: "Twist hairstyle for children below 10 years old",
+        singlePrice: 12000,
+        combinedPrice: 17000,
+        childPrice: 12000,
+        childCombinedPrice: 17000,
+    },
+    {
+        name: "KIDS STYLING (NO EXTENSION)",
+        category: 'KIDS_SERVICES',
+        description: "Styling service without extension for children below 10 years old",
+        singlePrice: 10000,
+        combinedPrice: 15000,
+        childPrice: 10000,
+        childCombinedPrice: 15000,
+    },
+    {
+        name: "KIDS STYLING (WITH EXTENSION)",
+        category: 'KIDS_SERVICES',
+        description: "Styling service with extension for children below 10 years old",
+        singlePrice: 15000,
+        combinedPrice: 20000,
+        childPrice: 15000,
+        childCombinedPrice: 20000,
+    },
+    {
+        name: "KIDS CORNROWS",
+        category: 'KIDS_SERVICES',
+        description: "Cornrows hairstyle for children below 10 years old",
+        singlePrice: 12000,
+        combinedPrice: 17000,
+        childPrice: 12000,
+        childCombinedPrice: 17000,
     }
 ];
 exports.nappyhoodServices = nappyhoodServices;
 async function seedServices() {
     try {
         console.log('🌱 Starting to seed Nappyhood services...');
-        // Clear existing services (optional - remove this if you want to keep existing ones)
-        await database_1.prisma.service.deleteMany({});
-        console.log('🗑️ Cleared existing services');
-        // Insert all services
+        // Use upsert to add/update services without deleting existing ones
+        // This preserves existing services that might be referenced by sales
         for (const service of nappyhoodServices) {
             try {
-                const createdService = await database_1.prisma.service.create({
-                    data: service
+                const createdService = await database_1.prisma.service.upsert({
+                    where: { name: service.name },
+                    update: {
+                        category: service.category,
+                        description: service.description,
+                        singlePrice: service.singlePrice,
+                        combinedPrice: service.combinedPrice,
+                        childPrice: service.childPrice,
+                        childCombinedPrice: service.childCombinedPrice,
+                        isActive: true
+                    },
+                    create: service
                 });
-                console.log(`✅ Created service: ${createdService.name}`);
+                console.log(`✅ Upserted service: ${createdService.name}`);
             }
             catch (error) {
-                console.error(`❌ Failed to create service ${service.name}:`, error);
+                console.error(`❌ Failed to upsert service ${service.name}:`, error);
             }
         }
         console.log('🎉 Successfully seeded all Nappyhood services!');

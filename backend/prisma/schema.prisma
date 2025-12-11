@@ -90,6 +90,7 @@ model Sale {
   paymentMethod       PaymentMethod  @default(CASH)
   discounts           SaleDiscount[]
   services            SaleService[]
+  products            SaleProduct[]
   staff               SaleStaff[]
   payments            SalePayment[]
   createdBy           User           @relation(fields: [createdById], references: [id])
@@ -179,6 +180,34 @@ model SalePayment {
   sale          Sale          @relation(fields: [saleId], references: [id])
 
   @@map("sale_payments")
+}
+
+model Product {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  price       Decimal      @db.Decimal(10, 2)
+  quantity    Int          @default(0)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  saleProducts SaleProduct[]
+
+  @@map("products")
+}
+
+model SaleProduct {
+  id         String   @id @default(cuid())
+  saleId     String
+  productId  String
+  quantity   Int      @default(1)
+  unitPrice  Decimal  @db.Decimal(10, 2)
+  totalPrice Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+  sale       Sale     @relation(fields: [saleId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@map("sale_products")
 }
 
 enum Role {

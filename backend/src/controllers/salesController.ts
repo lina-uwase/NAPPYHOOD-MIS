@@ -26,6 +26,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       services, // Array of SaleService
       serviceIds, // Optional: Array<string> (frontend simplified payload)
       serviceShampooOptions, // Object mapping serviceId to shampoo preference
+      products, // Array of {productId, quantity}
       staffIds, // Array of staff IDs
       customStaffNames, // Array of custom staff names
       notes,
@@ -70,8 +71,11 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           }))
         : [];
 
-    if (!customerId || normalizedServices.length === 0) {
-      res.status(400).json({ error: 'Customer ID and services are required' });
+    // Validate that at least services or products are provided
+    const normalizedProducts = Array.isArray(products) ? products : [];
+    
+    if (!customerId || (normalizedServices.length === 0 && normalizedProducts.length === 0)) {
+      res.status(400).json({ error: 'Customer ID and at least one service or product is required' });
       return;
     }
 
@@ -140,6 +144,47 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         isChild: service.isChild,
         isCombined: shouldAddShampoo,
         addShampoo: shouldAddShampoo
+      });
+    }
+
+    // Calculate total amount and prepare sale products
+    const saleProducts: any[] = [];
+    const productIdsToFetch = normalizedProducts.map((p: any) => p.productId);
+    const productDetails = productIdsToFetch.length > 0 
+      ? await (prisma as any).product.findMany({
+          where: { id: { in: productIdsToFetch }, isActive: true }
+        })
+      : [];
+
+    if (productIdsToFetch.length > 0 && productDetails.length !== productIdsToFetch.length) {
+      res.status(400).json({ error: 'One or more products not found or inactive' });
+      return;
+    }
+
+    // Validate stock availability and calculate product totals
+    for (const productSale of normalizedProducts) {
+      const productDetail = productDetails.find((p: any) => p.id === productSale.productId);
+      if (!productDetail) continue;
+
+      const quantity = productSale.quantity || 1;
+      
+      // Check stock availability
+      if (productDetail.quantity < quantity) {
+        res.status(400).json({ 
+          error: `Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}` 
+        });
+        return;
+      }
+
+      const unitPrice = Number(productDetail.price);
+      const lineTotal = unitPrice * quantity;
+      totalAmount += lineTotal;
+
+      saleProducts.push({
+        productId: productSale.productId,
+        quantity,
+        unitPrice,
+        totalPrice: lineTotal
       });
     }
 
@@ -336,18 +381,43 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       });
 
       // Create sale services
-      await tx.saleService.createMany({
-        data: saleServices.map(vs => ({
-          saleId: sale.id,
-          serviceId: vs.serviceId,
-          quantity: vs.quantity,
-          unitPrice: vs.unitPrice,
-          totalPrice: vs.totalPrice,
-          isChild: vs.isChild,
-          isCombined: vs.isCombined,
-          addShampoo: vs.addShampoo
-        }))
-      });
+      if (saleServices.length > 0) {
+        await tx.saleService.createMany({
+          data: saleServices.map(vs => ({
+            saleId: sale.id,
+            serviceId: vs.serviceId,
+            quantity: vs.quantity,
+            unitPrice: vs.unitPrice,
+            totalPrice: vs.totalPrice,
+            isChild: vs.isChild,
+            isCombined: vs.isCombined,
+            addShampoo: vs.addShampoo
+          }))
+        });
+      }
+
+      // Create sale products and reduce stock
+      if (saleProducts.length > 0) {
+        await tx.saleProduct.createMany({
+          data: saleProducts.map(sp => ({
+            saleId: sale.id,
+            productId: sp.productId,
+            quantity: sp.quantity,
+            unitPrice: sp.unitPrice,
+            totalPrice: sp.totalPrice
+          }))
+        });
+
+        // Reduce stock for each product
+        for (const saleProduct of saleProducts) {
+          await tx.product.update({
+            where: { id: saleProduct.productId },
+            data: {
+              quantity: { decrement: saleProduct.quantity }
+            }
+          });
+        }
+      }
 
       // Create sale payments - normalize payment methods to ensure consistency
       const paymentData = normalizedPayments.map(payment => {
@@ -462,13 +532,18 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     });
 
     // Fetch complete sale data to return
-    const completeSale = await prisma.sale.findUnique({
+    const completeSale = await (prisma.sale.findUnique as any)({
       where: { id: result.id },
       include: {
         customer: true,
         services: {
           include: {
             service: true
+          }
+        },
+        products: {
+          include: {
+            product: true
           }
         },
         staff: {
@@ -641,7 +716,7 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
     }
 
     const [sales, total] = await Promise.all([
-      prisma.sale.findMany({
+      (prisma.sale.findMany as any)({
         where: whereClause,
         skip,
         take: limitNum,
@@ -662,6 +737,17 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
                   id: true,
                   name: true,
                   category: true
+                }
+              }
+            }
+          },
+          products: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true
                 }
               }
             }
@@ -720,13 +806,18 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
   try {
     const { id } = req.params;
 
-    const sale = await prisma.sale.findUnique({
+    const sale = await (prisma.sale.findUnique as any)({
       where: { id },
       include: {
         customer: true,
         services: {
           include: {
             service: true
+          }
+        },
+        products: {
+          include: {
+            product: true
           }
         },
         staff: {
@@ -773,7 +864,7 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
 export const updateSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason, ownShampooDiscount = false, payments } = req.body;
+    const { services, serviceIds, products, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason, ownShampooDiscount = false, payments } = req.body;
 
     console.log('🔄 UPDATE SALE REQUEST:', {
       saleId: id,
@@ -1012,6 +1103,74 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
 
+      // Update products if provided
+      if (Array.isArray(products)) {
+        // Get existing products to restore stock
+        const existingProducts = await tx.saleProduct.findMany({
+          where: { saleId: id },
+          include: { product: true }
+        });
+
+        // Restore stock for existing products
+        for (const existingProduct of existingProducts) {
+          await tx.product.update({
+            where: { id: existingProduct.productId },
+            data: {
+              quantity: { increment: existingProduct.quantity }
+            }
+          });
+        }
+
+        // Delete existing sale products
+        await tx.saleProduct.deleteMany({ where: { saleId: id } });
+
+        // Add new products and reduce stock
+        if (products.length > 0) {
+          const productIds = products.map((p: any) => p.productId);
+          const productDetails = await tx.product.findMany({
+            where: { id: { in: productIds }, isActive: true }
+          });
+
+          if (productDetails.length !== productIds.length) {
+            throw new Error('One or more products not found or inactive');
+          }
+
+          const saleProducts: any[] = [];
+          for (const productSale of products) {
+            const productDetail = productDetails.find((p: any) => p.id === productSale.productId);
+            if (!productDetail) continue;
+
+            const quantity = productSale.quantity || 1;
+            
+            // Check stock availability
+            if (productDetail.quantity < quantity) {
+              throw new Error(`Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}`);
+            }
+
+            const unitPrice = Number(productDetail.price);
+            const lineTotal = unitPrice * quantity;
+
+            saleProducts.push({
+              saleId: id,
+              productId: productSale.productId,
+              quantity,
+              unitPrice,
+              totalPrice: lineTotal
+            });
+
+            // Reduce stock
+            await tx.product.update({
+              where: { id: productSale.productId },
+              data: {
+                quantity: { decrement: quantity }
+              }
+            });
+          }
+
+          await tx.saleProduct.createMany({ data: saleProducts });
+        }
+      }
+
       // Update payments if provided
       if (Array.isArray(payments)) {
         await tx.salePayment.deleteMany({ where: { saleId: id } });
@@ -1060,11 +1219,12 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
       // This prevents visit count from being incremented and loyalty points from being recalculated
     });
 
-    const updated = await prisma.sale.findUnique({
+    const updated = await (prisma.sale.findUnique as any)({
       where: { id },
       include: {
         customer: true,
         services: { include: { service: true } },
+        products: { include: { product: true } },
         staff: { include: { staff: { select: { id: true, name: true } } } },
         discounts: { include: { discountRule: true } },
         payments: true
@@ -1081,18 +1241,98 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 export const deleteSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const existingSale = await prisma.sale.findUnique({ where: { id } });
+    const existingSale = await (prisma.sale.findUnique as any)({ 
+      where: { id },
+      include: {
+        customer: true,
+        products: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+    
     if (!existingSale) {
       res.status(404).json({ error: 'Sale not found' });
       return;
     }
 
+    const customerId = existingSale.customerId;
+    const finalAmount = Number(existingSale.finalAmount || 0);
+    
+    // Calculate loyalty points that were earned for this sale (1 point per 1000 RWF)
+    const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
+
     await prisma.$transaction(async (tx: any) => {
+      // Get products before deleting to restore stock
+      const saleProducts = await tx.saleProduct.findMany({
+        where: { saleId: id },
+        include: { product: true }
+      });
+
+      // Restore stock for products
+      for (const saleProduct of saleProducts) {
+        await tx.product.update({
+          where: { id: saleProduct.productId },
+          data: {
+            quantity: { increment: saleProduct.quantity }
+          }
+        });
+      }
+
+      // Delete related records first
       await tx.saleDiscount.deleteMany({ where: { saleId: id } });
       await tx.saleStaff.deleteMany({ where: { saleId: id } });
       await tx.saleService.deleteMany({ where: { saleId: id } });
+      await tx.saleProduct.deleteMany({ where: { saleId: id } });
       await tx.salePayment.deleteMany({ where: { saleId: id } });
+      
+      // Delete the sale
       await tx.sale.delete({ where: { id } });
+
+      // Update customer statistics - decrement what was incremented when sale was created
+      const customer = await tx.customer.findUnique({ where: { id: customerId } });
+      
+      if (customer) {
+        // Get the most recent sale for this customer (excluding the one we're deleting)
+        const mostRecentSale = await tx.sale.findFirst({
+          where: {
+            customerId: customerId,
+            id: { not: id }
+          },
+          orderBy: {
+            saleDate: 'desc'
+          },
+          select: {
+            saleDate: true
+          }
+        });
+
+        // Calculate new values (ensure they don't go below 0)
+        const newSaleCount = Math.max(0, (customer.saleCount || 0) - 1);
+        const newTotalSpent = Math.max(0, (customer.totalSpent || 0) - finalAmount);
+        const newLoyaltyPoints = Math.max(0, (customer.loyaltyPoints || 0) - loyaltyPointsEarned);
+
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            saleCount: newSaleCount,
+            totalSpent: newTotalSpent,
+            loyaltyPoints: newLoyaltyPoints,
+            lastSale: mostRecentSale?.saleDate || null
+          }
+        });
+
+        console.log('✅ Customer statistics updated after sale deletion:', {
+          customerId,
+          saleCount: `${customer.saleCount} → ${newSaleCount}`,
+          totalSpent: `${customer.totalSpent} → ${newTotalSpent}`,
+          loyaltyPoints: `${customer.loyaltyPoints} → ${newLoyaltyPoints}`,
+          finalAmount,
+          loyaltyPointsEarned
+        });
+      }
     });
 
     res.json({ success: true, message: 'Sale deleted successfully' });

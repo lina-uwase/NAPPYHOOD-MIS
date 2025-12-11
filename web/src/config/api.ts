@@ -29,7 +29,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Handle both 401 (Unauthorized) and 403 (Forbidden) as authentication failures
+    if (error.response?.status === 401 || error.response?.status === 403) {
       // Don't redirect to login for password change errors
       if (error.config?.url?.includes('/change-password')) {
         return Promise.reject(error);

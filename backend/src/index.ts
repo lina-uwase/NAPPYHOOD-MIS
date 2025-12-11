@@ -14,6 +14,7 @@ import customerRoutes from './routes/customers';
 import salesRoutes from './routes/sales';
 import staffRoutes from './routes/staff';
 import dashboardRoutes from './routes/dashboard';
+import productRoutes from './routes/products';
 
 // Load environment variables
 dotenv.config();
@@ -136,6 +137,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/products', productRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

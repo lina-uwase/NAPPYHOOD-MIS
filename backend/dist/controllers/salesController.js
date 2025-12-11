@@ -8,12 +8,13 @@ const createSale = async (req, res) => {
         const { customerId, services, // Array of SaleService
         serviceIds, // Optional: Array<string> (frontend simplified payload)
         serviceShampooOptions, // Object mapping serviceId to shampoo preference
+        products, // Array of {productId, quantity}
         staffIds, // Array of staff IDs
         customStaffNames, // Array of custom staff names
         notes, paymentMethod = 'CASH', // Legacy single payment method
         payments, // New: Array of payment methods with amounts
         ownShampooDiscount = false, addShampoo = false, // Legacy global shampoo option
-        manualDiscountAmount = 0, manualDiscountReason } = req.body;
+        manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason } = req.body;
         console.log('🔍 DEBUGGING STAFF DATA:', {
             staffIds,
             customStaffNames,
@@ -21,6 +22,15 @@ const createSale = async (req, res) => {
             customStaffNamesType: typeof customStaffNames,
             staffIdsLength: Array.isArray(staffIds) ? staffIds.length : 'not array',
             customStaffNamesLength: Array.isArray(customStaffNames) ? customStaffNames.length : 'not array'
+        });
+        console.log('🔍 DEBUGGING MANUAL INCREMENT (FROM REQUEST):', {
+            manualIncrementAmount,
+            manualIncrementReason,
+            manualIncrementAmountType: typeof manualIncrementAmount,
+            manualIncrementReasonType: typeof manualIncrementReason,
+            manualIncrementAmountRaw: req.body.manualIncrementAmount,
+            manualIncrementReasonRaw: req.body.manualIncrementReason,
+            applyManualIncrement: req.body.applyManualIncrement
         });
         const normalizedServices = Array.isArray(services) && services.length > 0
             ? services
@@ -33,8 +43,10 @@ const createSale = async (req, res) => {
                     addShampoo: serviceShampooOptions?.[sid] ?? addShampoo // Use individual or fallback to global
                 }))
                 : [];
-        if (!customerId || normalizedServices.length === 0) {
-            res.status(400).json({ error: 'Customer ID and services are required' });
+        // Validate that at least services or products are provided
+        const normalizedProducts = Array.isArray(products) ? products : [];
+        if (!customerId || (normalizedServices.length === 0 && normalizedProducts.length === 0)) {
+            res.status(400).json({ error: 'Customer ID and at least one service or product is required' });
             return;
         }
         // Get customer data
@@ -98,6 +110,41 @@ const createSale = async (req, res) => {
                 addShampoo: shouldAddShampoo
             });
         }
+        // Calculate total amount and prepare sale products
+        const saleProducts = [];
+        const productIdsToFetch = normalizedProducts.map((p) => p.productId);
+        const productDetails = productIdsToFetch.length > 0
+            ? await database_1.prisma.product.findMany({
+                where: { id: { in: productIdsToFetch }, isActive: true }
+            })
+            : [];
+        if (productIdsToFetch.length > 0 && productDetails.length !== productIdsToFetch.length) {
+            res.status(400).json({ error: 'One or more products not found or inactive' });
+            return;
+        }
+        // Validate stock availability and calculate product totals
+        for (const productSale of normalizedProducts) {
+            const productDetail = productDetails.find((p) => p.id === productSale.productId);
+            if (!productDetail)
+                continue;
+            const quantity = productSale.quantity || 1;
+            // Check stock availability
+            if (productDetail.quantity < quantity) {
+                res.status(400).json({
+                    error: `Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}`
+                });
+                return;
+            }
+            const unitPrice = Number(productDetail.price);
+            const lineTotal = unitPrice * quantity;
+            totalAmount += lineTotal;
+            saleProducts.push({
+                productId: productSale.productId,
+                quantity,
+                unitPrice,
+                totalPrice: lineTotal
+            });
+        }
         // Calculate discounts
         const discounts = await calculateDiscounts(customer, normalizedServices, serviceDetails, totalAmount, ownShampooDiscount);
         // Add manual discount if provided
@@ -109,7 +156,52 @@ const createSale = async (req, res) => {
             });
         }
         const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
-        const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
+        // Add manual increment if provided - use EXACT same pattern as manual discount
+        // Check req.body directly first (most reliable)
+        let manualIncrement = 0;
+        const rawIncrementAmount = req.body.manualIncrementAmount;
+        const rawIncrementReason = req.body.manualIncrementReason;
+        // Convert to number - handle both string and number inputs
+        const incrementNum = rawIncrementAmount != null ? Number(rawIncrementAmount) : 0;
+        // Apply increment if amount > 0 AND reason exists and is not empty (same pattern as manual discount)
+        // Trim the reason to handle whitespace-only strings
+        const trimmedReason = rawIncrementReason != null ? String(rawIncrementReason).trim() : '';
+        const shouldApplyIncrement = incrementNum > 0 && trimmedReason.length > 0;
+        if (shouldApplyIncrement) {
+            manualIncrement = incrementNum;
+        }
+        const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
+        console.log('🔍 MANUAL INCREMENT CHECK (DETAILED):', {
+            'req.body.manualIncrementAmount': req.body.manualIncrementAmount,
+            'req.body.manualIncrementReason': req.body.manualIncrementReason,
+            'req.body.applyManualIncrement': req.body.applyManualIncrement,
+            'rawIncrementAmount': rawIncrementAmount,
+            'rawIncrementReason': rawIncrementReason,
+            'rawIncrementReasonType': typeof rawIncrementReason,
+            'trimmedReason': trimmedReason,
+            'trimmedReasonLength': trimmedReason.length,
+            'incrementNum': incrementNum,
+            'incrementNumType': typeof incrementNum,
+            'shouldApplyIncrement': shouldApplyIncrement,
+            'manualIncrement': manualIncrement,
+            'condition1 (incrementNum > 0)': incrementNum > 0,
+            'condition2 (trimmedReason.length > 0)': trimmedReason.length > 0,
+            'finalAmount': finalAmount,
+            'totalAmount': totalAmount,
+            'totalDiscountAmount': totalDiscountAmount,
+            'calculation': `${totalAmount} - ${totalDiscountAmount} + ${manualIncrement} = ${finalAmount}`
+        });
+        console.log('💰 FINAL AMOUNT CALCULATION:', {
+            totalAmount,
+            totalDiscountAmount,
+            manualIncrement,
+            finalAmount,
+            manualIncrementAmount,
+            manualIncrementAmountType: typeof manualIncrementAmount,
+            manualIncrementReason,
+            manualDiscountAmount,
+            manualDiscountReason
+        });
         // Process payments - support both old single payment method and new multiple payments
         // Normalize payment methods to ensure consistency
         const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
@@ -129,9 +221,27 @@ const createSale = async (req, res) => {
             });
             // Validate total payment amount matches final amount
             const totalPaymentAmount = normalizedPayments.reduce((sum, p) => sum + p.amount, 0);
+            console.log('💳 PAYMENT VALIDATION:', {
+                totalPaymentAmount,
+                finalAmount,
+                difference: Math.abs(totalPaymentAmount - finalAmount),
+                manualIncrement,
+                manualIncrementAmount,
+                manualIncrementReason
+            });
             if (Math.abs(totalPaymentAmount - finalAmount) > 0.01) {
+                console.error('❌ PAYMENT VALIDATION FAILED:', {
+                    totalPaymentAmount,
+                    finalAmount,
+                    difference: Math.abs(totalPaymentAmount - finalAmount),
+                    totalAmount,
+                    totalDiscountAmount,
+                    manualIncrement,
+                    manualIncrementAmount,
+                    manualIncrementReason
+                });
                 res.status(400).json({
-                    error: `Payment amounts total (${totalPaymentAmount}) must equal final amount (${finalAmount})`
+                    error: `Payment amounts total (${totalPaymentAmount}) must equal final amount (${finalAmount}). Manual increment: ${manualIncrement}, Total: ${totalAmount}, Discounts: ${totalDiscountAmount}`
                 });
                 return;
             }
@@ -158,6 +268,37 @@ const createSale = async (req, res) => {
         // Create sale in transaction
         const result = await database_1.prisma.$transaction(async (tx) => {
             // Create sale
+            // Combine notes with discounts and increment information
+            let saleNotes = notes || '';
+            const noteParts = [];
+            // Add manual discount note
+            if (manualDiscountAmount > 0 && manualDiscountReason) {
+                noteParts.push(`[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`);
+            }
+            // Add automatic discount notes
+            for (const discount of discounts) {
+                if (discount.type === 'SIXTH_VISIT') {
+                    noteParts.push(`[6th Visit Discount: ${discount.amount} RWF]`);
+                }
+                else if (discount.type === 'BIRTHDAY_MONTH') {
+                    noteParts.push(`[Birthday Month Discount: ${discount.amount} RWF]`);
+                }
+                else if (discount.type === 'SERVICE_COMBO') {
+                    noteParts.push(`[Service Combo Discount: ${discount.amount} RWF]`);
+                }
+                else if (discount.type === 'BRING_OWN_PRODUCT') {
+                    noteParts.push(`[Bring Own Product Discount: ${discount.amount} RWF]`);
+                }
+            }
+            // Add manual increment note
+            if (manualIncrementAmount > 0 && manualIncrementReason) {
+                noteParts.push(`[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`);
+            }
+            // Combine all notes
+            if (noteParts.length > 0) {
+                const combinedNotes = noteParts.join('\n');
+                saleNotes = saleNotes ? `${saleNotes}\n${combinedNotes}` : combinedNotes;
+            }
             const sale = await tx.sale.create({
                 data: {
                     customerId,
@@ -165,7 +306,7 @@ const createSale = async (req, res) => {
                     discountAmount: totalDiscountAmount,
                     finalAmount,
                     loyaltyPointsEarned,
-                    notes,
+                    notes: saleNotes,
                     paymentMethod: primaryPaymentMethod,
                     ownShampooDiscount,
                     birthMonthDiscount,
@@ -173,18 +314,41 @@ const createSale = async (req, res) => {
                 }
             });
             // Create sale services
-            await tx.saleService.createMany({
-                data: saleServices.map(vs => ({
-                    saleId: sale.id,
-                    serviceId: vs.serviceId,
-                    quantity: vs.quantity,
-                    unitPrice: vs.unitPrice,
-                    totalPrice: vs.totalPrice,
-                    isChild: vs.isChild,
-                    isCombined: vs.isCombined,
-                    addShampoo: vs.addShampoo
-                }))
-            });
+            if (saleServices.length > 0) {
+                await tx.saleService.createMany({
+                    data: saleServices.map(vs => ({
+                        saleId: sale.id,
+                        serviceId: vs.serviceId,
+                        quantity: vs.quantity,
+                        unitPrice: vs.unitPrice,
+                        totalPrice: vs.totalPrice,
+                        isChild: vs.isChild,
+                        isCombined: vs.isCombined,
+                        addShampoo: vs.addShampoo
+                    }))
+                });
+            }
+            // Create sale products and reduce stock
+            if (saleProducts.length > 0) {
+                await tx.saleProduct.createMany({
+                    data: saleProducts.map(sp => ({
+                        saleId: sale.id,
+                        productId: sp.productId,
+                        quantity: sp.quantity,
+                        unitPrice: sp.unitPrice,
+                        totalPrice: sp.totalPrice
+                    }))
+                });
+                // Reduce stock for each product
+                for (const saleProduct of saleProducts) {
+                    await tx.product.update({
+                        where: { id: saleProduct.productId },
+                        data: {
+                            quantity: { decrement: saleProduct.quantity }
+                        }
+                    });
+                }
+            }
             // Create sale payments - normalize payment methods to ensure consistency
             const paymentData = normalizedPayments.map(payment => {
                 const method = (payment.paymentMethod || 'CASH').toUpperCase().trim();
@@ -290,6 +454,11 @@ const createSale = async (req, res) => {
                 services: {
                     include: {
                         service: true
+                    }
+                },
+                products: {
+                    include: {
+                        product: true
                     }
                 },
                 staff: {
@@ -464,6 +633,17 @@ const getAllSales = async (req, res) => {
                             }
                         }
                     },
+                    products: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    price: true
+                                }
+                            }
+                        }
+                    },
                     staff: {
                         include: {
                             staff: {
@@ -526,6 +706,11 @@ const getSaleById = async (req, res) => {
                         service: true
                     }
                 },
+                products: {
+                    include: {
+                        product: true
+                    }
+                },
                 staff: {
                     include: {
                         staff: {
@@ -569,7 +754,7 @@ exports.getSaleById = getSaleById;
 const updateSale = async (req, res) => {
     try {
         const { id } = req.params;
-        const { services, serviceIds, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, ownShampooDiscount = false, payments } = req.body;
+        const { services, serviceIds, products, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason, ownShampooDiscount = false, payments } = req.body;
         console.log('🔄 UPDATE SALE REQUEST:', {
             saleId: id,
             services: services?.length || 0,
@@ -590,7 +775,9 @@ const updateSale = async (req, res) => {
             // Update services if provided (handle both serviceIds and services format)
             const servicesToProcess = Array.isArray(services) ? services :
                 Array.isArray(serviceIds) ? serviceIds.map((id) => ({ serviceId: id, quantity: 1, isChild: false })) : null;
+            let servicesWereUpdated = false;
             if (servicesToProcess) {
+                servicesWereUpdated = true;
                 console.log('🔧 PROCESSING SERVICES:', { servicesToProcess });
                 // Delete existing sale services and recalc totals
                 await tx.saleService.deleteMany({ where: { saleId: id } });
@@ -636,36 +823,46 @@ const updateSale = async (req, res) => {
                         });
                     }
                     await tx.saleService.createMany({ data: saleServices });
-                    // Recalculate discounts
-                    const customer = await tx.customer.findUnique({ where: { id: existingSale.customerId } });
-                    console.log('🔍 RECALCULATING DISCOUNTS:', {
-                        customerId: customer?.id,
-                        totalAmount,
-                        ownShampooDiscount,
-                        servicesCount: servicesToProcess.length
+                    // When editing a sale, preserve original discounts - don't recalculate automatic discounts
+                    // Only update manual discounts/increments if provided
+                    // Get existing discounts to preserve automatic ones
+                    const existingDiscounts = await tx.saleDiscount.findMany({
+                        where: { saleId: id },
+                        include: { discountRule: true }
                     });
-                    const discounts = await calculateDiscounts(customer, servicesToProcess, serviceDetails, totalAmount, ownShampooDiscount);
-                    console.log('💰 CALCULATED DISCOUNTS:', discounts);
-                    // Add manual discount if provided
+                    // Separate automatic discounts from manual discount
+                    const automaticDiscounts = existingDiscounts.filter((sd) => sd.discountRule.type !== 'MANUAL_DISCOUNT');
+                    // Calculate automatic discount amounts from existing discounts
+                    const automaticDiscountAmount = automaticDiscounts.reduce((sum, sd) => sum + Number(sd.discountAmount), 0);
+                    // Calculate manual discount (use provided value or keep existing)
+                    let manualDiscountAmountValue = 0;
                     if (manualDiscountAmount > 0 && manualDiscountReason) {
-                        discounts.push({
-                            type: 'MANUAL_DISCOUNT',
-                            amount: Number(manualDiscountAmount),
-                            description: manualDiscountReason
-                        });
+                        manualDiscountAmountValue = Number(manualDiscountAmount);
                     }
-                    const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
-                    const finalAmount = Math.max(0, totalAmount - totalDiscountAmount);
+                    else {
+                        // Find existing manual discount if not provided
+                        const existingManualDiscount = existingDiscounts.find((sd) => sd.discountRule.type === 'MANUAL_DISCOUNT');
+                        if (existingManualDiscount) {
+                            manualDiscountAmountValue = Number(existingManualDiscount.discountAmount);
+                        }
+                    }
+                    const totalDiscountAmount = automaticDiscountAmount + manualDiscountAmountValue;
+                    const manualIncrement = (manualIncrementAmount > 0 && manualIncrementReason) ? Number(manualIncrementAmount) : 0;
+                    const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
                     const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
-                    // Check if birthday discount is applied
-                    const birthMonthDiscount = discounts.some(d => d.type === 'BIRTHDAY_MONTH');
-                    console.log('📊 UPDATING SALE TOTALS:', {
+                    // Preserve birthMonthDiscount from existing sale
+                    const birthMonthDiscount = existingSale.birthMonthDiscount;
+                    console.log('📊 UPDATING SALE TOTALS (PRESERVING ORIGINAL DISCOUNTS):', {
                         totalAmount,
+                        automaticDiscountAmount,
+                        manualDiscountAmountValue,
                         totalDiscountAmount,
+                        manualIncrement,
                         finalAmount,
                         loyaltyPointsEarned,
                         ownShampooDiscount,
-                        birthMonthDiscount
+                        birthMonthDiscount,
+                        preservedAutomaticDiscounts: automaticDiscounts.length
                     });
                     await tx.sale.update({
                         where: { id },
@@ -678,24 +875,64 @@ const updateSale = async (req, res) => {
                             birthMonthDiscount
                         }
                     });
-                    // Refresh discounts: delete and recreate
-                    await tx.saleDiscount.deleteMany({ where: { saleId: id } });
-                    for (const discount of discounts) {
-                        let discountRule = await tx.discountRule.findFirst({ where: { type: discount.type, isActive: true } });
+                    // Update discounts: preserve automatic discounts, update manual discount if provided
+                    if (manualDiscountAmount > 0 && manualDiscountReason) {
+                        // Remove existing manual discount
+                        const existingManualDiscount = existingDiscounts.find((sd) => sd.discountRule.type === 'MANUAL_DISCOUNT');
+                        if (existingManualDiscount) {
+                            await tx.saleDiscount.delete({ where: { id: existingManualDiscount.id } });
+                        }
+                        // Create/update manual discount
+                        let discountRule = await tx.discountRule.findFirst({
+                            where: { type: 'MANUAL_DISCOUNT', isActive: true }
+                        });
                         if (!discountRule) {
                             discountRule = await tx.discountRule.create({
                                 data: {
-                                    name: discount.description,
-                                    type: discount.type,
-                                    value: discount.type === 'SERVICE_COMBO' ? 2000 : 20,
-                                    isPercentage: discount.type !== 'SERVICE_COMBO',
-                                    description: discount.description
+                                    name: manualDiscountReason,
+                                    type: 'MANUAL_DISCOUNT',
+                                    value: 0,
+                                    isPercentage: false,
+                                    description: manualDiscountReason
                                 }
                             });
                         }
                         await tx.saleDiscount.create({
-                            data: { saleId: id, discountRuleId: discountRule.id, discountAmount: discount.amount }
+                            data: {
+                                saleId: id,
+                                discountRuleId: discountRule.id,
+                                discountAmount: manualDiscountAmountValue
+                            }
                         });
+                    }
+                    // Update notes: preserve original discount notes, only update manual discount/increment if provided
+                    if (manualDiscountAmount > 0 && manualDiscountReason) {
+                        // Get existing notes
+                        const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
+                        let existingNotes = currentSale?.notes || '';
+                        // Remove old manual discount note if it exists
+                        existingNotes = existingNotes.replace(/\[Manual Discount:.*?\]/g, '').trim();
+                        // Add new manual discount note
+                        const manualDiscountNote = `[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`;
+                        const baseNotes = notes || existingNotes || '';
+                        const updatedNotes = baseNotes ? `${baseNotes}\n${manualDiscountNote}` : manualDiscountNote;
+                        await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
+                    }
+                    // Update manual increment note if provided
+                    if (manualIncrementAmount > 0 && manualIncrementReason) {
+                        const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
+                        let existingNotes = currentSale?.notes || '';
+                        // Remove old manual increment note if it exists
+                        existingNotes = existingNotes.replace(/\[Manual Increment:.*?\]/g, '').trim();
+                        // Add new manual increment note
+                        const manualIncrementNote = `[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`;
+                        const baseNotes = notes || existingNotes || '';
+                        const updatedNotes = baseNotes ? `${baseNotes}\n${manualIncrementNote}` : manualIncrementNote;
+                        await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
+                    }
+                    // If only notes field is being updated (not services), update it
+                    if (notes !== undefined && !servicesWereUpdated) {
+                        await tx.sale.update({ where: { id }, data: { notes } });
                     }
                 }
             }
@@ -718,6 +955,63 @@ const updateSale = async (req, res) => {
                             customName: customName.trim()
                         }))
                     });
+                }
+            }
+            // Update products if provided
+            if (Array.isArray(products)) {
+                // Get existing products to restore stock
+                const existingProducts = await tx.saleProduct.findMany({
+                    where: { saleId: id },
+                    include: { product: true }
+                });
+                // Restore stock for existing products
+                for (const existingProduct of existingProducts) {
+                    await tx.product.update({
+                        where: { id: existingProduct.productId },
+                        data: {
+                            quantity: { increment: existingProduct.quantity }
+                        }
+                    });
+                }
+                // Delete existing sale products
+                await tx.saleProduct.deleteMany({ where: { saleId: id } });
+                // Add new products and reduce stock
+                if (products.length > 0) {
+                    const productIds = products.map((p) => p.productId);
+                    const productDetails = await tx.product.findMany({
+                        where: { id: { in: productIds }, isActive: true }
+                    });
+                    if (productDetails.length !== productIds.length) {
+                        throw new Error('One or more products not found or inactive');
+                    }
+                    const saleProducts = [];
+                    for (const productSale of products) {
+                        const productDetail = productDetails.find((p) => p.id === productSale.productId);
+                        if (!productDetail)
+                            continue;
+                        const quantity = productSale.quantity || 1;
+                        // Check stock availability
+                        if (productDetail.quantity < quantity) {
+                            throw new Error(`Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}`);
+                        }
+                        const unitPrice = Number(productDetail.price);
+                        const lineTotal = unitPrice * quantity;
+                        saleProducts.push({
+                            saleId: id,
+                            productId: productSale.productId,
+                            quantity,
+                            unitPrice,
+                            totalPrice: lineTotal
+                        });
+                        // Reduce stock
+                        await tx.product.update({
+                            where: { id: productSale.productId },
+                            data: {
+                                quantity: { decrement: quantity }
+                            }
+                        });
+                    }
+                    await tx.saleProduct.createMany({ data: saleProducts });
                 }
             }
             // Update payments if provided
@@ -746,19 +1040,25 @@ const updateSale = async (req, res) => {
             }
             // Update basic fields
             const updateData = {};
-            if (notes !== undefined)
+            // Handle notes update - only if services weren't updated (services update handles notes above)
+            if (notes !== undefined && !servicesWereUpdated) {
+                // If no manual discount/increment notes were added above, just update notes directly
                 updateData.notes = notes;
+            }
             if (isCompleted !== undefined)
                 updateData.isCompleted = !!isCompleted;
             if (Object.keys(updateData).length > 0) {
                 await tx.sale.update({ where: { id }, data: updateData });
             }
+            // IMPORTANT: Do NOT update customer statistics when editing a sale
+            // This prevents visit count from being incremented and loyalty points from being recalculated
         });
         const updated = await database_1.prisma.sale.findUnique({
             where: { id },
             include: {
                 customer: true,
                 services: { include: { service: true } },
+                products: { include: { product: true } },
                 staff: { include: { staff: { select: { id: true, name: true } } } },
                 discounts: { include: { discountRule: true } },
                 payments: true
@@ -775,17 +1075,86 @@ exports.updateSale = updateSale;
 const deleteSale = async (req, res) => {
     try {
         const { id } = req.params;
-        const existingSale = await database_1.prisma.sale.findUnique({ where: { id } });
+        const existingSale = await database_1.prisma.sale.findUnique({
+            where: { id },
+            include: {
+                customer: true,
+                products: {
+                    include: {
+                        product: true
+                    }
+                }
+            }
+        });
         if (!existingSale) {
             res.status(404).json({ error: 'Sale not found' });
             return;
         }
+        const customerId = existingSale.customerId;
+        const finalAmount = Number(existingSale.finalAmount || 0);
+        // Calculate loyalty points that were earned for this sale (1 point per 1000 RWF)
+        const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
         await database_1.prisma.$transaction(async (tx) => {
+            // Get products before deleting to restore stock
+            const saleProducts = await tx.saleProduct.findMany({
+                where: { saleId: id },
+                include: { product: true }
+            });
+            // Restore stock for products
+            for (const saleProduct of saleProducts) {
+                await tx.product.update({
+                    where: { id: saleProduct.productId },
+                    data: {
+                        quantity: { increment: saleProduct.quantity }
+                    }
+                });
+            }
+            // Delete related records first
             await tx.saleDiscount.deleteMany({ where: { saleId: id } });
             await tx.saleStaff.deleteMany({ where: { saleId: id } });
             await tx.saleService.deleteMany({ where: { saleId: id } });
+            await tx.saleProduct.deleteMany({ where: { saleId: id } });
             await tx.salePayment.deleteMany({ where: { saleId: id } });
+            // Delete the sale
             await tx.sale.delete({ where: { id } });
+            // Update customer statistics - decrement what was incremented when sale was created
+            const customer = await tx.customer.findUnique({ where: { id: customerId } });
+            if (customer) {
+                // Get the most recent sale for this customer (excluding the one we're deleting)
+                const mostRecentSale = await tx.sale.findFirst({
+                    where: {
+                        customerId: customerId,
+                        id: { not: id }
+                    },
+                    orderBy: {
+                        saleDate: 'desc'
+                    },
+                    select: {
+                        saleDate: true
+                    }
+                });
+                // Calculate new values (ensure they don't go below 0)
+                const newSaleCount = Math.max(0, (customer.saleCount || 0) - 1);
+                const newTotalSpent = Math.max(0, (customer.totalSpent || 0) - finalAmount);
+                const newLoyaltyPoints = Math.max(0, (customer.loyaltyPoints || 0) - loyaltyPointsEarned);
+                await tx.customer.update({
+                    where: { id: customerId },
+                    data: {
+                        saleCount: newSaleCount,
+                        totalSpent: newTotalSpent,
+                        loyaltyPoints: newLoyaltyPoints,
+                        lastSale: mostRecentSale?.saleDate || null
+                    }
+                });
+                console.log('✅ Customer statistics updated after sale deletion:', {
+                    customerId,
+                    saleCount: `${customer.saleCount} → ${newSaleCount}`,
+                    totalSpent: `${customer.totalSpent} → ${newTotalSpent}`,
+                    loyaltyPoints: `${customer.loyaltyPoints} → ${newLoyaltyPoints}`,
+                    finalAmount,
+                    loyaltyPointsEarned
+                });
+            }
         });
         res.json({ success: true, message: 'Sale deleted successfully' });
     }
@@ -974,7 +1343,7 @@ const getDailyPaymentSummary = async (req, res) => {
             }
         });
         // Get sale IDs that have payments
-        const salesWithPayments = new Set(allDirectPayments.map((p) => p.saleId));
+        const salesWithPayments = new Set(allDirectPayments.map(p => p.saleId));
         console.log('📊 Direct payments query found:', allDirectPayments.length, 'payments');
         if (allDirectPayments.length > 0) {
             // Group by payment method for logging
@@ -1115,7 +1484,7 @@ const getDailyPaymentSummary = async (req, res) => {
         console.log('📊 Processing legacy sales (sales without payment entries):');
         // Process all sales - if they have payments in salePayment, those are already counted above
         // If they don't have payments, use the paymentMethod from Sale table
-        allSalesForDate.forEach((sale) => {
+        allSalesForDate.forEach(sale => {
             // Skip sales that already have payments in SalePayment table (already counted above)
             if (salesWithPayments.has(sale.id)) {
                 return;

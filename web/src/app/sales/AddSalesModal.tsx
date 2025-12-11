@@ -1,12 +1,14 @@
 "use client"
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Search, User, Scissors, Users, Calendar } from 'lucide-react';
+import { X, Search, User, Scissors, Users, Calendar, Package } from 'lucide-react';
 import { Sale, CreateSaleDto, UpdateSaleDto, SaleDiscount } from '../../services/salesService';
 import customersService, { Customer } from '../../services/customersService';
 import servicesService, { Service } from '../../services/servicesService';
 import staffService, { Staff } from '../../services/staffService';
+import productsService, { Product } from '../../services/productsService';
 import CategorizedServiceSelect, { SelectedServiceWithCombo } from '../../components/CategorizedServiceSelect';
 import CustomStaffSelect, { StaffOption, CustomStaff } from '../../components/CustomStaffSelect';
+import ProductSelect from '../../components/ProductSelect';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -23,6 +25,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const [formData, setFormData] = useState({
     customerId: '',
     serviceIds: [] as string[],
+    productIds: [] as string[],
+    productQuantities: {} as Record<string, number | undefined>,
     staffIds: [] as string[],
     customStaffNames: [] as string[],
     saleDate: (() => {
@@ -53,6 +57,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
@@ -71,8 +76,21 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   useEffect(() => {
     fetchCustomers();
     fetchServices();
+    fetchProducts();
     fetchStaff();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const response = await productsService.getAll(true); // Only active products
+      if (response.success) {
+        setProducts(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      setProducts([]);
+    }
+  };
 
   // Re-fetch services when toggle changes to ensure fresh data
   useEffect(() => {
@@ -116,10 +134,23 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   const fetchCustomers = async () => {
     try {
-      const response = await customersService.getAll({ limit: 1000, isActive: true });
-      setCustomers(response.data);
+      // Fetch all active customers without pagination limit
+      const response = await customersService.getAll({ limit: 10000, isActive: true });
+      const customersData = Array.isArray(response.data) ? response.data : [];
+      
+      console.log('📋 Fetched customers for sale:', {
+        total: customersData.length,
+        sample: customersData.slice(0, 3).map(c => ({
+          name: c.fullName || c.name,
+          phone: c.phone,
+          isActive: c.isActive
+        }))
+      });
+      
+      setCustomers(customersData);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
+      setCustomers([]);
     }
   };
 
@@ -316,9 +347,21 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       newErrors.customerId = 'Please select a customer';
     }
 
-    if (formData.serviceIds.length === 0) {
-      newErrors.serviceIds = 'Please select at least one service';
+    // Allow either services OR products (or both)
+    if (formData.serviceIds.length === 0 && formData.productIds.length === 0) {
+      newErrors.serviceIds = 'Please select at least one service or product';
     }
+
+    // Validate product quantities
+    formData.productIds.forEach(productId => {
+      const quantity = formData.productQuantities[productId];
+      const product = products.find(p => p.id === productId);
+      if (!quantity || quantity <= 0) {
+        newErrors[`product_${productId}`] = 'Quantity must be greater than 0';
+      } else if (product && quantity > product.quantity) {
+        newErrors[`product_${productId}`] = `Only ${product.quantity} available in stock`;
+      }
+    });
 
     if (selectedStaff.length === 0) {
       newErrors.staffIds = 'Please select at least one staff member';
@@ -367,9 +410,23 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         customStaffNames: selectedStaff.filter(s => 'isCustom' in s && s.isCustom).map(s => s.name)
       };
 
+      // Prepare products data
+      const productsData = formData.productIds.map(productId => {
+        const quantity = formData.productQuantities[productId];
+        // Validation already ensures quantity > 0, but add safety check
+        if (!quantity || quantity <= 0) {
+          throw new Error(`Product quantity must be greater than 0`);
+        }
+        return {
+          productId,
+          quantity: quantity
+        };
+      });
+
       const submitData = {
         customerId: formData.customerId,
-        serviceIds: formData.serviceIds,
+        serviceIds: formData.serviceIds.length > 0 ? formData.serviceIds : undefined,
+        products: productsData.length > 0 ? productsData : undefined,
         serviceShampooOptions: serviceShampooOptions,
         staffIds: submitStaffData.staffIds,
         customStaffNames: submitStaffData.customStaffNames,
@@ -378,7 +435,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         ownShampooDiscount: formData.bringOwnProduct,
         addShampoo: formData.addShampoo,
         payments: payments,
-        manualDiscountAmount: formData.applyManualDiscount ? formData.manualDiscountAmount : 0,
+        manualDiscountAmount: formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0,
         manualDiscountReason: formData.applyManualDiscount ? (formData.manualDiscountReason?.trim() || undefined) : undefined,
         manualIncrementAmount: formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0,
         manualIncrementReason: formData.applyManualIncrement ? (formData.manualIncrementReason?.trim() || undefined) : undefined
@@ -391,7 +448,6 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         payments: submitData.payments,
         paymentsTotal: submitData.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0)
       });
-
 
       await onSubmit(submitData);
       onClose();
@@ -406,10 +462,55 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     }
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    (customer.fullName || customer.name || '').toLowerCase().includes(customerSearch.toLowerCase()) ||
-    customer.phone.includes(customerSearch)
-  );
+  // Normalize phone number for searching (more flexible matching)
+  const normalizePhone = (phone: string | null | undefined): string => {
+    if (!phone) return '';
+    // Remove all non-digit characters
+    let normalized = phone.replace(/[^\d]/g, '');
+    // Remove leading zeros
+    normalized = normalized.replace(/^0+/, '');
+    return normalized;
+  };
+
+  const filteredCustomers = customers.filter(customer => {
+    const searchLower = customerSearch.toLowerCase().trim();
+    if (!searchLower) return true; // Show all if search is empty
+
+    // Search by name (case-insensitive) - check both fullName and name
+    const fullName = (customer.fullName || '').toLowerCase();
+    const name = (customer.name || '').toLowerCase();
+    const nameMatch = fullName.includes(searchLower) || name.includes(searchLower);
+    
+    // Search by phone - multiple matching strategies
+    if (customer.phone) {
+      const customerPhone = customer.phone.toLowerCase().trim();
+      const searchTerm = customerSearch.trim();
+      
+      // Strategy 1: Direct string match (case-insensitive)
+      const directMatch = customerPhone.includes(searchTerm.toLowerCase());
+      
+      // Strategy 2: Normalized phone match (removes spaces, dashes, country codes)
+      const customerPhoneNormalized = normalizePhone(customer.phone);
+      const searchPhoneNormalized = normalizePhone(searchTerm);
+      const normalizedMatch = customerPhoneNormalized && searchPhoneNormalized && 
+                              (customerPhoneNormalized.includes(searchPhoneNormalized) || 
+                               searchPhoneNormalized.includes(customerPhoneNormalized));
+      
+      // Strategy 3: Last N digits match (for partial phone searches)
+      const lastDigitsMatch = customerPhoneNormalized && searchPhoneNormalized &&
+                             customerPhoneNormalized.length >= searchPhoneNormalized.length &&
+                             customerPhoneNormalized.slice(-searchPhoneNormalized.length) === searchPhoneNormalized;
+      
+      // Strategy 4: Exact match after normalization
+      const exactNormalizedMatch = customerPhoneNormalized === searchPhoneNormalized;
+      
+      const phoneMatch = directMatch || normalizedMatch || lastDigitsMatch || exactNormalizedMatch;
+      
+      return nameMatch || phoneMatch;
+    }
+    
+    return nameMatch;
+  });
 
   const staffOptions: StaffOption[] = staff.map(member => ({
     id: member.id,
@@ -441,6 +542,15 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         } else {
           // Use single price
           subtotal += Number(service.singlePrice) || 0;
+        }
+      });
+
+      // Calculate product costs
+      formData.productIds.forEach(productId => {
+        const product = products.find(p => p.id === productId);
+        const quantity = formData.productQuantities[productId] || 1; // Default to 1 for calculation if not set
+        if (product && quantity > 0) {
+          subtotal += Number(product.price) * quantity;
         }
       });
 
@@ -660,9 +770,26 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         });
       }
 
+      // Load products from editingSale
+      const productIds: string[] = [];
+      const productQuantities: Record<string, number | undefined> = {};
+      const saleProducts = (editingSale as any).products;
+      if (saleProducts && Array.isArray(saleProducts)) {
+        saleProducts.forEach((saleProduct: any) => {
+          const productId = saleProduct.productId || saleProduct.product?.id;
+          const quantity = saleProduct.quantity || 1;
+          if (productId && quantity > 0) {
+            productIds.push(productId);
+            productQuantities[productId] = quantity;
+          }
+        });
+      }
+
       setFormData({
         customerId: editingSale.customerId || '',
         serviceIds: editingSale.services?.map(s => s.serviceId) || [],
+        productIds: productIds,
+        productQuantities: productQuantities,
         staffIds: systemStaffIds,
         customStaffNames: customStaffNames,
         saleDate: saleDate.toISOString().slice(0, 16),
@@ -949,10 +1076,30 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                         placeholder="Search customer by name or phone..."
                         value={customerSearch}
                         onChange={(e) => {
-                          setCustomerSearch(e.target.value);
+                          const searchValue = e.target.value;
+                          setCustomerSearch(searchValue);
                           setShowCustomerDropdown(true);
+                          
+                          // Debug logging
+                          if (searchValue.length > 0) {
+                            console.log('🔍 Customer search:', {
+                              searchTerm: searchValue,
+                              totalCustomers: customers.length,
+                              filteredCount: filteredCustomers.length,
+                              sampleMatches: filteredCustomers.slice(0, 3).map(c => ({
+                                name: c.fullName || c.name,
+                                phone: c.phone
+                              }))
+                            });
+                          }
                         }}
-                        onFocus={() => setShowCustomerDropdown(true)}
+                        onFocus={() => {
+                          setShowCustomerDropdown(true);
+                          console.log('📋 Customer dropdown opened:', {
+                            totalCustomers: customers.length,
+                            searchTerm: customerSearch
+                          });
+                        }}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
                       />
                     </div>
@@ -993,7 +1140,17 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                           ))
                         ) : (
                           <div className="p-3 text-center">
-                            <div className="text-gray-500 mb-2">No customers found</div>
+                            <div className="text-gray-500 mb-2">
+                              {customers.length === 0 
+                                ? 'No customers available. Please add customers first.'
+                                : `No customers found matching "${customerSearch}". Try searching by name or phone number.`
+                              }
+                            </div>
+                            {customers.length > 0 && customerSearch && (
+                              <div className="text-xs text-gray-400 mt-2 mb-2">
+                                Total customers: {customers.length} | Search: "{customerSearch}"
+                              </div>
+                            )}
                             <button
                               type="button"
                               onClick={() => {
@@ -1064,12 +1221,26 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       <option value="BANK_TRANSFER">Bank Transfer</option>
                     </select>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       placeholder="Amount"
-                      value={payment.amount}
+                      value={payment.amount === 0 ? '' : String(payment.amount).replace(/^0+/, '')}
                       onChange={(e) => {
+                        let value = e.target.value.replace(/[^\d]/g, ''); // Only allow digits
+                        // Remove leading zeros
+                        value = value.replace(/^0+/, '') || '';
+                        // Convert to number
+                        const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
                         const newPayments = [...payments];
-                        newPayments[index].amount = Number(e.target.value);
+                        newPayments[index].amount = numValue;
+                        setPayments(newPayments);
+                      }}
+                      onBlur={(e) => {
+                        // Ensure clean value on blur
+                        const value = e.target.value.replace(/[^\d]/g, '').replace(/^0+/, '');
+                        const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
+                        const newPayments = [...payments];
+                        newPayments[index].amount = numValue;
                         setPayments(newPayments);
                       }}
                       className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
@@ -1161,14 +1332,25 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Discount Amount (RWF)</label>
                       <input
-                        type="number"
-                        value={formData.manualDiscountAmount}
+                        type="text"
+                        inputMode="numeric"
+                        value={formData.manualDiscountAmount === 0 ? '' : String(formData.manualDiscountAmount).replace(/^0+/, '')}
                         onChange={(e) => {
-                          setFormData({ ...formData, manualDiscountAmount: Number(e.target.value) });
+                          let value = e.target.value.replace(/[^\d]/g, ''); // Only allow digits
+                          // Remove leading zeros
+                          value = value.replace(/^0+/, '') || '';
+                          // Convert to number
+                          const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
+                          setFormData({ ...formData, manualDiscountAmount: numValue });
+                        }}
+                        onBlur={(e) => {
+                          // Ensure clean value on blur
+                          const value = e.target.value.replace(/[^\d]/g, '').replace(/^0+/, '');
+                          const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
+                          setFormData({ ...formData, manualDiscountAmount: numValue });
                         }}
                         className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
                         placeholder="0"
-                        min="0"
                       />
                     </div>
                     <div>
@@ -1212,14 +1394,25 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                     <div>
                       <label className="block text-xs text-gray-600 mb-1">Increment Amount (RWF)</label>
                       <input
-                        type="number"
-                        value={formData.manualIncrementAmount}
+                        type="text"
+                        inputMode="numeric"
+                        value={formData.manualIncrementAmount === 0 ? '' : String(formData.manualIncrementAmount).replace(/^0+/, '')}
                         onChange={(e) => {
-                          setFormData({ ...formData, manualIncrementAmount: Number(e.target.value) });
+                          let value = e.target.value.replace(/[^\d]/g, ''); // Only allow digits
+                          // Remove leading zeros
+                          value = value.replace(/^0+/, '') || '';
+                          // Convert to number
+                          const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
+                          setFormData({ ...formData, manualIncrementAmount: numValue });
+                        }}
+                        onBlur={(e) => {
+                          // Ensure clean value on blur
+                          const value = e.target.value.replace(/[^\d]/g, '').replace(/^0+/, '');
+                          const numValue = value === '' ? 0 : parseInt(value, 10) || 0;
+                          setFormData({ ...formData, manualIncrementAmount: numValue });
                         }}
                         className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
                         placeholder="0"
-                        min="0"
                       />
                     </div>
                     <div>
@@ -1333,6 +1526,124 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                 )}
               </div>
 
+              {/* Products */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Package className="inline h-4 w-4 mr-1" />
+                  Select Products (Optional)
+                </label>
+                <ProductSelect
+                  products={products}
+                  selectedProductIds={formData.productIds}
+                  onSelectionChange={(productIds) => {
+                    // When products are deselected, remove their quantities
+                    const removedIds = formData.productIds.filter(id => !productIds.includes(id));
+                    const newQuantities = { ...formData.productQuantities };
+                    removedIds.forEach(id => {
+                      delete newQuantities[id];
+                      // Clear errors for removed products
+                      const errorKey = `product_${id}`;
+                      if (errors[errorKey]) {
+                        setErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors[errorKey];
+                          return newErrors;
+                        });
+                      }
+                    });
+                    // Don't set default quantity - let user enter it
+                    productIds.forEach(id => {
+                      if (!formData.productIds.includes(id)) {
+                        // Don't set initial value, leave it undefined so placeholder shows
+                      }
+                    });
+                    setFormData(prev => ({
+                      ...prev,
+                      productIds: productIds,
+                      productQuantities: newQuantities
+                    }));
+                  }}
+                  placeholder="Select products..."
+                  error={errors.productIds}
+                />
+                
+                {/* Quantity inputs for selected products */}
+                {formData.productIds.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {formData.productIds.map(productId => {
+                      const product = products.find(p => p.id === productId);
+                      if (!product) return null;
+                      const quantity = formData.productQuantities[productId];
+                      const errorKey = `product_${productId}`;
+                      
+                      return (
+                        <div key={productId} className="border border-[#5A8621] bg-green-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <Package className="h-4 w-4 text-[#5A8621]" />
+                                <span className="font-medium text-gray-900">{product.name}</span>
+                                <span className="text-sm text-gray-600">
+                                  ({Number(product.price).toLocaleString()} RWF)
+                                </span>
+                              </div>
+                              {product.description && (
+                                <p className="text-xs text-gray-500 mt-1 ml-6">{product.description}</p>
+                              )}
+                              <div className="text-xs text-gray-500 mt-1 ml-6">
+                                Stock: <span className={product.quantity < 10 ? 'text-yellow-600 font-medium' : 'text-gray-600'}>{product.quantity}</span>
+                              </div>
+                            </div>
+                            <div className="ml-4 flex items-center space-x-2">
+                              <label className="text-sm text-gray-700 whitespace-nowrap">Qty:</label>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                value={quantity && quantity > 0 ? String(quantity) : ''}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  let value = e.target.value.replace(/[^\d]/g, '');
+                                  // Allow empty value, allow 0 to be typed
+                                  const numValue = value === '' ? undefined : (parseInt(value, 10) || (value === '0' ? 0 : undefined));
+                                  setFormData(prev => {
+                                    const newQuantities = { ...prev.productQuantities };
+                                    if (numValue === undefined) {
+                                      // Remove the key if undefined to keep type clean
+                                      delete newQuantities[productId];
+                                    } else {
+                                      newQuantities[productId] = numValue;
+                                    }
+                                    return {
+                                      ...prev,
+                                      productQuantities: newQuantities
+                                    };
+                                  });
+                                  // Clear error when user types
+                                  if (errors[errorKey]) {
+                                    setErrors(prev => {
+                                      const newErrors = { ...prev };
+                                      delete newErrors[errorKey];
+                                      return newErrors;
+                                    });
+                                  }
+                                }}
+                                className={`w-20 px-2 py-1 border rounded ${
+                                  errors[errorKey] ? 'border-red-500' : 'border-gray-300'
+                                } focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]`}
+                                max={product.quantity}
+                              />
+                              {errors[errorKey] && (
+                                <span className="text-xs text-red-600">{errors[errorKey]}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Staff */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1353,7 +1664,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           </div>
 
           {/* Summary */}
-          {(selectedCustomer || selectedServicesDetails.length > 0) && (
+          {(selectedCustomer || selectedServicesDetails.length > 0 || formData.productIds.length > 0) && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <h3 className="font-medium text-gray-900">Visit Summary</h3>
 
@@ -1379,6 +1690,28 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                             {useCombined && <span className="text-xs text-green-600 ml-1">(with Shampoo)</span>}
                           </span>
                           <span>{price.toLocaleString()} RWF</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {formData.productIds.length > 0 && (
+                <div>
+                  <span className="text-sm text-gray-600">Products: </span>
+                  <div className="mt-1 space-y-1">
+                    {formData.productIds.map(productId => {
+                      const product = products.find(p => p.id === productId);
+                      const quantity = formData.productQuantities[productId] || 1; // Default to 1 for display
+                      if (!product) return null;
+                      const totalPrice = Number(product.price) * quantity;
+                      return (
+                        <div key={productId} className="flex justify-between text-sm">
+                          <span>
+                            {product.name} (x{quantity})
+                          </span>
+                          <span>{totalPrice.toLocaleString()} RWF</span>
                         </div>
                       );
                     })}

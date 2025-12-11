@@ -157,6 +157,14 @@ const createCustomer = async (req, res) => {
             res.status(400).json({ error: 'Phone number is required for non-dependent customers' });
             return;
         }
+        // Validate phone number format if provided
+        if (phone) {
+            const { isValidPhoneNumber } = require('../utils/passwordGenerator');
+            if (!isValidPhoneNumber(phone)) {
+                res.status(400).json({ error: 'Invalid phone number format. Please include country code (e.g., +250788123456)' });
+                return;
+            }
+        }
         // Parent is required for dependent customers
         if (isDependent && !parentId) {
             res.status(400).json({ error: 'Parent customer is required for dependent customers' });

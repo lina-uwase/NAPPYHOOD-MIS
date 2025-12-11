@@ -13,7 +13,7 @@ export interface User {
   names?: string; // For backward compatibility with profile page
   phone: string;
   email?: string;
-  role: 'ADMIN' | 'STAFF';
+  role: 'ADMIN' | 'MANAGER' | 'STAFF';
   profile_picture?: string;
 }
 
@@ -86,7 +86,7 @@ class AuthService {
     return !!token && !!user;
   }
 
-  hasRole(role: 'ADMIN' | 'STAFF'): boolean {
+  hasRole(role: 'ADMIN' | 'MANAGER' | 'STAFF'): boolean {
     const user = this.getCurrentUser();
     return user?.role === role;
   }

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, CreateUserDto, UpdateUserDto } from '../../services/usersService';
 import { Eye, EyeOff } from 'lucide-react';
+import PhoneInput, { validatePhoneNumber } from '../../components/PhoneInput';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -50,10 +51,9 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
       newErrors.names = 'Name is required';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^[0-9]{10,15}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Invalid phone number';
+    const phoneError = validatePhoneNumber(formData.phone, true);
+    if (phoneError) {
+      newErrors.phone = phoneError;
     }
 
     if (!editingUser && !formData.password.trim()) {
@@ -191,22 +191,22 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
                 <label htmlFor="phone" className="block text-sm text-gray-600 mb-1">
                   Phone Number
                 </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
+                <PhoneInput
                   value={formData.phone}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#009900] focus:border-transparent ${
-                    errors.phone 
-                      ? 'border-red-500' 
-                      : 'border-gray-200'
-                  }`}
+                  onChange={(value) => {
+                    setFormData(prev => ({ ...prev, phone: value }));
+                    if (errors.phone) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.phone;
+                        return newErrors;
+                      });
+                    }
+                  }}
                   placeholder="Enter phone number"
+                  error={errors.phone}
+                  required={true}
                 />
-                {errors.phone && (
-                  <p className="mt-1 text-xs text-red-500">{errors.phone}</p>
-                )}
               </div>
 
               <div className="mb-4">

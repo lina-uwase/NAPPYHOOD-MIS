@@ -27,7 +27,7 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'STAFF' | ''>('');
+  const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | ''>('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ export default function UsersPage() {
   const addToastRef = React.useRef(addToast);
   addToastRef.current = addToast;
 
-  const loadUsers = useCallback(async (showError = true) => {
+  const loadUsers = useCallback(async (shouldShowError = true) => {
     try {
       setLoading(true);
       setHasError(false);
@@ -51,7 +51,7 @@ export default function UsersPage() {
         search: searchTerm,
         role: roleFilter || undefined,
       });
-      
+
       if (response.success) {
         setUsers(response.data);
         if (response.meta) {
@@ -63,14 +63,14 @@ export default function UsersPage() {
       console.error('Error loading users:', error);
       setHasError(true);
       setUsers([]);
-      
-      if (showError) {
+
+      if (shouldShowError) {
         showError('Failed to load users. Please check your permissions or try again later.');
       }
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchTerm, roleFilter]);
+  }, [currentPage, itemsPerPage, searchTerm, roleFilter, showError]);
 
   useEffect(() => {
     loadUsers();
@@ -96,7 +96,7 @@ export default function UsersPage() {
 
   const handleUpdateUser = async (updatedUser: CreateUserDto | UpdateUserDto) => {
     if (!editingUser) return;
-    
+
     try {
       const response = await usersService.update(editingUser.user_id, updatedUser as UpdateUserDto);
       if (response.success) {
@@ -140,20 +140,20 @@ export default function UsersPage() {
 
 
   const getRoleBadge = (role: string) => {
-    if (role === 'ADMIN') {
-      return (
-        <span className="text-base text-gray-900">
-          Admin
-        </span>
-      );
+    switch (role) {
+      case 'ADMIN':
+        return <span className="text-base text-gray-900">Admin</span>;
+      case 'MANAGER':
+        return <span className="text-base text-gray-900">Manager</span>;
+      case 'HAIRSTYLIST':
+        return <span className="text-base text-gray-900">Hairstylist</span>;
+      case 'RECEPTIONIST':
+        return <span className="text-base text-gray-900">Receptionist</span>;
+      default:
+        return <span className="text-base text-gray-900">Staff</span>;
     }
-    return (
-      <span className="text-base text-gray-900">
-        Staff
-      </span>
-    );
   };
-
+ 
   const isAdmin = currentUser?.role === 'ADMIN';
 
   if (!isAdmin) {
@@ -185,7 +185,7 @@ export default function UsersPage() {
               className="pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#009900] focus:border-[#009900] w-64 text-base"
             />
           </div>
-          
+
           <div className="relative">
             <button
               onClick={() => setShowFilterDropdown(!showFilterDropdown)}
@@ -194,7 +194,7 @@ export default function UsersPage() {
               <span className="text-gray-600">Filter by</span>
               <ChevronDown className="h-4 w-4 text-gray-400" />
             </button>
-            
+
             {showFilterDropdown && (
               <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg">
                 <button
@@ -203,9 +203,8 @@ export default function UsersPage() {
                     setShowFilterDropdown(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] first:rounded-t-lg ${
-                    !roleFilter ? 'bg-[#F8FAFC] text-[#009900]' : ''
-                  }`}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] first:rounded-t-lg ${!roleFilter ? 'bg-[#F8FAFC] text-[#009900]' : ''
+                    }`}
                 >
                   All Roles
                 </button>
@@ -215,9 +214,8 @@ export default function UsersPage() {
                     setShowFilterDropdown(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] ${
-                    roleFilter === 'ADMIN' ? 'bg-[#F8FAFC] text-[#009900]' : ''
-                  }`}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] ${roleFilter === 'ADMIN' ? 'bg-[#F8FAFC] text-[#009900]' : ''
+                    }`}
                 >
                   Admin
                 </button>
@@ -227,18 +225,39 @@ export default function UsersPage() {
                     setShowFilterDropdown(false);
                     setCurrentPage(1);
                   }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] last:rounded-b-lg ${
-                    roleFilter === 'STAFF' ? 'bg-[#F8FAFC] text-[#009900]' : ''
-                  }`}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] last:rounded-b-lg ${roleFilter === 'STAFF' ? 'bg-[#F8FAFC] text-[#009900]' : ''
+                    }`}
                 >
                   Staff
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleFilter('HAIRSTYLIST');
+                    setShowFilterDropdown(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] ${roleFilter === 'HAIRSTYLIST' ? 'bg-[#F8FAFC] text-[#009900]' : ''
+                    }`}
+                >
+                  Hairstylist
+                </button>
+                <button
+                  onClick={() => {
+                    setRoleFilter('RECEPTIONIST');
+                    setShowFilterDropdown(false);
+                    setCurrentPage(1);
+                  }}
+                  className={`w-full px-4 py-2 text-left text-sm hover:bg-[#F8FAFC] last:rounded-b-lg ${roleFilter === 'RECEPTIONIST' ? 'bg-[#F8FAFC] text-[#009900]' : ''
+                    }`}
+                >
+                  Receptionist
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        <button 
+        <button
           onClick={() => setShowAddModal(true)}
           className="bg-[#009900] text-white px-6 py-3 rounded-lg hover:bg-[#008800] transition-colors font-medium text-base flex items-center gap-2 shadow-sm"
         >
@@ -329,7 +348,7 @@ export default function UsersPage() {
                       >
                         <Trash2 className={`h-5 w-5 ${currentUser?.user_id === String(user.user_id) ? 'opacity-50 cursor-not-allowed' : ''}`} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleEditUser(user)}
                         className="p-2 text-gray-400 hover:text-[#009900] hover:bg-[#F8FAFC] rounded transition-colors"
                         title="Edit user"
@@ -361,9 +380,9 @@ export default function UsersPage() {
       </div>
 
       {showAddModal && (
-        <AddUserModal 
-          isOpen={showAddModal} 
-          onClose={() => setShowAddModal(false)} 
+        <AddUserModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
           onAddUser={handleAddUser}
         />
       )}

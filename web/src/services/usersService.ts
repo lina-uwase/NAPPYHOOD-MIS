@@ -5,7 +5,7 @@ export interface User {
   names: string;
   phone: string;
   email?: string;
-  role: 'ADMIN' | 'STAFF';
+  role: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
   created_at: string;
   updated_at: string;
 }
@@ -15,14 +15,14 @@ export interface CreateUserDto {
   phone: string;
   email?: string;
   password: string;
-  role?: 'ADMIN' | 'STAFF';
+  role?: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
 }
 
 export interface UpdateUserDto {
   names?: string;
   phone?: string;
   password?: string;
-  role?: 'ADMIN' | 'STAFF';
+  role?: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
 }
 
 export interface UsersResponse {
@@ -47,7 +47,7 @@ export interface QueryParams {
   page?: number;
   limit?: number;
   search?: string;
-  role?: 'ADMIN' | 'STAFF';
+  role?: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
 }
 
 class UsersService {

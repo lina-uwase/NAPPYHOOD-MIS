@@ -10,6 +10,7 @@ import {
   Users,
   FileText,
   Package,
+  Percent,
 } from 'lucide-react';
 import NappyhoodLogo from './NappyhoodLogo';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,11 +55,10 @@ const Sidebar = () => {
                 key={item.name}
                 href={item.href}
                 prefetch={true}
-                className={`group flex items-center px-4 py-3 text-base font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:!bg-[#F8FAFC] focus-visible:!text-[#5A8621] ${
-                  isActive
-                    ? 'bg-[#F8FAFC] text-[#5A8621]'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`group flex items-center px-4 py-3 text-base font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:!bg-[#F8FAFC] focus-visible:!text-[#5A8621] ${isActive
+                  ? 'bg-[#F8FAFC] text-[#5A8621]'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
               >
                 <item.icon className={`mr-3 h-5 w-5 ${isActive ? 'text-[#5A8621]' : 'text-gray-500'} group-focus-visible:!text-[#5A8621]`} />
                 {item.name}

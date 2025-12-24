@@ -8,10 +8,11 @@ class EmailService {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.EMAIL_USER || 'Nappyhood.boutique@gmail.com',
+        user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_APP_PASSWORD // Gmail App Password
       }
     });
+    console.log('📧 Email Service Initialized with User:', process.env.EMAIL_USER ? '***' + process.env.EMAIL_USER.slice(-4) : 'UNDEFINED');
   }
 
   async sendWelcomeEmail(

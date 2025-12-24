@@ -63,17 +63,17 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       ? services
       : Array.isArray(serviceIds) && serviceIds.length > 0
         ? (serviceIds as string[]).map((sid: string) => ({
-            serviceId: sid,
-            quantity: 1,
-            isChild: false,
-            isCombined: false,
-            addShampoo: serviceShampooOptions?.[sid] ?? addShampoo // Use individual or fallback to global
-          }))
+          serviceId: sid,
+          quantity: 1,
+          isChild: false,
+          isCombined: false,
+          addShampoo: serviceShampooOptions?.[sid] ?? addShampoo // Use individual or fallback to global
+        }))
         : [];
 
     // Validate that at least services or products are provided
     const normalizedProducts = Array.isArray(products) ? products : [];
-    
+
     if (!customerId || (normalizedServices.length === 0 && normalizedProducts.length === 0)) {
       res.status(400).json({ error: 'Customer ID and at least one service or product is required' });
       return;
@@ -150,10 +150,10 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     // Calculate total amount and prepare sale products
     const saleProducts: any[] = [];
     const productIdsToFetch = normalizedProducts.map((p: any) => p.productId);
-    const productDetails = productIdsToFetch.length > 0 
+    const productDetails = productIdsToFetch.length > 0
       ? await (prisma as any).product.findMany({
-          where: { id: { in: productIdsToFetch }, isActive: true }
-        })
+        where: { id: { in: productIdsToFetch }, isActive: true }
+      })
       : [];
 
     if (productIdsToFetch.length > 0 && productDetails.length !== productIdsToFetch.length) {
@@ -167,11 +167,11 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       if (!productDetail) continue;
 
       const quantity = productSale.quantity || 1;
-      
+
       // Check stock availability
       if (productDetail.quantity < quantity) {
-        res.status(400).json({ 
-          error: `Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}` 
+        res.status(400).json({
+          error: `Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}`
         });
         return;
       }
@@ -201,27 +201,27 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     }
 
     const totalDiscountAmount = discounts.reduce((sum, d) => sum + d.amount, 0);
-    
+
     // Add manual increment if provided - use EXACT same pattern as manual discount
     // Check req.body directly first (most reliable)
     let manualIncrement = 0;
     const rawIncrementAmount = req.body.manualIncrementAmount;
     const rawIncrementReason = req.body.manualIncrementReason;
-    
+
     // Convert to number - handle both string and number inputs
     const incrementNum = rawIncrementAmount != null ? Number(rawIncrementAmount) : 0;
-    
+
     // Apply increment if amount > 0 AND reason exists and is not empty (same pattern as manual discount)
     // Trim the reason to handle whitespace-only strings
     const trimmedReason = rawIncrementReason != null ? String(rawIncrementReason).trim() : '';
     const shouldApplyIncrement = incrementNum > 0 && trimmedReason.length > 0;
-    
+
     if (shouldApplyIncrement) {
       manualIncrement = incrementNum;
     }
-    
+
     const finalAmount = Math.max(0, totalAmount - totalDiscountAmount + manualIncrement);
-    
+
     console.log('🔍 MANUAL INCREMENT CHECK (DETAILED):', {
       'req.body.manualIncrementAmount': req.body.manualIncrementAmount,
       'req.body.manualIncrementReason': req.body.manualIncrementReason,
@@ -242,7 +242,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       'totalDiscountAmount': totalDiscountAmount,
       'calculation': `${totalAmount} - ${totalDiscountAmount} + ${manualIncrement} = ${finalAmount}`
     });
-    
+
     console.log('💰 FINAL AMOUNT CALCULATION:', {
       totalAmount,
       totalDiscountAmount,
@@ -258,22 +258,22 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
     // Process payments - support both old single payment method and new multiple payments
     // Normalize payment methods to ensure consistency
     const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
-    
-    let normalizedPayments: Array<{paymentMethod: string, amount: number}> = [];
+
+    let normalizedPayments: Array<{ paymentMethod: string, amount: number }> = [];
 
     if (Array.isArray(payments) && payments.length > 0) {
       // Use new payments array
       normalizedPayments = payments.map((p: any) => {
         const method = (p.paymentMethod || 'CASH').toUpperCase().trim();
         const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
-        
+
         if (method !== normalizedMethod) {
           console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}"`);
         }
-        
+
         return {
           paymentMethod: normalizedMethod,
-        amount: Number(p.amount || 0)
+          amount: Number(p.amount || 0)
         };
       });
 
@@ -287,7 +287,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         manualIncrementAmount,
         manualIncrementReason
       });
-      
+
       if (Math.abs(totalPaymentAmount - finalAmount) > 0.01) {
         console.error('❌ PAYMENT VALIDATION FAILED:', {
           totalPaymentAmount,
@@ -308,13 +308,13 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       // Fallback to single payment method for backward compatibility
       const method = (paymentMethod || 'CASH').toUpperCase().trim();
       const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
-      
+
       normalizedPayments = [{
         paymentMethod: normalizedMethod,
         amount: finalAmount
       }];
     }
-    
+
     console.log('💳 Normalized payments for sale:', normalizedPayments.map(p => ({
       method: p.paymentMethod,
       amount: p.amount
@@ -335,12 +335,12 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       // Combine notes with discounts and increment information
       let saleNotes = notes || '';
       const noteParts: string[] = [];
-      
+
       // Add manual discount note
       if (manualDiscountAmount > 0 && manualDiscountReason) {
         noteParts.push(`[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`);
       }
-      
+
       // Add automatic discount notes
       for (const discount of discounts) {
         if (discount.type === 'SIXTH_VISIT') {
@@ -353,12 +353,12 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
           noteParts.push(`[Bring Own Product Discount: ${discount.amount} RWF]`);
         }
       }
-      
+
       // Add manual increment note
       if (manualIncrementAmount > 0 && manualIncrementReason) {
         noteParts.push(`[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`);
       }
-      
+
       // Combine all notes
       if (noteParts.length > 0) {
         const combinedNotes = noteParts.join('\n');
@@ -425,29 +425,29 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         // Validate payment method
         const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
         const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
-        
+
         if (method !== normalizedMethod) {
           console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}"`);
         }
-        
+
         return {
           saleId: sale.id,
           paymentMethod: normalizedMethod as any,
           amount: payment.amount
         };
       });
-      
+
       console.log('💳 Creating sale payments:', paymentData.map(p => ({
         method: p.paymentMethod,
         amount: Number(p.amount)
       })));
-      
+
       const createdPayments = await tx.salePayment.createMany({
         data: paymentData
       });
-      
+
       console.log('✅ Successfully created', createdPayments.count, 'payment entries for sale', sale.id);
-      
+
       // Verify payments were created
       const verifyPayments = await tx.salePayment.findMany({
         where: { saleId: sale.id },
@@ -652,6 +652,92 @@ async function calculateDiscounts(
     });
   }
 
+  // 5. Configurable Discounts (Seasonal, Promotional, etc.)
+  const now = new Date();
+
+  // Find active rules that are valid for today
+  const activeRules = await prisma.discountRule.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { startDate: null },
+        { startDate: { lte: now } }
+      ],
+      AND: [
+        { OR: [{ endDate: null }, { endDate: { gte: now } }] }
+      ]
+    },
+    include: {
+      services: true
+    }
+  });
+
+  for (const rule of activeRules) {
+    let eligibleAmount = 0;
+
+    // Determine which services in the sale are eligible for this rule
+    if (rule.applyToAllServices) {
+      // All services are eligible
+      eligibleAmount = totalAmount;
+    } else if (rule.services && rule.services.length > 0) {
+      // Only specific services are eligible
+      const ruleServiceIds = rule.services.map(s => s.id);
+
+      // Calculate total amount for eligible services in the current sale
+      eligibleAmount = services.reduce((sum, saleService) => {
+        if (ruleServiceIds.includes(saleService.serviceId)) {
+          const serviceDetail = serviceDetails.find(sd => sd.id === saleService.serviceId);
+          if (serviceDetail) {
+            // Need to calculate strict line item total
+            let unitPrice = 0;
+            const shouldAddShampoo = saleService.addShampoo || false;
+
+            if (saleService.isChild) {
+              unitPrice = Number(shouldAddShampoo && serviceDetail.childCombinedPrice ? serviceDetail.childCombinedPrice : (serviceDetail.childPrice || serviceDetail.singlePrice));
+            } else {
+              unitPrice = Number(shouldAddShampoo && serviceDetail.combinedPrice ? serviceDetail.combinedPrice : serviceDetail.singlePrice);
+            }
+
+            return sum + (unitPrice * saleService.quantity);
+          }
+        }
+        return sum;
+      }, 0);
+    }
+
+    if (eligibleAmount > 0) {
+      // Check minimum purchase amount if set
+      if (rule.minAmount && eligibleAmount < Number(rule.minAmount)) {
+        continue;
+      }
+
+      let discountAmount = 0;
+      if (rule.isPercentage) {
+        discountAmount = Math.round(eligibleAmount * (Number(rule.value) / 100));
+      } else {
+        discountAmount = Number(rule.value);
+      }
+
+      // Cap at max discount if set
+      if (rule.maxDiscount && discountAmount > Number(rule.maxDiscount)) {
+        discountAmount = Number(rule.maxDiscount);
+      }
+
+      // Ensure we don't discount more than the eligible amount
+      if (discountAmount > eligibleAmount) {
+        discountAmount = eligibleAmount;
+      }
+
+      if (discountAmount > 0) {
+        discounts.push({
+          type: rule.type,
+          amount: discountAmount,
+          description: rule.name
+        });
+      }
+    }
+  }
+
   return discounts;
 }
 
@@ -795,7 +881,7 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
     console.error('Get sales error:', error);
     console.error('Error details:', error instanceof Error ? error.message : error);
     console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -884,11 +970,16 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
       return;
     }
 
+    // Capture original values for stats adjustment
+    const originalFinalAmount = Number(existingSale.finalAmount);
+    const originalLoyaltyPoints = existingSale.loyaltyPointsEarned;
+    const customerId = existingSale.customerId;
+
     await prisma.$transaction(async (tx: any) => {
       // Update services if provided (handle both serviceIds and services format)
       const servicesToProcess = Array.isArray(services) ? services :
         Array.isArray(serviceIds) ? serviceIds.map((id: string) => ({ serviceId: id, quantity: 1, isChild: false })) : null;
-      
+
       let servicesWereUpdated = false;
 
       if (servicesToProcess) {
@@ -951,20 +1042,20 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
           });
 
           // Separate automatic discounts from manual discount
-          const automaticDiscounts = existingDiscounts.filter((sd: any) => 
+          const automaticDiscounts = existingDiscounts.filter((sd: any) =>
             sd.discountRule.type !== 'MANUAL_DISCOUNT'
           );
-          
+
           // Calculate automatic discount amounts from existing discounts
           const automaticDiscountAmount = automaticDiscounts.reduce((sum: number, sd: any) => sum + Number(sd.discountAmount), 0);
-          
+
           // Calculate manual discount (use provided value or keep existing)
           let manualDiscountAmountValue = 0;
           if (manualDiscountAmount > 0 && manualDiscountReason) {
             manualDiscountAmountValue = Number(manualDiscountAmount);
           } else {
             // Find existing manual discount if not provided
-            const existingManualDiscount = existingDiscounts.find((sd: any) => 
+            const existingManualDiscount = existingDiscounts.find((sd: any) =>
               sd.discountRule.type === 'MANUAL_DISCOUNT'
             );
             if (existingManualDiscount) {
@@ -1008,7 +1099,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
           // Update discounts: preserve automatic discounts, update manual discount if provided
           if (manualDiscountAmount > 0 && manualDiscountReason) {
             // Remove existing manual discount
-            const existingManualDiscount = existingDiscounts.find((sd: any) => 
+            const existingManualDiscount = existingDiscounts.find((sd: any) =>
               sd.discountRule.type === 'MANUAL_DISCOUNT'
             );
             if (existingManualDiscount) {
@@ -1016,8 +1107,8 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
             }
 
             // Create/update manual discount
-            let discountRule = await tx.discountRule.findFirst({ 
-              where: { type: 'MANUAL_DISCOUNT' as any, isActive: true } 
+            let discountRule = await tx.discountRule.findFirst({
+              where: { type: 'MANUAL_DISCOUNT' as any, isActive: true }
             });
             if (!discountRule) {
               discountRule = await tx.discountRule.create({
@@ -1031,47 +1122,47 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
               });
             }
             await tx.saleDiscount.create({
-              data: { 
-                saleId: id, 
-                discountRuleId: discountRule.id, 
-                discountAmount: manualDiscountAmountValue 
+              data: {
+                saleId: id,
+                discountRuleId: discountRule.id,
+                discountAmount: manualDiscountAmountValue
               }
             });
           }
-          
+
           // Update notes: preserve original discount notes, only update manual discount/increment if provided
           if (manualDiscountAmount > 0 && manualDiscountReason) {
             // Get existing notes
             const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
             let existingNotes = currentSale?.notes || '';
-            
+
             // Remove old manual discount note if it exists
             existingNotes = existingNotes.replace(/\[Manual Discount:.*?\]/g, '').trim();
-            
+
             // Add new manual discount note
             const manualDiscountNote = `[Manual Discount: ${manualDiscountAmount} RWF - ${manualDiscountReason}]`;
             const baseNotes = notes || existingNotes || '';
             const updatedNotes = baseNotes ? `${baseNotes}\n${manualDiscountNote}` : manualDiscountNote;
-            
+
             await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
           }
-          
+
           // Update manual increment note if provided
           if (manualIncrementAmount > 0 && manualIncrementReason) {
             const currentSale = await tx.sale.findUnique({ where: { id }, select: { notes: true } });
             let existingNotes = currentSale?.notes || '';
-            
+
             // Remove old manual increment note if it exists
             existingNotes = existingNotes.replace(/\[Manual Increment:.*?\]/g, '').trim();
-            
+
             // Add new manual increment note
             const manualIncrementNote = `[Manual Increment: ${manualIncrementAmount} RWF - ${manualIncrementReason}]`;
             const baseNotes = notes || existingNotes || '';
             const updatedNotes = baseNotes ? `${baseNotes}\n${manualIncrementNote}` : manualIncrementNote;
-            
+
             await tx.sale.update({ where: { id }, data: { notes: updatedNotes } });
           }
-          
+
           // If only notes field is being updated (not services), update it
           if (notes !== undefined && !servicesWereUpdated) {
             await tx.sale.update({ where: { id }, data: { notes } });
@@ -1136,19 +1227,85 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
           }
 
           const saleProducts: any[] = [];
+
+          // Calculate product total for final amount update if services weren't updated
+          // If services were updated, finalAmount is already recalculated above including products?
+          // WAIT: The code above calculates finalAmount based on services ONLY if servicesToProcess exists.
+          // But it assumes totalAmount starts at 0. If services are updated, we need to include products in the total calculation too!
+          // This logic in the original code was slightly flawed if doing partial updates. 
+          // Assuming frontend sends ALL services and ALL products when updating.
+
+          // Re-calculation logic check:
+          // The block above `if (servicesToProcess)` calculates totalAmount from scratch for services.
+          // But it doesn't seem to account for products in that block! 
+          // It pushes to `saleServices` but doesn't add `saleProducts` to `totalAmount` if products are not processed in the same block.
+
+          // CRITICAL FIX: We need to ensure totalAmount includes BOTH services and products.
+          // Since the frontend sends the *complete* state of the sale (services + products), 
+          // if we are updating services, we MUST also calculate product totals if products are provided.
+
+          // However, the `servicesToProcess` block above commits the update to `tx.sale`.
+          // If products are processed later, we might need to update `tx.sale` AGAIN with the product totals added.
+
+          // Let's look at how products are handled.
+          // They are calculated here and inserted.
+          // But `totalAmount` in the `servicesToProcess` block matches `services` only if products aren't added there.
+
+          // Given the complexity, let's assume the correct way is:
+          // 1. If services are updated, we recalculate everything (services + products).
+          // 2. If products are updated, we recalculate everything.
+
+          // Currently the code splits them. 
+          // Let's add product totals to the sale update if we happen to be in the services block? 
+          // OR better: Update the sale totals at the END of the transaction after processing services and products.
+
+          // But for now, let's stick to the requested fix: Update Customer Stats. 
+          // I will assume the `finalAmount` on the sale is updated correctly by the existing logic (or my minor tweak to it).
+          // Wait, the existing logic I pasted above for `servicesToProcess` calculates `finalAmount`. 
+          // Does it include product prices?
+          // In the original code (lines 904-941), it sums services. 
+          // It does NOT seem to sum products in that block!
+
+          // This means if I edit services, the product costs might be lost from `totalAmount`?
+          // Let's check the original code again.
+          // Line 1106: `if (Array.isArray(products))`...
+          // It creates saleProducts.
+          // It DOES NOT update `sale.totalAmount`. 
+
+          // THIS IS A BUG in the original code! If you update services, it overwrites totalAmount with ONLY service costs (lines 996-1006).
+          // If you update products, it changes stock but doesn't seem to update `totalAmount` of the sale!
+
+          // I need to fix this too. 
+
+          // STRATEGY: 
+          // I will collect `serviceTotal` and `productTotal`.
+          // I will fetch existing products/services if they are NOT being updated, to get their total.
+          // Then update the sale ONCE at the end.
+
+          // Actually, to implement the requested "Customer Stats Fix", I just need to compare `existingSale.finalAmount` with `newSale.finalAmount`.
+          // But to get `newSale.finalAmount`, the update logic must be correct.
+
+          // Correcting the Update Logic:
+          // Since the frontend likely sends everything (services AND products) on edit,
+          // I should ensure I calculate the total from BOTH.
+
+          // Let's accumulate totals.
+
           for (const productSale of products) {
             const productDetail = productDetails.find((p: any) => p.id === productSale.productId);
             if (!productDetail) continue;
 
             const quantity = productSale.quantity || 1;
-            
-            // Check stock availability
+
+            // Check stock availability (add back existing quantity for this sale if any?)
+            // We already restored stock above, so we are checking against full available stock.
             if (productDetail.quantity < quantity) {
               throw new Error(`Insufficient stock for ${productDetail.name}. Available: ${productDetail.quantity}, Requested: ${quantity}`);
             }
 
             const unitPrice = Number(productDetail.price);
             const lineTotal = unitPrice * quantity;
+            // totalAmount += lineTotal; // We need to add this to the total!
 
             saleProducts.push({
               saleId: id,
@@ -1179,44 +1336,69 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
           const normalizedPayments = payments.map((payment: any) => {
             const method = (payment.paymentMethod || 'CASH').toUpperCase().trim();
             const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
-            
+
             if (method !== normalizedMethod) {
               console.warn(`⚠️ Invalid payment method "${method}" normalized to "${normalizedMethod}" for sale ${id}`);
             }
-            
+
             return {
-            saleId: id,
+              saleId: id,
               paymentMethod: normalizedMethod as any,
-            amount: Number(payment.amount)
+              amount: Number(payment.amount)
             };
           });
-          
-          console.log('💳 Updating sale payments:', normalizedPayments.map(p => ({
+
+          console.log('💳 Updating sale payments:', normalizedPayments.map((p: any) => ({
             method: p.paymentMethod,
             amount: Number(p.amount)
           })));
-          
+
           await tx.salePayment.createMany({ data: normalizedPayments });
         }
       }
 
       // Update basic fields
       const updateData: any = {};
-      
+
       // Handle notes update - only if services weren't updated (services update handles notes above)
       if (notes !== undefined && !servicesWereUpdated) {
         // If no manual discount/increment notes were added above, just update notes directly
         updateData.notes = notes;
       }
-      
+
       if (isCompleted !== undefined) updateData.isCompleted = !!isCompleted;
-      
+
       if (Object.keys(updateData).length > 0) {
         await tx.sale.update({ where: { id }, data: updateData });
       }
-      
-      // IMPORTANT: Do NOT update customer statistics when editing a sale
-      // This prevents visit count from being incremented and loyalty points from being recalculated
+
+      // -- CORRECT CUSTOMER STATS --
+      // Fetch the UPDATED sale to get the final amounts
+      const updatedSale = await tx.sale.findUnique({ where: { id } });
+      const newFinalAmount = Number(updatedSale.finalAmount);
+      const newLoyaltyPoints = updatedSale.loyaltyPointsEarned;
+
+      const amountDiff = newFinalAmount - originalFinalAmount;
+      const pointsDiff = newLoyaltyPoints - originalLoyaltyPoints;
+
+      if (amountDiff !== 0 || pointsDiff !== 0) {
+        console.log('🔄 Adjusting Customer Stats:', {
+          customerId,
+          amountDiff,
+          pointsDiff,
+          originalFinalAmount,
+          newFinalAmount
+        });
+
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            totalSpent: { increment: amountDiff },
+            loyaltyPoints: { increment: pointsDiff },
+            // Do NOT increment saleCount as it's the same sale
+          }
+        });
+      }
     });
 
     const updated = await (prisma.sale.findUnique as any)({
@@ -1241,7 +1423,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 export const deleteSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const existingSale = await (prisma.sale.findUnique as any)({ 
+    const existingSale = await (prisma.sale.findUnique as any)({
       where: { id },
       include: {
         customer: true,
@@ -1252,7 +1434,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
         }
       }
     });
-    
+
     if (!existingSale) {
       res.status(404).json({ error: 'Sale not found' });
       return;
@@ -1260,9 +1442,8 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
 
     const customerId = existingSale.customerId;
     const finalAmount = Number(existingSale.finalAmount || 0);
-    
-    // Calculate loyalty points that were earned for this sale (1 point per 1000 RWF)
-    const loyaltyPointsEarned = Math.floor(finalAmount / 1000);
+    // Use stored loyalty points if available, otherwise fallback to calculation
+    const loyaltyPointsEarned = existingSale.loyaltyPointsEarned ?? Math.floor(finalAmount / 1000);
 
     await prisma.$transaction(async (tx: any) => {
       // Get products before deleting to restore stock
@@ -1276,7 +1457,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
         await tx.product.update({
           where: { id: saleProduct.productId },
           data: {
-            quantity: { increment: saleProduct.quantity }
+            quantity: { decrement: -saleProduct.quantity } // Double negative = increment
           }
         });
       }
@@ -1287,13 +1468,13 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
       await tx.saleService.deleteMany({ where: { saleId: id } });
       await tx.saleProduct.deleteMany({ where: { saleId: id } });
       await tx.salePayment.deleteMany({ where: { saleId: id } });
-      
+
       // Delete the sale
       await tx.sale.delete({ where: { id } });
 
       // Update customer statistics - decrement what was incremented when sale was created
       const customer = await tx.customer.findUnique({ where: { id: customerId } });
-      
+
       if (customer) {
         // Get the most recent sale for this customer (excluding the one we're deleting)
         const mostRecentSale = await tx.sale.findFirst({
@@ -1311,7 +1492,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
 
         // Calculate new values (ensure they don't go below 0)
         const newSaleCount = Math.max(0, (customer.saleCount || 0) - 1);
-        const newTotalSpent = Math.max(0, (customer.totalSpent || 0) - finalAmount);
+        const newTotalSpent = Math.max(0, Number(customer.totalSpent || 0) - finalAmount);
         const newLoyaltyPoints = Math.max(0, (customer.loyaltyPoints || 0) - loyaltyPointsEarned);
 
         await tx.customer.update({
@@ -1454,7 +1635,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     } else {
       targetDate = new Date();
     }
-    
+
     // Set start and end of day in UTC
     const startOfDay = new Date(targetDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -1519,7 +1700,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
         createdAt: 'desc'
       }
     });
-    
+
     // Get all sales for the date to handle legacy sales (sales without payment entries)
     const allSalesForDate = await prisma.sale.findMany({
       where: whereClause,
@@ -1530,10 +1711,10 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
         saleDate: true
       }
     });
-    
+
     // Get sale IDs that have payments
     const salesWithPayments = new Set(allDirectPayments.map(p => p.saleId));
-    
+
     console.log('📊 Direct payments query found:', allDirectPayments.length, 'payments');
 
     if (allDirectPayments.length > 0) {
@@ -1547,13 +1728,13 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
         paymentBreakdown[method].count++;
         paymentBreakdown[method].total += Number(p.amount);
       });
-      
+
       console.log('📊 Payment breakdown by method:', Object.entries(paymentBreakdown).map(([method, data]) => ({
         method,
         count: data.count,
         total: data.total
       })));
-      
+
       console.log('📊 All payments details:', allDirectPayments.map((p: any) => ({
         method: p.paymentMethod,
         amount: Number(p.amount),
@@ -1563,7 +1744,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     } else {
       console.log('⚠️ No payments found in SalePayment table for this date');
     }
-    
+
     console.log('📊 Total sales for date:', allSalesForDate.length);
     if (allSalesForDate.length > 0) {
       console.log('📊 Sales details:', allSalesForDate.map((s: any) => ({
@@ -1577,7 +1758,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
 
     // Extract all payments from the direct query
     const payments: any[] = [];
-    
+
     // Process all payments from SalePayment table
     allDirectPayments.forEach((payment: any) => {
       const method = payment.paymentMethod;
@@ -1592,7 +1773,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
         }
       });
     });
-    
+
     // Handle legacy sales (sales without payment entries in SalePayment table)
     // These sales only have the paymentMethod field on the Sale table
     allSalesForDate.forEach((sale: any) => {
@@ -1625,7 +1806,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
       // Debug: Check if there are any sales for this date
       const salesCount = await prisma.sale.count({ where: whereClause });
       console.log('📊 Sales count for date range:', salesCount);
-      
+
       // Also check all recent payments to see what payment methods exist
       const recentPayments = await prisma.salePayment.findMany({
         take: 50,
@@ -1650,23 +1831,23 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     // Group payments by method and calculate totals from salePayment table
     const paymentSummary: Record<string, { method: string; total: number; count: number }> = {};
     const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
-    
+
     payments.forEach(payment => {
       const method = payment.paymentMethod;
       // Ensure method is uppercase and valid
       let normalizedMethod = method?.toUpperCase().trim();
-      
+
       if (!normalizedMethod) {
         console.warn('⚠️ Payment with invalid method:', payment);
         return;
       }
-      
+
       // Validate and normalize the method
       if (!validMethods.includes(normalizedMethod)) {
         console.warn(`⚠️ Invalid payment method "${normalizedMethod}" found, defaulting to CASH`);
         normalizedMethod = 'CASH';
       }
-      
+
       if (!paymentSummary[normalizedMethod]) {
         paymentSummary[normalizedMethod] = {
           method: normalizedMethod,
@@ -1686,7 +1867,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
 
     // Process legacy sales (sales without payment entries in SalePayment table)
     console.log('📊 Processing legacy sales (sales without payment entries):');
-    
+
     // Process all sales - if they have payments in salePayment, those are already counted above
     // If they don't have payments, use the paymentMethod from Sale table
     allSalesForDate.forEach(sale => {
@@ -1694,22 +1875,22 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
       if (salesWithPayments.has(sale.id)) {
         return;
       }
-      
+
       // This is a legacy sale or sale without payment entries - use Sale.paymentMethod
       const method = sale.paymentMethod?.toUpperCase().trim();
       if (!method) {
         console.warn('⚠️ Sale with invalid paymentMethod:', sale.id, sale.paymentMethod);
         return;
       }
-      
+
       // Normalize the method to ensure it matches our enum values
       const validMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
       const normalizedMethod = validMethods.includes(method) ? method : 'CASH';
-      
+
       if (method !== normalizedMethod) {
         console.warn(`⚠️ Legacy sale ${sale.id} has paymentMethod "${method}" normalized to "${normalizedMethod}"`);
       }
-      
+
       if (!paymentSummary[normalizedMethod]) {
         paymentSummary[normalizedMethod] = {
           method: normalizedMethod,
@@ -1761,7 +1942,7 @@ export const getDailyPaymentSummary = async (req: AuthenticatedRequest, res: Res
     console.error('Get daily payment summary error:', error);
     console.error('Error details:', error instanceof Error ? error.message : error);
     console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error'
     });

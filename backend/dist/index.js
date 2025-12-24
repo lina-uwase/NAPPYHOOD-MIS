@@ -8,7 +8,9 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const morgan_1 = __importDefault(require("morgan"));
 const dotenv_1 = __importDefault(require("dotenv"));
+// @ts-ignore - swagger-ui-express doesn't have proper types
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
+// @ts-ignore - swagger-jsdoc doesn't have proper types
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 // Import routes
 const auth_1 = __importDefault(require("./routes/auth"));

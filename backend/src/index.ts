@@ -17,6 +17,7 @@ import salesRoutes from './routes/sales';
 import staffRoutes from './routes/staff';
 import dashboardRoutes from './routes/dashboard';
 import productRoutes from './routes/products';
+import discountRoutes from './routes/discountRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -140,6 +141,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/discounts', discountRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -162,6 +164,18 @@ app.use((req, res) => {
 // Global error handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('🚨 GLOBAL ERROR HANDLER TRIGGERED:', err);
+
+  // LOG TO FILE
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(__dirname, '../debug_discounts.log');
+    const logEntry = `\n[${new Date().toISOString()}] ERROR: ${err.message}\nStack: ${err.stack}\nCode: ${err.code}\nMeta: ${JSON.stringify(err.meta)}\n`;
+    fs.appendFileSync(logPath, logEntry);
+  } catch (e) {
+    console.error('Failed to write to log file', e);
+  }
+
   console.error('🔍 Error details:', {
     message: err.message,
     stack: err.stack,

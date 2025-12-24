@@ -11,6 +11,7 @@ import {
   Banknote,
   CreditCard,
   Smartphone,
+  Eye,
   DollarSign
 } from 'lucide-react';
 import salesService, { Sale, GetSalesParams, CreateSaleDto, UpdateSaleDto, DailyPaymentSummary } from '../../services/salesService';
@@ -35,6 +36,7 @@ const SalesPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   // Confirmation modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -128,14 +130,14 @@ const SalesPage: React.FC = () => {
   const fetchPaymentSummary = useCallback(async () => {
     try {
       const response = await salesService.getDailyPaymentSummary(selectedDate);
-      
+
       if (response.data && response.data.summary) {
         // Ensure all 5 payment methods are present
         const allMethods = ['CASH', 'MOBILE_MONEY', 'MOMO', 'BANK_CARD', 'BANK_TRANSFER'];
-        
+
         // Create a map of existing methods for quick lookup (case-insensitive)
         const existingMethodsMap = new Map<string, { method: string; total: number; count: number }>();
-        
+
         // Process the received summary - filter out any invalid entries
         if (Array.isArray(response.data.summary)) {
           response.data.summary.forEach((p: any) => {
@@ -149,7 +151,7 @@ const SalesPage: React.FC = () => {
             }
           });
         }
-        
+
         // Build the final summary ensuring all methods are present in correct order
         const finalSummary = allMethods.map(method => {
           const existing = existingMethodsMap.get(method);
@@ -159,7 +161,7 @@ const SalesPage: React.FC = () => {
           // Method not found, add with zero values
           return { method, total: 0, count: 0 };
         });
-        
+
         // Update the response data with the complete summary
         response.data.summary = finalSummary;
       } else {
@@ -176,7 +178,7 @@ const SalesPage: React.FC = () => {
           response.data.grandTotal = 0;
         }
       }
-      
+
       setPaymentSummary(response.data);
     } catch (error) {
       console.error('Failed to fetch payment summary:', error);
@@ -197,14 +199,14 @@ const SalesPage: React.FC = () => {
     try {
       const response = await salesService.create(saleData);
       setIsModalOpen(false);
-      
+
       // Get the sale date from the created sale and update selectedDate to match
       if (response.data && response.data.saleDate) {
         const saleDate = new Date(response.data.saleDate);
         const saleDateString = saleDate.toISOString().split('T')[0];
         setSelectedDate(saleDateString);
       }
-      
+
       // Refresh data
       await fetchSales();
       // Force refresh payment summary immediately and again after delay
@@ -212,7 +214,7 @@ const SalesPage: React.FC = () => {
       setTimeout(() => {
         fetchPaymentSummary();
       }, 1000);
-      
+
       showSuccess('Sale recorded successfully', 'The sale has been added to the system.');
     } catch (error: any) {
       console.error('Failed to add sale:', error);
@@ -228,14 +230,14 @@ const SalesPage: React.FC = () => {
       const response = await salesService.update(editingSale.id, saleData);
       setIsModalOpen(false);
       setEditingSale(null);
-      
+
       // Update selectedDate to match the sale date if it changed
       if (response.data && response.data.saleDate) {
         const saleDate = new Date(response.data.saleDate);
         const saleDateString = saleDate.toISOString().split('T')[0];
         setSelectedDate(saleDateString);
       }
-      
+
       // Refresh data
       await fetchSales();
       // Force refresh payment summary immediately and again after delay
@@ -243,7 +245,7 @@ const SalesPage: React.FC = () => {
       setTimeout(() => {
         fetchPaymentSummary();
       }, 1000);
-      
+
       showSuccess('Sale updated successfully', 'The sale has been updated in the system.');
     } catch (error: any) {
       console.error('Failed to update sale:', error);
@@ -349,6 +351,14 @@ const SalesPage: React.FC = () => {
               onChange={(e) => setSelectedDate(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#5A8621] focus:border-transparent"
             />
+
+            <button
+              onClick={() => setShowSummary(!showSummary)}
+              className="flex items-center space-x-1 text-sm text-[#5A8621] hover:text-[#4A7219] ml-4 focus:outline-none"
+            >
+              <Eye className="h-4 w-4" />
+              <span>{showSummary ? 'Hide Summary' : 'View Summary'}</span>
+            </button>
           </div>
 
           <button
@@ -364,91 +374,91 @@ const SalesPage: React.FC = () => {
         </div>
 
         {/* Payment Summary Cards - Same line as Add Sale button */}
-        {paymentSummary && paymentSummary.summary && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {paymentSummary.summary.map((payment) => {
-            const getPaymentConfig = (method: string) => {
-              switch (method) {
-                case 'CASH':
-                  return {
-                    icon: <Banknote className="w-4 h-4 text-yellow-600" />,
-                    label: 'Cash Payments',
-                    bgColor: 'bg-yellow-100',
-                    textColor: 'text-yellow-600'
-                  };
-                case 'BANK_TRANSFER':
-                  return {
-                    icon: <CreditCard className="w-4 h-4 text-blue-600" />,
-                    label: 'Bank Transfer',
-                    bgColor: 'bg-blue-100',
-                    textColor: 'text-blue-600'
-                  };
-                case 'MOMO':
-                  return {
-                    icon: <Smartphone className="w-4 h-4 text-green-600" />,
-                    label: 'MoMo',
-                    bgColor: 'bg-green-100',
-                    textColor: 'text-green-600'
-                  };
-                case 'MOBILE_MONEY':
-                  return {
-                    icon: <Smartphone className="w-4 h-4 text-purple-600" />,
-                    label: 'Mobile Money',
-                    bgColor: 'bg-purple-100',
-                    textColor: 'text-purple-600'
-                  };
-                case 'BANK_CARD':
-                  return {
-                    icon: <CreditCard className="w-4 h-4 text-indigo-600" />,
-                    label: 'Bank Card',
-                    bgColor: 'bg-indigo-100',
-                    textColor: 'text-indigo-600'
-                  };
-                default:
-                  return {
-                    icon: <Banknote className="w-4 h-4 text-gray-600" />,
-                    label: method,
-                    bgColor: 'bg-gray-100',
-                    textColor: 'text-gray-600'
-                  };
-              }
-            };
+        {showSummary && paymentSummary && paymentSummary.summary && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
+            {paymentSummary.summary.map((payment) => {
+              const getPaymentConfig = (method: string) => {
+                switch (method) {
+                  case 'CASH':
+                    return {
+                      icon: <Banknote className="w-4 h-4 text-yellow-600" />,
+                      label: 'Cash Payments',
+                      bgColor: 'bg-yellow-100',
+                      textColor: 'text-yellow-600'
+                    };
+                  case 'BANK_TRANSFER':
+                    return {
+                      icon: <CreditCard className="w-4 h-4 text-blue-600" />,
+                      label: 'Bank Transfer',
+                      bgColor: 'bg-blue-100',
+                      textColor: 'text-blue-600'
+                    };
+                  case 'MOMO':
+                    return {
+                      icon: <Smartphone className="w-4 h-4 text-green-600" />,
+                      label: 'MoMo',
+                      bgColor: 'bg-green-100',
+                      textColor: 'text-green-600'
+                    };
+                  case 'MOBILE_MONEY':
+                    return {
+                      icon: <Smartphone className="w-4 h-4 text-purple-600" />,
+                      label: 'Mobile Money',
+                      bgColor: 'bg-purple-100',
+                      textColor: 'text-purple-600'
+                    };
+                  case 'BANK_CARD':
+                    return {
+                      icon: <CreditCard className="w-4 h-4 text-indigo-600" />,
+                      label: 'Bank Card',
+                      bgColor: 'bg-indigo-100',
+                      textColor: 'text-indigo-600'
+                    };
+                  default:
+                    return {
+                      icon: <Banknote className="w-4 h-4 text-gray-600" />,
+                      label: method,
+                      bgColor: 'bg-gray-100',
+                      textColor: 'text-gray-600'
+                    };
+                }
+              };
 
-            const config = getPaymentConfig(payment.method);
+              const config = getPaymentConfig(payment.method);
 
-            return (
-              <div key={payment.method} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-8 h-8 ${config.bgColor} rounded-full flex items-center justify-center`}>
-                    {config.icon}
+              return (
+                <div key={payment.method} className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className={`w-8 h-8 ${config.bgColor} rounded-full flex items-center justify-center`}>
+                      {config.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-700 text-xs font-medium truncate">{config.label}</p>
+                      <p className="text-base font-bold text-gray-900">{formatCurrency(payment.total)}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gray-700 text-xs font-medium truncate">{config.label}</p>
-                    <p className="text-base font-bold text-gray-900">{formatCurrency(payment.total)}</p>
+                  <div className="text-xs text-gray-500">
+                    {payment.count} transaction{payment.count !== 1 ? 's' : ''}
                   </div>
                 </div>
-                <div className="text-xs text-gray-500">
-                  {payment.count} transaction{payment.count !== 1 ? 's' : ''}
+              );
+            })}
+
+            {/* Grand Total Card */}
+            <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="w-8 h-8 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-[#5A8621]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-700 text-xs font-medium">Total Revenue</p>
+                  <p className="text-base font-bold text-gray-900">{formatCurrency(paymentSummary.grandTotal)}</p>
                 </div>
               </div>
-            );
-          })}
-
-          {/* Grand Total Card */}
-          <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="w-8 h-8 bg-[#5A8621]/10 rounded-full flex items-center justify-center">
-                <DollarSign className="w-4 h-4 text-[#5A8621]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-700 text-xs font-medium">Total Revenue</p>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(paymentSummary.grandTotal)}</p>
+              <div className="text-xs text-[#5A8621] font-medium">
+                All payment methods
               </div>
             </div>
-            <div className="text-xs text-[#5A8621] font-medium">
-              All payment methods
-            </div>
-          </div>
           </div>
         )}
       </div>

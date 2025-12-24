@@ -104,7 +104,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
-    const { name, email, phone, role = 'STAFF' } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
     if (!name || !phone) {
       console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
@@ -124,42 +124,34 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if ACTIVE user already exists by phone or email
+    // Check if user already exists
     const existingUser = await prisma.user.findFirst({
-      where: {
-        AND: [
-          { isActive: true },
-          {
-            OR: [
-              phone ? { phone } : {},
-              email ? { email } : {}
-            ].filter(condition => Object.keys(condition).length > 0)
-          }
-        ]
-      }
+      where: { OR: [{ email }, { phone }] }
     });
 
     if (existingUser) {
-      const conflictField = existingUser.phone === phone ? 'phone number' : 'email';
-      res.status(400).json({ error: `User with this ${conflictField} already exists` });
+      res.status(400).json({ error: 'User with this email or phone already exists' });
       return;
     }
 
-    // Generate random password
-    const randomPassword = generateRandomPassword(8);
+    // Use random password if not provided
+    const userPassword = password || generateRandomPassword(8);
+    const hashedPassword = await bcrypt.hash(userPassword, 10);
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+    // Validate role
+    const validRoles = ['ADMIN', 'MANAGER', 'STAFF', 'HAIRSTYLIST', 'RECEPTIONIST'];
+    const userRole = role && validRoles.includes(role) ? role : 'STAFF';
 
-    // Create user (inactive until first login)
+    // Create user
     const user = await prisma.user.create({
       data: {
         name,
-        email: email || null, // Email is optional
+        email: email || null,
         password: hashedPassword,
         phone,
-        role: role as any,
-        isActive: false // New staff are inactive until they log in for the first time
+        role: userRole as any,
+        isActive: false // User needs to be activated by admin or first login? Logic says inactive until first login if created by admin? 
+        // Original code: isActive: false // New staff are inactive until they log in for the first time
       },
       select: {
         id: true,
@@ -171,44 +163,27 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       }
     });
 
-    // Send welcome email with credentials (only if email is provided)
-    let notificationResult = false;
-    let notificationMethod = '';
-
-    if (email) {
-      // Send email notification (primary method if email provided)
-      notificationResult = await emailService.sendWelcomeEmail(email, name, randomPassword, phone);
-      notificationMethod = 'email';
-
-      if (!notificationResult) {
-        console.warn(`Failed to send welcome email to ${email} for user ${name}`);
-
-        // Fallback to SMS if email fails
-        if (phone) {
-          notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
-          notificationMethod = notificationResult ? 'SMS' : '';
-
-          if (!notificationResult) {
-            console.warn(`Failed to send SMS backup to ${phone} for user ${name}`);
-          }
-        }
+    // Send welcome credentials
+    try {
+      if (email) {
+        console.log(`📧 Attempting to send welcome email to ${email}...`);
+        await emailService.sendWelcomeEmail(email, name, userPassword, phone);
+        console.log('✅ Welcome email sent successfully');
+      } else if (phone) {
+        // SMS fallback
+        await smsService.sendWelcomeMessage(phone, name, userPassword);
       }
-    } else {
-      // If no email, try SMS only
-      if (phone) {
-        notificationResult = await smsService.sendWelcomeMessage(phone, name, randomPassword);
-        notificationMethod = notificationResult ? 'SMS' : '';
-
-        if (!notificationResult) {
-          console.warn(`Failed to send SMS to ${phone} for user ${name}`);
-        }
+    } catch (error) {
+      console.error('❌ Failed to send welcome credentials:', error);
+      if ((error as any).code === 'EAUTH') {
+        console.error('💡 Hint: Check EMAIL_USER and EMAIL_APP_PASSWORD in .env');
       }
     }
 
     res.status(201).json({
       success: true,
       data: { user },
-      message: `User registered successfully. ${notificationResult ? `Login credentials sent via ${notificationMethod}.` : 'Please contact admin for login credentials.'}`
+      message: 'User registered successfully. Credentials sent.'
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -586,7 +561,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     });
   } catch (error: any) {
     console.error('Delete user error:', error);
-    
+
     // Handle foreign key constraint error
     if (error.code === 'P2003' || error.message?.includes('Foreign key constraint')) {
       // Try to deactivate instead
@@ -604,8 +579,8 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
         console.error('Failed to deactivate user:', updateError);
       }
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: 'Internal server error',
       message: error.message || 'Failed to delete user'
     });

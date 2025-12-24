@@ -5,6 +5,7 @@ interface AuthenticatedRequest extends Request {
         phone: string;
         role: string;
     };
+    file?: Express.Multer.File;
 }
 export declare const authenticateToken: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void>;
 export declare const requireRole: (roles: string[]) => (req: AuthenticatedRequest, res: Response, next: NextFunction) => void;

@@ -1,0 +1,108 @@
+
+[2025-12-24T00:20:15.772Z] POST /
+Body: {
+  "name": "Test Discount 1766535615698",
+  "type": "SEASONAL",
+  "value": 10,
+  "isPercentage": true,
+  "applyToAllServices": true,
+  "isActive": true
+}
+
+[2025-12-24T00:21:33.427Z] POST /
+Body: {
+  "name": "XMASS",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-26T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:21:34.439Z] POST /
+Body: {
+  "name": "XMASS",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-26T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:21:35.033Z] POST /
+Body: {
+  "name": "XMASS",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-26T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:21:58.561Z] POST /
+Body: {
+  "name": "xmass",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-28T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:21:59.894Z] POST /
+Body: {
+  "name": "xmass",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-28T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:22:00.477Z] POST /
+Body: {
+  "name": "xmass",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-28T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2025-12-24T00:22:58.587Z] POST /
+Body: {
+  "name": "xmass",
+  "type": "SEASONAL",
+  "value": 1000,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2025-12-19T00:00:00.000Z",
+  "endDate": "2025-12-28T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}

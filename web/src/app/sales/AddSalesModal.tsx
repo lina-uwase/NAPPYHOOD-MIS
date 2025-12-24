@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, Search, User, Scissors, Users, Calendar, Package } from 'lucide-react';
 import { Sale, CreateSaleDto, UpdateSaleDto, SaleDiscount } from '../../services/salesService';
+import discountService, { DiscountRule } from '../../services/discountService';
 import customersService, { Customer } from '../../services/customersService';
 import servicesService, { Service } from '../../services/servicesService';
 import staffService, { Staff } from '../../services/staffService';
@@ -9,6 +10,9 @@ import productsService, { Product } from '../../services/productsService';
 import CategorizedServiceSelect, { SelectedServiceWithCombo } from '../../components/CategorizedServiceSelect';
 import CustomStaffSelect, { StaffOption, CustomStaff } from '../../components/CustomStaffSelect';
 import ProductSelect from '../../components/ProductSelect';
+import AddCustomerModal from '../customers/AddCustomerModal';
+import { CreateCustomerDto } from '../../services/customersService';
+import PhoneInput from '../../components/PhoneInput';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -19,7 +23,7 @@ interface AddSalesModalProps {
 const AddSalesModal: React.FC<AddSalesModalProps> = ({
   onClose,
   onSubmit,
-  
+
   editingSale
 }) => {
   const [formData, setFormData] = useState({
@@ -61,6 +65,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const [staff, setStaff] = useState<Staff[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [isQuickAddMode, setIsQuickAddMode] = useState(false);
   const [showKidsServices, setShowKidsServices] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -72,6 +78,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     birthdayDiscountUsed: boolean;
     nextSaleCount: number;
   } | null>(null);
+
+  const [activeDiscounts, setActiveDiscounts] = useState<DiscountRule[]>([]);
+
+  // Quick Customer Add State
+  const [quickCustomerName, setQuickCustomerName] = useState('');
+  const [quickCustomerPhone, setQuickCustomerPhone] = useState('');
+  const [showQuickInput, setShowQuickInput] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -99,6 +112,32 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     }
   }, [showKidsServices]);
 
+  // Fetch active discounts
+  useEffect(() => {
+    const fetchDiscounts = async () => {
+      try {
+        const response = await discountService.getAll();
+        const allDiscounts = response.data || [];
+        // Filter for active and date-valid discounts
+        const now = new Date();
+        const active = allDiscounts.filter(d => {
+          if (!d.isActive) return false;
+          if (d.startDate && new Date(d.startDate) > now) return false;
+          if (d.endDate) {
+            const endDate = new Date(d.endDate);
+            endDate.setHours(23, 59, 59, 999); // End of day
+            if (endDate < now) return false;
+          }
+          return true;
+        });
+        setActiveDiscounts(active);
+      } catch (error) {
+        console.error('Failed to fetch discounts:', error);
+      }
+    };
+    fetchDiscounts();
+  }, []);
+
   // Fetch discount eligibility when customer is selected
   useEffect(() => {
     const fetchDiscountEligibility = async () => {
@@ -119,6 +158,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   }, [formData.customerId]);
 
 
+  // Auto-switch to quick input when products are selected and no customer is selected
+  useEffect(() => {
+    if (formData.productIds.length > 0 && !formData.customerId && !editingSale) {
+      setShowQuickInput(true);
+    }
+  }, [formData.productIds, formData.customerId, editingSale]);
+
+
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -137,7 +184,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       // Fetch all active customers without pagination limit
       const response = await customersService.getAll({ limit: 10000, isActive: true });
       const customersData = Array.isArray(response.data) ? response.data : [];
-      
+
       console.log('📋 Fetched customers for sale:', {
         total: customersData.length,
         sample: customersData.slice(0, 3).map(c => ({
@@ -146,7 +193,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           isActive: c.isActive
         }))
       });
-      
+
       setCustomers(customersData);
     } catch (error) {
       console.error('Failed to fetch customers:', error);
@@ -160,16 +207,16 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       let response = await servicesService.getAll({ limit: 1000, isActive: true });
       console.log('🔍 Full API Response (active):', response);
       console.log('🔍 Response data type:', typeof response.data, Array.isArray(response.data));
-      
+
       let servicesData = Array.isArray(response.data) ? response.data : [];
-      
+
       // If no active services found, try fetching all services (including inactive)
       if (servicesData.length === 0) {
         console.warn('⚠️ No active services found, trying to fetch all services...');
         response = await servicesService.getAll({ limit: 1000 });
         servicesData = Array.isArray(response.data) ? response.data : [];
       }
-      
+
       console.log('Fetched services:', {
         total: servicesData.length,
         categories: [...new Set(servicesData.map((s: Service) => s.category))],
@@ -177,12 +224,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         sampleService: servicesData[0] || null,
         allServiceNames: servicesData.slice(0, 5).map((s: Service) => s.name)
       });
-      
+
       if (servicesData.length === 0) {
         console.error('❌ No services found in database! Please seed services.');
         setSubmitError('No services available. Please ensure services are seeded in the database.');
       }
-      
+
       setServices(servicesData);
     } catch (error: any) {
       console.error('❌ Failed to fetch services:', error);
@@ -203,7 +250,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       totalServices: services.length,
       serviceCategories: [...new Set(services.map(s => s.category))]
     });
-    
+
     if (showKidsServices) {
       // Show only kids services
       const kidsServices = services.filter(service => {
@@ -211,8 +258,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         // Only log mismatches when we're looking for kids services to reduce noise
         return matches;
       });
-      console.log('Kids services filter:', { 
-        totalServices: services.length, 
+      console.log('Kids services filter:', {
+        totalServices: services.length,
         kidsServicesCount: kidsServices.length,
         allCategories: [...new Set(services.map(s => s.category))],
         kidsServicesNames: kidsServices.map(s => s.name)
@@ -233,14 +280,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         excludedKids: services.filter(s => s.category === 'KIDS_SERVICES').length,
         allCategories: [...new Set(services.map(s => s.category))]
       });
-      
+
       // If filtering removed all services, show all services (fallback)
       if (adultServices.length === 0 && services.length > 0) {
         console.warn('⚠️ Filtering removed all services, showing all services as fallback');
         console.warn('⚠️ This might indicate a category issue. Showing all services.');
         return services;
       }
-      
+
       return adultServices;
     }
   }, [services, showKidsServices]);
@@ -252,6 +299,33 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       setStaff(response.data);
     } catch (error) {
       console.error('Failed to fetch staff:', error);
+    }
+  };
+
+  const handleCreateCustomer = async (data: any) => {
+    try {
+      // The AddCustomerModal calls this with the form data
+      // We need to call the API to create the customer
+      const response = await customersService.create(data);
+
+      if (response.success && response.data) {
+        // Add new customer to the list
+        setCustomers(prev => [response.data, ...prev]);
+
+        // Select the new customer
+        setFormData(prev => ({ ...prev, customerId: response.data.id }));
+
+        // Close the modal
+        setShowAddCustomerModal(false);
+
+        // Reset search
+        setCustomerSearch('');
+      } else {
+        throw new Error('Failed to create customer');
+      }
+    } catch (error) {
+      console.error('Failed to create customer:', error);
+      throw error; // Propagate to modal to show error
     }
   };
 
@@ -343,8 +417,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.customerId) {
+    if (!formData.customerId && !showQuickInput) {
       newErrors.customerId = 'Please select a customer';
+    }
+
+    if (showQuickInput && !quickCustomerName) {
+      newErrors.customerId = 'Customer Name is required';
     }
 
     // Allow either services OR products (or both)
@@ -404,6 +482,72 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         return;
       }
 
+      // Handle Quick Customer Creation
+      let finalCustomerId = formData.customerId;
+
+      if (showQuickInput && !finalCustomerId) {
+        if (!quickCustomerName.trim()) {
+          setSubmitError('Customer name is required');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          // Check if customer exists by phone first (if phone provided)
+          if (quickCustomerPhone.trim()) {
+            const existingCustomer = customers.find(c =>
+              c.phone && normalizePhone(c.phone) === normalizePhone(quickCustomerPhone)
+            );
+
+            if (existingCustomer) {
+              // Use existing customer
+              finalCustomerId = existingCustomer.id;
+              console.log('✅ Found existing customer by phone:', existingCustomer.fullName);
+            }
+          }
+
+          // If still no customer ID, create new one
+          if (!finalCustomerId) {
+            const newCustomerData: CreateCustomerDto = {
+              fullName: quickCustomerName,
+              gender: 'OTHER', // Default for quick add
+              phone: quickCustomerPhone || undefined,
+              // Default required fields
+              isDependent: false,
+              location: 'Kigali',
+              district: 'Gasabo',
+              province: 'Kigali City',
+              saleCount: 0
+            };
+
+            const response = await customersService.create(newCustomerData);
+            if (response.success && response.data) {
+              finalCustomerId = response.data.id;
+              // Add to local list to reflect immediately
+              setCustomers(prev => [response.data, ...prev]);
+            } else {
+              throw new Error('Failed to create quick customer');
+            }
+          }
+        } catch (error: any) {
+          console.error('Quick customer creation failed:', error);
+          // If error is about phone uniqueness, try to find the customer again (backend might have caught it)
+          if (error.response?.data?.error?.includes('already exists')) {
+            setSubmitError(`Customer with this phone likely already exists. Please search for them instead.`);
+          } else {
+            setSubmitError(`Failed to create customer: ${error.message || 'Unknown error'}`);
+          }
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (!finalCustomerId) {
+        setSubmitError('Please select or create a customer');
+        setLoading(false);
+        return;
+      }
+
       // Prepare staff data for submission
       const submitStaffData = {
         staffIds: selectedStaff.filter(s => !('isCustom' in s)).map(s => s.id),
@@ -424,7 +568,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       });
 
       const submitData = {
-        customerId: formData.customerId,
+        customerId: finalCustomerId,
         serviceIds: formData.serviceIds.length > 0 ? formData.serviceIds : undefined,
         products: productsData.length > 0 ? productsData : undefined,
         serviceShampooOptions: serviceShampooOptions,
@@ -480,35 +624,35 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     const fullName = (customer.fullName || '').toLowerCase();
     const name = (customer.name || '').toLowerCase();
     const nameMatch = fullName.includes(searchLower) || name.includes(searchLower);
-    
+
     // Search by phone - multiple matching strategies
     if (customer.phone) {
       const customerPhone = customer.phone.toLowerCase().trim();
       const searchTerm = customerSearch.trim();
-      
+
       // Strategy 1: Direct string match (case-insensitive)
       const directMatch = customerPhone.includes(searchTerm.toLowerCase());
-      
+
       // Strategy 2: Normalized phone match (removes spaces, dashes, country codes)
       const customerPhoneNormalized = normalizePhone(customer.phone);
       const searchPhoneNormalized = normalizePhone(searchTerm);
-      const normalizedMatch = customerPhoneNormalized && searchPhoneNormalized && 
-                              (customerPhoneNormalized.includes(searchPhoneNormalized) || 
-                               searchPhoneNormalized.includes(customerPhoneNormalized));
-      
+      const normalizedMatch = customerPhoneNormalized && searchPhoneNormalized &&
+        (customerPhoneNormalized.includes(searchPhoneNormalized) ||
+          searchPhoneNormalized.includes(customerPhoneNormalized));
+
       // Strategy 3: Last N digits match (for partial phone searches)
       const lastDigitsMatch = customerPhoneNormalized && searchPhoneNormalized &&
-                             customerPhoneNormalized.length >= searchPhoneNormalized.length &&
-                             customerPhoneNormalized.slice(-searchPhoneNormalized.length) === searchPhoneNormalized;
-      
+        customerPhoneNormalized.length >= searchPhoneNormalized.length &&
+        customerPhoneNormalized.slice(-searchPhoneNormalized.length) === searchPhoneNormalized;
+
       // Strategy 4: Exact match after normalization
       const exactNormalizedMatch = customerPhoneNormalized === searchPhoneNormalized;
-      
+
       const phoneMatch = directMatch || normalizedMatch || lastDigitsMatch || exactNormalizedMatch;
-      
+
       return nameMatch || phoneMatch;
     }
-    
+
     return nameMatch;
   });
 
@@ -561,18 +705,19 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         const originalSubtotal = Number((editingSale as any).totalAmount || editingSale.subtotal || subtotal);
         const originalFinalAmount = Number(editingSale.finalAmount || 0);
         const calculatedSubtotal = subtotal;
-        
+
         // Extract discount amounts from existing discounts
         let ownProductDiscount = 0;
         let birthdayDiscount = 0;
         let sixthVisitDiscount = 0;
         let originalManualDiscount = 0;
+        let promotionalDiscount = 0;
 
         if (editingSale.discounts && Array.isArray(editingSale.discounts)) {
           editingSale.discounts.forEach((d: SaleDiscount) => {
             const amount = Number(d.discountAmount || 0);
             const type = d.discountRule?.type;
-            
+
             if (type === 'BRING_OWN_PRODUCT') {
               ownProductDiscount = amount;
             } else if (type === 'BIRTHDAY_MONTH') {
@@ -581,6 +726,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
               sixthVisitDiscount = amount;
             } else if (type === 'MANUAL_DISCOUNT') {
               originalManualDiscount = amount;
+            } else {
+              promotionalDiscount += amount;
             }
           });
         } else {
@@ -594,10 +741,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         }
 
         // Manual discount - use form data if changed, otherwise use original
-        const manualDiscount = formData.applyManualDiscount 
-          ? Number(formData.manualDiscountAmount) 
+        const manualDiscount = formData.applyManualDiscount
+          ? Number(formData.manualDiscountAmount)
           : originalManualDiscount;
-        
+
         // Manual increment - check formData first, then extract from notes
         let manualIncrement = 0;
         if (formData.applyManualIncrement && formData.manualIncrementAmount > 0) {
@@ -614,7 +761,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         }
 
         // Calculate final amount: subtotal - discounts + increment
-        const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
+        const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount + promotionalDiscount;
         const finalAmount = Math.max(0, calculatedSubtotal - totalDiscounts + manualIncrement);
 
         console.log('💰 Editing sale totals calculation:', {
@@ -639,6 +786,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           birthdayDiscount,
           sixthVisitDiscount,
           manualDiscount,
+          promotionalDiscount,
           manualIncrement: manualIncrement || 0,
           finalAmount
         };
@@ -650,6 +798,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       // Automatic discounts based on eligibility
       let birthdayDiscount = 0;
       let sixthVisitDiscount = 0;
+      let promotionalDiscount = 0;
 
       if (discountEligibility) {
         // Birthday discount (20%)
@@ -663,13 +812,44 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         }
       }
 
+      // Apply Configurable Discounts (Promotional, Seasonal, etc.)
+      activeDiscounts.forEach(discount => {
+        let discountVal = 0;
+
+        if (discount.applyToAllServices) {
+          if (discount.isPercentage) {
+            discountVal = subtotal * (Number(discount.value) / 100);
+          } else {
+            discountVal = Number(discount.value);
+          }
+        } else if (discount.serviceIds && discount.serviceIds.length > 0) {
+          // Calculate discount for specific services
+          selectedServicesDetails.forEach(s => {
+            if (discount.serviceIds!.includes(s.id)) {
+              // Determine price of this service instance
+              let price = Number(s.singlePrice) || 0;
+              if ((serviceShampooOptions[s.id] || false) && s.combinedPrice) {
+                price = Number(s.combinedPrice) || 0;
+              }
+
+              if (discount.isPercentage) {
+                discountVal += price * (Number(discount.value) / 100);
+              } else {
+                discountVal += Number(discount.value); // Assuming flat discount per service instance
+              }
+            }
+          });
+        }
+        promotionalDiscount += discountVal;
+      });
+
       // Manual discount
       const manualDiscount = formData.applyManualDiscount ? Number(formData.manualDiscountAmount) : 0;
-      
+
       // Manual increment (add money to total)
       const manualIncrement = formData.applyManualIncrement ? Number(formData.manualIncrementAmount) : 0;
 
-      const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount;
+      const totalDiscounts = ownProductDiscount + birthdayDiscount + sixthVisitDiscount + manualDiscount + promotionalDiscount;
       const finalAmount = Math.max(0, subtotal - totalDiscounts + manualIncrement);
 
       return {
@@ -677,25 +857,27 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         ownProductDiscount,
         birthdayDiscount,
         sixthVisitDiscount,
-          manualDiscount,
-          manualIncrement: manualIncrement || 0,
-          finalAmount
-        };
-      } catch (error) {
-        console.error('Error in calculateTotals:', error);
-        return {
-          subtotal: 0,
-          ownProductDiscount: 0,
-          birthdayDiscount: 0,
-          sixthVisitDiscount: 0,
-          manualDiscount: 0,
-          manualIncrement: 0,
-          finalAmount: 0
-        };
-      }
-    };
+        promotionalDiscount,
+        manualDiscount,
+        manualIncrement: manualIncrement || 0,
+        finalAmount
+      };
+    } catch (error) {
+      console.error('Error in calculateTotals:', error);
+      return {
+        subtotal: 0,
+        ownProductDiscount: 0,
+        birthdayDiscount: 0,
+        promotionalDiscount: 0,
+        sixthVisitDiscount: 0,
+        manualDiscount: 0,
+        manualIncrement: 0,
+        finalAmount: 0
+      };
+    }
+  };
 
-  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, manualDiscount, manualIncrement = 0, finalAmount } = calculateTotals();
+  const { subtotal, ownProductDiscount, birthdayDiscount, sixthVisitDiscount, promotionalDiscount, manualDiscount, manualIncrement = 0, finalAmount } = calculateTotals();
 
   // Populate form data when editing a sale
   useEffect(() => {
@@ -875,11 +1057,11 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         editingSaleStaffLength: editingSale.staff.length
       });
 
-        const staffSelections: (StaffOption | CustomStaff)[] = [];
+      const staffSelections: (StaffOption | CustomStaff)[] = [];
 
       editingSale.staff.forEach((saleStaff: any) => {
         console.log('🔍 Processing saleStaff item:', saleStaff);
-        
+
         // Handle custom staff first
         if (saleStaff.customName) {
           console.log('✅ Adding custom staff:', saleStaff.customName);
@@ -927,7 +1109,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         // If not found in system staff or staff array not loaded, use data from sale
         if (staffName) {
           console.log('✅ Using staff data from sale:', { staffId, staffName, staffRole });
-            staffSelections.push({
+          staffSelections.push({
             id: staffId,
             name: staffName,
             role: staffRole || 'STAFF'
@@ -939,14 +1121,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
             id: staffId,
             name: 'Loading...',
             role: staffRole || 'STAFF'
-            });
-          }
-        });
+          });
+        }
+      });
 
       console.log('✅ Final staff selections:', staffSelections);
       console.log('✅ Setting selectedStaff with', staffSelections.length, 'items');
       // Always set staff selections, even if empty (to clear previous state)
-        setSelectedStaff(staffSelections);
+      setSelectedStaff(staffSelections);
     } else if (editingSale && (!editingSale.staff || !Array.isArray(editingSale.staff) || editingSale.staff.length === 0)) {
       console.log('⚠️ Editing sale has no staff array or staff is empty:', {
         hasStaff: !!editingSale.staff,
@@ -1036,6 +1218,19 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   Select Customer *
                 </label>
 
+                {/* Quick Add Toggle (only visible if we are in searchable mode or quick add mode) */}
+                {!selectedCustomer && (
+                  <div className="flex justify-end mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickInput(!showQuickInput)}
+                      className="text-xs text-[#5A8621] hover:underline"
+                    >
+                      {showQuickInput ? 'Switch to Search' : 'Quick Add (Name/Phone)'}
+                    </button>
+                  </div>
+                )}
+
                 {/* Selected Customer Display */}
                 {selectedCustomer ? (
                   <div className="mb-3">
@@ -1067,6 +1262,32 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       </button>
                     </div>
                   </div>
+                ) : showQuickInput ? (
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="text-sm font-medium text-gray-700">Quick Customer Details</h4>
+                    </div>
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="Customer Name *"
+                        value={quickCustomerName}
+                        onChange={(e) => setQuickCustomerName(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    </div>
+                    <div>
+                      <PhoneInput
+                        value={quickCustomerPhone}
+                        onChange={setQuickCustomerPhone}
+                        placeholder="Phone Number (Recommended)"
+                        required={false}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      This will create a new customer record automatically.
+                    </p>
+                  </div>
                 ) : (
                   <>
                     <div className="relative mb-3">
@@ -1079,7 +1300,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                           const searchValue = e.target.value;
                           setCustomerSearch(searchValue);
                           setShowCustomerDropdown(true);
-                          
+
                           // Debug logging
                           if (searchValue.length > 0) {
                             console.log('🔍 Customer search:', {
@@ -1141,26 +1362,35 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                         ) : (
                           <div className="p-3 text-center">
                             <div className="text-gray-500 mb-2">
-                              {customers.length === 0 
-                                ? 'No customers available. Please add customers first.'
-                                : `No customers found matching "${customerSearch}". Try searching by name or phone number.`
+                              {customers.length === 0
+                                ? 'No customers available.'
+                                : `No customers found matching "${customerSearch}".`
                               }
                             </div>
-                            {customers.length > 0 && customerSearch && (
-                              <div className="text-xs text-gray-400 mt-2 mb-2">
-                                Total customers: {customers.length} | Search: "{customerSearch}"
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Navigate to customers page to add new customer
-                                window.location.href = '/customers';
-                              }}
-                              className="text-sm text-[#5A8621] hover:text-[#4A7318] font-medium underline"
-                            >
-                              Customer not found? Record them
-                            </button>
+                            <div className="flex flex-col space-y-2 mt-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsQuickAddMode(true);
+                                  setShowAddCustomerModal(true);
+                                  setShowCustomerDropdown(false);
+                                }}
+                                className="text-sm bg-[#5A8621] text-white py-2 px-3 rounded-md hover:bg-[#4A7318] font-medium transition-colors w-full"
+                              >
+                                Quick Register (Product Sale)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsQuickAddMode(false);
+                                  setShowAddCustomerModal(true);
+                                  setShowCustomerDropdown(false);
+                                }}
+                                className="text-sm text-[#5A8621] hover:text-[#4A7318] font-medium underline py-1"
+                              >
+                                Full Registration
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -1292,10 +1522,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       <div key={index} className="flex justify-between text-sm">
                         <span className="text-blue-800">
                           {discount.discountRule?.type === 'MANUAL_DISCOUNT' ? 'Manual Discount' :
-                           discount.discountRule?.type === 'SIXTH_VISIT' ? 'Sixth Visit Discount' :
-                           discount.discountRule?.type === 'BRING_OWN_PRODUCT' ? 'Bring Own Product' :
-                           discount.discountRule?.type === 'BIRTHDAY_MONTH' ? 'Birthday Month Discount' :
-                           discount.discountRule?.description || discount.discountRule?.type}
+                            discount.discountRule?.type === 'SIXTH_VISIT' ? 'Sixth Visit Discount' :
+                              discount.discountRule?.type === 'BRING_OWN_PRODUCT' ? 'Bring Own Product' :
+                                discount.discountRule?.type === 'BIRTHDAY_MONTH' ? 'Birthday Month Discount' :
+                                  discount.discountRule?.description || discount.discountRule?.type}
                           {discount.discountRule?.type === 'MANUAL_DISCOUNT' && discount.discountRule?.description &&
                             ` (${discount.discountRule.description})`
                           }
@@ -1396,7 +1626,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       <input
                         type="text"
                         inputMode="numeric"
-                        value={formData.manualIncrementAmount === 0 ? '' : String(formData.manualIncrementAmount).replace(/^0+/, '')}
+                        value={formData.manualIncrementAmount === 0 ? '' : formData.manualIncrementAmount}
                         onChange={(e) => {
                           let value = e.target.value.replace(/[^\d]/g, ''); // Only allow digits
                           // Remove leading zeros
@@ -1454,9 +1684,9 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
-                  <Scissors className="inline h-4 w-4 mr-1" />
-                  Select Services *
-                </label>
+                    <Scissors className="inline h-4 w-4 mr-1" />
+                    Select Services *
+                  </label>
                   <label className="flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -1464,12 +1694,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       onChange={(e) => setShowKidsServices(e.target.checked)}
                       className="sr-only"
                     />
-                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      showKidsServices ? 'bg-[#5A8621]' : 'bg-gray-300'
-                    }`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        showKidsServices ? 'translate-x-6' : 'translate-x-1'
-                      }`} />
+                    <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showKidsServices ? 'bg-[#5A8621]' : 'bg-gray-300'
+                      }`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showKidsServices ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
                     </div>
                     <span className="ml-2 text-sm text-gray-700">
                       {showKidsServices ? 'Kids Services' : 'Adult Services'}
@@ -1566,7 +1794,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   placeholder="Select products..."
                   error={errors.productIds}
                 />
-                
+
                 {/* Quantity inputs for selected products */}
                 {formData.productIds.length > 0 && (
                   <div className="mt-3 space-y-2">
@@ -1575,7 +1803,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                       if (!product) return null;
                       const quantity = formData.productQuantities[productId];
                       const errorKey = `product_${productId}`;
-                      
+
                       return (
                         <div key={productId} className="border border-[#5A8621] bg-green-50 rounded-lg p-3">
                           <div className="flex items-center justify-between">
@@ -1627,9 +1855,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                                     });
                                   }
                                 }}
-                                className={`w-20 px-2 py-1 border rounded ${
-                                  errors[errorKey] ? 'border-red-500' : 'border-gray-300'
-                                } focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]`}
+                                className={`w-20 px-2 py-1 border rounded ${errors[errorKey] ? 'border-red-500' : 'border-gray-300'
+                                  } focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621]`}
                                 max={product.quantity}
                               />
                               {errors[errorKey] && (
@@ -1753,6 +1980,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                   </div>
                 )}
 
+                {(promotionalDiscount || 0) > 0 && (
+                  <div className="flex justify-between items-center text-green-600">
+                    <span className="text-sm">Promotional/Seasonal Discount:</span>
+                    <span className="font-medium">-{(promotionalDiscount || 0).toLocaleString()} RWF</span>
+                  </div>
+                )}
+
                 {manualDiscount > 0 && (
                   <div className="flex justify-between items-center text-orange-600">
                     <span className="text-sm">Manual Discount:</span>
@@ -1822,6 +2056,14 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
           )}
         </form>
       </div>
+
+      {showAddCustomerModal && (
+        <AddCustomerModal
+          onClose={() => setShowAddCustomerModal(false)}
+          onSubmit={handleCreateCustomer}
+          isQuickAdd={isQuickAddMode}
+        />
+      )}
     </div>
   );
 };

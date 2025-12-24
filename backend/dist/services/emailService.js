@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.emailService = void 0;
+// @ts-ignore - nodemailer types are incomplete
 const nodemailer_1 = __importDefault(require("nodemailer"));
 class EmailService {
     constructor() {

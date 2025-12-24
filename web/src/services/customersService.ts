@@ -4,7 +4,7 @@ export interface Customer {
   id: string;
   fullName: string;
   name?: string; // For backward compatibility
-  gender: 'MALE' | 'FEMALE';
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
   phone: string;
   email?: string;
   birthday?: string;
@@ -33,7 +33,7 @@ export interface Customer {
 
 export interface CreateCustomerDto {
   fullName: string;
-  gender: 'MALE' | 'FEMALE';
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
   phone?: string;
   email?: string;
   birthday?: string;
@@ -58,7 +58,7 @@ export interface GetCustomersParams {
   page?: number;
   limit?: number;
   search?: string;
-  gender?: 'MALE' | 'FEMALE';
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
   district?: string;
   province?: string;
   isActive?: boolean;

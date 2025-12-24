@@ -13,12 +13,19 @@ export declare const updateMyProfile: (req: Request, res: Response) => Promise<v
  * Change current user's password
  */
 export declare const changeMyPassword: (req: Request, res: Response) => Promise<void>;
+interface FileRequest extends Request {
+    file?: Express.Multer.File;
+    user?: {
+        id: string;
+    };
+}
 /**
  * Upload/update profile picture
  */
-export declare const updateProfilePicture: (req: Request, res: Response) => Promise<void>;
+export declare const updateProfilePicture: (req: FileRequest, res: Response) => Promise<void>;
 /**
  * Delete profile picture
  */
 export declare const deleteProfilePicture: (req: Request, res: Response) => Promise<void>;
+export {};
 //# sourceMappingURL=userProfileController.d.ts.map

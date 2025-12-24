@@ -132,9 +132,9 @@ const ReportsPage: React.FC = () => {
     if (!reportData) return;
 
     const periodLabel = periodType === 'daily' ? selectedDate :
-                       periodType === 'monthly' ? selectedMonth :
-                       periodType === 'yearly' ? selectedYear :
-                       `${startDate} to ${endDate}`;
+      periodType === 'monthly' ? selectedMonth :
+        periodType === 'yearly' ? selectedYear :
+          `${startDate} to ${endDate}`;
 
     // Create a new workbook
     const wb = XLSX.utils.book_new();
@@ -176,21 +176,21 @@ const ReportsPage: React.FC = () => {
         const customer = sale.customer?.fullName || 'Unknown';
         const services = sale.services?.map((s: any) => s.service?.name).join(', ') || 'N/A';
         const amount = formatCurrency(sale.finalAmount || 0);
-        
+
         // Payment display
         let paymentDisplay = 'CASH';
         if (sale.payments && sale.payments.length > 0) {
           if (sale.payments.length === 1) {
             const method = sale.payments[0].paymentMethod;
             paymentDisplay = method === 'MOBILE_MONEY' ? 'MOBILE MONEY' :
-                           method === 'BANK_TRANSFER' ? 'BANK TRANSFER' :
-                           method === 'BANK_CARD' ? 'BANK CARD' : method;
+              method === 'BANK_TRANSFER' ? 'BANK TRANSFER' :
+                method === 'BANK_CARD' ? 'BANK CARD' : method;
           } else {
             paymentDisplay = sale.payments.map((p: any) => {
               const m = p.paymentMethod;
               return m === 'MOBILE_MONEY' ? 'MOBILE MONEY' :
-                     m === 'BANK_TRANSFER' ? 'BANK TRANSFER' :
-                     m === 'BANK_CARD' ? 'BANK CARD' : m;
+                m === 'BANK_TRANSFER' ? 'BANK TRANSFER' :
+                  m === 'BANK_CARD' ? 'BANK CARD' : m;
             }).join(', ');
           }
         }
@@ -374,6 +374,8 @@ const ReportsPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* Summary Cards - REMOVED */}
 
       {/* Report Content */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">

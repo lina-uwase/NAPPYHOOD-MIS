@@ -278,6 +278,12 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
     };
     const capitalizedFullName = capitalizeName(fullName.trim());
 
+    // Validate birthday - convert to integers if present, otherwise null
+    const birthDayInt = birthDay ? parseInt(birthDay) : undefined;
+    const birthMonthInt = birthMonth ? parseInt(birthMonth) : undefined;
+    const birthYearInt = birthYear ? parseInt(birthYear) : undefined;
+
+
     console.log('🚀 Creating customer with data:', {
       fullName: capitalizedFullName,
       gender,
@@ -288,9 +294,9 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
       additionalLocation: additionalLocation || null,
       phone: phone || null,
       email: email || null,
-      birthDay: parseInt(birthDay),
-      birthMonth: parseInt(birthMonth),
-      birthYear: birthYear ? parseInt(birthYear) : null,
+      birthDay: birthDayInt,
+      birthMonth: birthMonthInt,
+      birthYear: birthYearInt,
       isDependent: isDependent || false,
       parentId: isDependent ? parentId : null,
       saleCount: parseInt(saleCount) || 0
@@ -307,9 +313,9 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         additionalLocation: additionalLocation || null,
         phone: phone || null,
         email: email || null,
-        birthDay: parseInt(birthDay),
-        birthMonth: parseInt(birthMonth),
-        birthYear: birthYear ? parseInt(birthYear) : null,
+        birthDay: birthDayInt,
+        birthMonth: birthMonthInt,
+        birthYear: birthYearInt,
         isDependent: isDependent || false,
         parentId: isDependent ? parentId : null,
         saleCount: parseInt(saleCount) || 0 // Use provided visit count or default to 0
@@ -406,8 +412,8 @@ export const updateCustomer = async (req: AuthenticatedRequest, res: Response): 
     if (additionalLocation !== undefined) updateData.additionalLocation = additionalLocation || null;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email || null;
-    if (birthDay !== undefined) updateData.birthDay = parseInt(birthDay);
-    if (birthMonth !== undefined) updateData.birthMonth = parseInt(birthMonth);
+    if (birthDay !== undefined) updateData.birthDay = birthDay ? parseInt(birthDay) : null;
+    if (birthMonth !== undefined) updateData.birthMonth = birthMonth ? parseInt(birthMonth) : null;
     if (birthYear !== undefined) updateData.birthYear = birthYear ? parseInt(birthYear) : null;
     if (isDependent !== undefined) updateData.isDependent = isDependent;
     if (parentId !== undefined) updateData.parentId = isDependent ? parentId : null;

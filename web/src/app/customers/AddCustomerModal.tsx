@@ -1,22 +1,25 @@
 "use client"
 import React, { useState, useEffect } from 'react';
-import { X, Search, Users } from 'lucide-react';
+import { X, Search, Users, Loader } from 'lucide-react';
 import { Customer, CreateCustomerDto, UpdateCustomerDto } from '../../services/customersService';
 import customersService from '../../services/customersService';
 import PhoneInput, { validatePhoneNumber } from '../../components/PhoneInput';
+import { kigaliLocations } from '../../utils/kigaliLocations';
 
 interface AddCustomerModalProps {
   onClose: () => void;
   onSubmit: (data: CreateCustomerDto | UpdateCustomerDto) => void;
   editingCustomer?: Customer | null;
   allowDependent?: boolean;
+  isQuickAdd?: boolean;
 }
 
 const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   onClose,
   onSubmit,
   editingCustomer,
-  allowDependent = true
+  allowDependent = true,
+  isQuickAdd = false
 }) => {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -39,43 +42,54 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>([]);
+
+  // Parent search state
+  const [parentCustomers, setParentCustomers] = useState<Customer[]>([]);
   const [parentSearch, setParentSearch] = useState('');
   const [showParentDropdown, setShowParentDropdown] = useState(false);
+  const [isSearchingParents, setIsSearchingParents] = useState(false);
+
   const [provinces, setProvinces] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [sectors, setSectors] = useState<string[]>([]);
   const [additionalLocationSuggestions, setAdditionalLocationSuggestions] = useState<string[]>([]);
   const [showAdditionalLocationDropdown, setShowAdditionalLocationDropdown] = useState(false);
 
-  
-
   // Load provinces on component mount
   useEffect(() => {
     const loadProvinces = async () => {
       try {
         const response = await customersService.getProvinces();
-        setProvinces(response.data);
+        const defaultProvinces = ['Kigali City', 'North', 'South', 'East', 'West'];
+        const allProvinces = Array.from(new Set([...response.data, ...defaultProvinces])).sort();
+        setProvinces(allProvinces);
       } catch (error) {
         console.error('Error loading provinces:', error);
+        setProvinces(['Kigali City', 'North', 'South', 'East', 'West']);
       }
     };
-    loadProvinces();
-  }, []);
+    if (!isQuickAdd) loadProvinces();
+  }, [isQuickAdd]);
 
   // Update districts when province changes
   useEffect(() => {
-    if (formData.province) {
-      const loadDistricts = async () => {
-        try {
-          const response = await customersService.getDistrictsByProvince(formData.province);
-          setDistricts(response.data);
-        } catch (error) {
-          console.error('Error loading districts:', error);
-        }
-      };
-      loadDistricts();
-      // Only reset district and sector if not editing (to preserve existing data)
+    if (formData.province && !isQuickAdd) {
+      if (formData.province === 'Kigali City') {
+        const kigaliDistricts = Object.keys(kigaliLocations);
+        setDistricts(kigaliDistricts);
+      } else {
+        const loadDistricts = async () => {
+          try {
+            const response = await customersService.getDistrictsByProvince(formData.province);
+            setDistricts(response.data);
+          } catch (error) {
+            console.error('Error loading districts:', error);
+            setDistricts([]);
+          }
+        };
+        loadDistricts();
+      }
+
       if (!editingCustomer) {
         setFormData(prev => ({ ...prev, district: '', sector: '' }));
         setSectors([]);
@@ -84,64 +98,35 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       setDistricts([]);
       setSectors([]);
     }
-  }, [formData.province, editingCustomer]);
+  }, [formData.province, editingCustomer, isQuickAdd]);
 
   // Update sectors when district changes
   useEffect(() => {
-    if (formData.province && formData.district) {
-      const loadSectors = async () => {
-        try {
-          const response = await customersService.getSectorsByDistrict(formData.province, formData.district);
-          setSectors(response.data);
-        } catch (error) {
-          console.error('Error loading sectors:', error);
-        }
-      };
-      loadSectors();
-      // Only reset sector if not editing (to preserve existing data)
+    if (formData.province && formData.district && !isQuickAdd) {
+      if (formData.province === 'Kigali City' && kigaliLocations[formData.district as keyof typeof kigaliLocations]) {
+        setSectors(kigaliLocations[formData.district as keyof typeof kigaliLocations]);
+      } else {
+        const loadSectors = async () => {
+          try {
+            const response = await customersService.getSectorsByDistrict(formData.province, formData.district);
+            setSectors(response.data);
+          } catch (error) {
+            console.error('Error loading sectors:', error);
+            setSectors([]);
+          }
+        };
+        loadSectors();
+      }
+
       if (!editingCustomer) {
         setFormData(prev => ({ ...prev, sector: '' }));
       }
     } else {
       setSectors([]);
     }
-  }, [formData.province, formData.district, editingCustomer]);
-
-  // Load additional location suggestions when province or sector changes
-  useEffect(() => {
-    if (formData.province || formData.sector) {
-      const loadAdditionalLocationSuggestions = async () => {
-        try {
-          const response = await customersService.getAll({ limit: 1000, isActive: true });
-          const allCustomers = response.data;
-
-          // Filter customers by matching province/sector and extract unique additional locations
-          const matchingLocations = allCustomers
-            .filter(customer =>
-              (formData.province && customer.province === formData.province) ||
-              (formData.sector && customer.sector === formData.sector)
-            )
-            .map(customer => customer.additionalLocation)
-            .filter((location, index, array): location is string =>
-              location !== undefined && // Not null/empty
-              location !== null &&
-              location.trim() !== '' && // Not just whitespace
-              array.indexOf(location) === index // Unique values only
-            );
-
-          setAdditionalLocationSuggestions(matchingLocations);
-        } catch (error) {
-          console.error('Error loading additional location suggestions:', error);
-        }
-      };
-      loadAdditionalLocationSuggestions();
-    } else {
-      setAdditionalLocationSuggestions([]);
-    }
-  }, [formData.province, formData.sector]);
+  }, [formData.province, formData.district, editingCustomer, isQuickAdd]);
 
   useEffect(() => {
-    fetchCustomers();
     if (editingCustomer) {
       setFormData({
         fullName: editingCustomer.fullName || editingCustomer.name || '',
@@ -151,26 +136,68 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthMonth: editingCustomer.birthMonth ? editingCustomer.birthMonth.toString().padStart(2, '0') : '',
         birthDay: editingCustomer.birthDay ? editingCustomer.birthDay.toString().padStart(2, '0') : '',
         birthYear: editingCustomer.birthYear ? editingCustomer.birthYear.toString() : '',
-        district: editingCustomer.district,
+        district: editingCustomer.district || '',
         sector: editingCustomer.sector || '',
-        province: editingCustomer.province,
+        province: editingCustomer.province || '',
         additionalLocation: editingCustomer.additionalLocation || '',
         isDependent: editingCustomer.isDependent || false,
         parentId: editingCustomer.parentId || '',
-        isFirstTime: (editingCustomer.saleCount || 0) === 0, // First time if saleCount is 0
+        isFirstTime: (editingCustomer.saleCount || 0) === 0,
         previousVisits: editingCustomer.saleCount || 0
       });
+
+      // If editing a dependent, fetch the parent details
+      if (editingCustomer.isDependent && editingCustomer.parentId) {
+        fetchParentDetails(editingCustomer.parentId);
+      }
     }
   }, [editingCustomer]);
 
-  const fetchCustomers = async () => {
+  const fetchParentDetails = async (parentId: string) => {
     try {
-      const response = await customersService.getAll({ limit: 1000, isActive: true });
-      setCustomers(response.data.filter(c => !c.isDependent)); // Only show non-dependents as potential parents
+      const response = await customersService.getById(parentId);
+      if (response.success && response.data) {
+        // Add to parent list so it displays correctly
+        setParentCustomers([response.data]);
+      }
     } catch (error) {
-      console.error('Failed to fetch customers:', error);
+      console.error('Failed to fetch parent details:', error);
     }
   };
+
+  // Search parents effect
+  useEffect(() => {
+    const searchParents = async () => {
+      if (!parentSearch.trim()) {
+        setParentCustomers([]);
+        return;
+      }
+
+      setIsSearchingParents(true);
+      try {
+        const response = await customersService.getAll({
+          search: parentSearch,
+          isActive: true,
+          limit: 20 // Limit results for performance
+        });
+
+        // Filter out current customer if editing (prevent self-selection)
+        const results = response.data.filter(c =>
+          !c.isDependent && // Only non-dependents can be parents
+          c.id !== editingCustomer?.id
+        );
+
+        setParentCustomers(results);
+      } catch (error) {
+        console.error('Failed to search parents:', error);
+      } finally {
+        setIsSearchingParents(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchParents, 500); // 500ms debounce
+    return () => clearTimeout(timeoutId);
+  }, [parentSearch, editingCustomer]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -199,7 +226,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     const { name, value, type } = e.target;
     const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined;
 
-    // Capitalize full name as user types
     let processedValue = value;
     if (name === 'fullName' && value) {
       processedValue = capitalizeName(value);
@@ -210,35 +236,27 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       [name]: type === 'checkbox' ? checked : processedValue
     }));
 
-    // Reset district when province changes (only for new customers, not when editing)
-    if (name === 'province' && !editingCustomer) {
-      setFormData(prev => ({
-        ...prev,
-        district: ''
-      }));
+    if (name === 'province' && !editingCustomer && !isQuickAdd) {
+      setFormData(prev => ({ ...prev, district: '' }));
     }
 
-    // Reset parent when isDependent changes
     if (name === 'isDependent' && !checked) {
       setFormData(prev => ({
         ...prev,
         parentId: '',
-        phone: '' // Clear phone when no longer dependent
+        phone: ''
       }));
     }
 
-    // Clear error when user starts typing
     if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
     }
 
-    // Clear submit error when user makes changes
-    if (submitError) {
-      setSubmitError('');
-    }
+    if (submitError) setSubmitError('');
   };
 
   const validateForm = () => {
@@ -248,18 +266,17 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       newErrors.fullName = 'Customer name is required';
     }
 
-    // Phone validation with country code
+    // Phone validation
     if (!formData.isDependent) {
-      const phoneError = validatePhoneNumber(formData.phone, true);
-      if (phoneError) {
-        newErrors.phone = phoneError;
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'Phone number is required';
+      } else {
+        const phoneError = validatePhoneNumber(formData.phone, true);
+        if (phoneError) newErrors.phone = phoneError;
       }
     } else if (formData.phone && formData.phone.trim()) {
-      // Optional for dependents, but if provided, should be valid
       const phoneError = validatePhoneNumber(formData.phone, false);
-      if (phoneError) {
-        newErrors.phone = phoneError;
-      }
+      if (phoneError) newErrors.phone = phoneError;
     }
 
     if (formData.isDependent && !formData.parentId) {
@@ -270,35 +287,34 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       newErrors.email = 'Please enter a valid email address';
     }
 
+    // Skip address/birthday validation for Quick Add or if not provided (backend allows nulls now)
+    if (!isQuickAdd) {
+      if ((formData.birthMonth && !formData.birthDay) || (!formData.birthMonth && formData.birthDay)) {
+        newErrors.birthday = 'Both Month and Day are required if entering birthday';
+      } else if (formData.birthMonth || formData.birthDay) {
+        // If provided, validate
+        const month = parseInt(formData.birthMonth);
+        const day = parseInt(formData.birthDay);
 
-    if (!formData.birthMonth || !formData.birthDay) {
-      newErrors.birthday = 'Birthday month and day are required';
-    } else {
-      const month = parseInt(formData.birthMonth);
-      const day = parseInt(formData.birthDay);
-
-      if (isNaN(month) || month < 1 || month > 12) {
-        newErrors.birthday = 'Please enter a valid month (1-12)';
-      } else if (isNaN(day) || day < 1 || day > 31) {
-        newErrors.birthday = 'Please enter a valid day (1-31)';
-      }
-
-      // Validate year if provided
-      if (formData.birthYear) {
-        const year = parseInt(formData.birthYear);
-        const currentYear = new Date().getFullYear();
-        if (isNaN(year) || year < 1900 || year > currentYear) {
-          newErrors.birthday = 'Please enter a valid birth year';
+        if (isNaN(month) || month < 1 || month > 12) {
+          newErrors.birthday = 'Please enter a valid month (1-12)';
+        } else if (isNaN(day) || day < 1 || day > 31) {
+          newErrors.birthday = 'Please enter a valid day (1-31)';
+        }
+      } else {
+        // Enforce birthday for standard registration
+        if (!editingCustomer && !formData.birthMonth) {
+          newErrors.birthday = 'Birthday month and day are required';
         }
       }
-    }
 
-    if (!formData.province) {
-      newErrors.province = 'Province is required';
-    }
+      if (!formData.province) {
+        newErrors.province = 'Province is required';
+      }
 
-    if (!formData.district) {
-      newErrors.district = 'District is required';
+      if (!formData.district) {
+        newErrors.district = 'District is required';
+      }
     }
 
     setErrors(newErrors);
@@ -315,16 +331,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     setLoading(true);
 
     try {
-      // Parse birthday fields
-      const birthDay = parseInt(formData.birthDay);
-      const birthMonth = parseInt(formData.birthMonth);
+      const birthDay = formData.birthDay ? parseInt(formData.birthDay) : undefined;
+      const birthMonth = formData.birthMonth ? parseInt(formData.birthMonth) : undefined;
       const birthYear = formData.birthYear ? parseInt(formData.birthYear) : undefined;
-
-      // Validate parsed numbers
-      if (isNaN(birthDay) || isNaN(birthMonth)) {
-        console.error('Invalid birthday fields:', { birthDay: formData.birthDay, birthMonth: formData.birthMonth });
-        return;
-      }
 
       const submitData = {
         fullName: formData.fullName.trim(),
@@ -334,34 +343,26 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         birthDay,
         birthMonth,
         birthYear,
-        location: formData.district, // Use district as location for now
-        district: formData.district,
+        location: formData.district || undefined,
+        district: formData.district || undefined,
         sector: formData.sector?.trim() || undefined,
-        province: formData.province,
+        province: formData.province || undefined,
         additionalLocation: formData.additionalLocation?.trim() || undefined,
         isDependent: formData.isDependent,
         parentId: formData.isDependent ? formData.parentId : undefined,
         saleCount: formData.isFirstTime ? 0 : formData.previousVisits
       };
 
-      console.log('Submitting customer data:', submitData); // Debug log
-
-      // Clear any previous submit errors
       setSubmitError('');
-
       await onSubmit(submitData);
     } catch (error: any) {
       console.error('Failed to submit customer:', error);
-
-      // Extract error message from the response
       let errorMessage = 'Failed to create customer. Please try again.';
-
       if (error?.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error?.message) {
         errorMessage = error.message;
       }
-
       setSubmitError(errorMessage);
     } finally {
       setLoading(false);
@@ -375,9 +376,14 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     >
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {editingCustomer ? 'Edit Customer' : (isQuickAdd ? 'Quick Customer Registration (Product Only)' : 'Add New Customer')}
+            </h2>
+            {isQuickAdd && (
+              <p className="text-sm text-gray-500 mt-1">Simplified registration for product buyers</p>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -387,7 +393,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Error Message Display */}
           {submitError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
               <p className="text-sm">{submitError}</p>
@@ -404,9 +409,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.fullName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`}
                 placeholder="Enter customer's full name"
               />
               {errors.fullName && <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>}
@@ -435,7 +438,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 value={formData.phone}
                 onChange={(value) => {
                   setFormData(prev => ({ ...prev, phone: value }));
-                  // Clear error when user starts typing
                   if (errors.phone) {
                     setErrors(prev => {
                       const newErrors = { ...prev };
@@ -451,231 +453,176 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="customer@example.com"
-              />
-              {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
-            </div>
+            {/* Hide non-essential fields in Quick Add mode */}
+            {!isQuickAdd && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
+                    placeholder="customer@example.com"
+                  />
+                  {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Birthday *
-              </label>
-              <div className="grid grid-cols-3 gap-2">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Birthday *
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <select
+                        name="birthMonth"
+                        value={formData.birthMonth}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${errors.birthday ? 'border-red-500' : 'border-gray-300'}`}
+                      >
+                        <option value="">Month</option>
+                        {Array.from({ length: 12 }, (_, i) => (
+                          <option key={i + 1} value={(i + 1).toString().padStart(2, '0')}>
+                            {new Date(2000, i).toLocaleDateString('en', { month: 'long' })}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <select
+                        name="birthDay"
+                        value={formData.birthDay}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${errors.birthday ? 'border-red-500' : 'border-gray-300'}`}
+                      >
+                        <option value="">Day</option>
+                        {Array.from({ length: 31 }, (_, i) => (
+                          <option key={i + 1} value={(i + 1).toString().padStart(2, '0')}>
+                            {i + 1}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        name="birthYear"
+                        value={formData.birthYear}
+                        onChange={handleInputChange}
+                        placeholder="Year"
+                        min="1900"
+                        max={new Date().getFullYear()}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                      />
+                    </div>
+                  </div>
+                  {errors.birthday && <p className="mt-1 text-sm text-red-600">{errors.birthday}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Province *
+                  </label>
                   <select
-                    name="birthMonth"
-                    value={formData.birthMonth}
+                    name="province"
+                    value={formData.province}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                      errors.birthday ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${errors.province ? 'border-red-500' : 'border-gray-300'}`}
                   >
-                    <option value="">Month</option>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const month = i + 1;
-                      return (
-                        <option key={month} value={month.toString().padStart(2, '0')}>
-                          {new Date(2000, i).toLocaleDateString('en', { month: 'long' })}
-                        </option>
-                      );
-                    })}
+                    <option value="">Select Province</option>
+                    {provinces.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  {errors.province && <p className="mt-1 text-sm text-red-600">{errors.province}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    District *
+                  </label>
+                  <select
+                    name="district"
+                    value={formData.district}
+                    onChange={handleInputChange}
+                    disabled={!formData.province}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] disabled:bg-gray-100 ${errors.district ? 'border-red-500' : 'border-gray-300'}`}
+                  >
+                    <option value="">Select District</option>
+                    {districts.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                  {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sector (Optional)</label>
+                  <select
+                    name="sector"
+                    value={formData.sector}
+                    onChange={handleInputChange}
+                    disabled={!formData.district}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] disabled:bg-gray-100"
+                  >
+                    <option value="">Select Sector</option>
+                    {sectors.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-                <div>
-                  <select
-                    name="birthDay"
-                    value={formData.birthDay}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                      errors.birthday ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Day</option>
-                    {Array.from({ length: 31 }, (_, i) => {
-                      const day = i + 1;
-                      return (
-                        <option key={day} value={day.toString().padStart(2, '0')}>
-                          {day}
-                        </option>
-                      );
-                    })}
-                  </select>
+
+                <div className="additional-location-container">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Additional Location</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="additionalLocation"
+                      value={formData.additionalLocation}
+                      onChange={handleInputChange}
+                      onFocus={() => setShowAdditionalLocationDropdown(true)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Landmark, building, etc."
+                    />
+                    {showAdditionalLocationDropdown && additionalLocationSuggestions.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
+                        {additionalLocationSuggestions.filter(s => s.toLowerCase().includes(formData.additionalLocation.toLowerCase())).map((s, i) => (
+                          <div key={i} onClick={() => { setFormData(prev => ({ ...prev, additionalLocation: s })); setShowAdditionalLocationDropdown(false); }} className="p-3 cursor-pointer hover:bg-gray-50">{s}</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
+              </>
+            )}
+
+            {/* Visit Tracking - Always show for both modes */}
+            <div className="md:col-span-2 p-3 border border-gray-300 rounded-md mb-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Visit Tracking</h3>
+              <div className="flex items-center space-x-3 mb-2">
+                <input
+                  type="checkbox"
+                  id="isFirstTime"
+                  name="isFirstTime"
+                  checked={formData.isFirstTime}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isFirstTime" className="text-sm text-gray-700">First time visiting our salon</label>
+              </div>
+              {!formData.isFirstTime && (
+                <div className="ml-7">
+                  <label className="block text-sm text-gray-600 mb-1">Previous visits:</label>
                   <input
                     type="number"
-                    name="birthYear"
-                    value={formData.birthYear}
+                    name="previousVisits"
+                    value={formData.previousVisits}
                     onChange={handleInputChange}
-                    placeholder="Year (optional)"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                      errors.birthday ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    min="0"
+                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                    placeholder="0"
                   />
                 </div>
-              </div>
-              {errors.birthday && <p className="mt-1 text-sm text-red-600">{errors.birthday}</p>}
+              )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Province *
-              </label>
-              <select
-                name="province"
-                value={formData.province}
-                onChange={handleInputChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] ${
-                  errors.province ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="">Select Province</option>
-                {provinces.map(province => (
-                  <option key={province} value={province}>
-                    {province}
-                  </option>
-                ))}
-              </select>
-              {errors.province && <p className="mt-1 text-sm text-red-600">{errors.province}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                District *
-              </label>
-              <select
-                name="district"
-                value={formData.district}
-                onChange={handleInputChange}
-                disabled={!formData.province}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                  errors.district ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="">Select District</option>
-                {districts.map(district => (
-                  <option key={district} value={district}>
-                    {district}
-                  </option>
-                ))}
-              </select>
-              {errors.district && <p className="mt-1 text-sm text-red-600">{errors.district}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sector (Optional)
-              </label>
-              <select
-                name="sector"
-                value={formData.sector}
-                onChange={handleInputChange}
-                disabled={!formData.district}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621] disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="">Select Sector</option>
-                {sectors.map(sector => (
-                  <option key={sector} value={sector}>
-                    {sector}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="additional-location-container">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Additional Location (Optional)
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="additionalLocation"
-                  value={formData.additionalLocation}
-                  onChange={handleInputChange}
-                  onFocus={() => setShowAdditionalLocationDropdown(true)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
-                  placeholder="Enter specific location details..."
-                />
-                {showAdditionalLocationDropdown && additionalLocationSuggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
-                    {additionalLocationSuggestions
-                      .filter(suggestion =>
-                        suggestion.toLowerCase().includes(formData.additionalLocation.toLowerCase())
-                      )
-                      .map((suggestion, index) => (
-                        <div
-                          key={index}
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              additionalLocation: suggestion
-                            }));
-                            setShowAdditionalLocationDropdown(false);
-                          }}
-                          className="p-3 cursor-pointer hover:bg-gray-50 border-b border-gray-100 last:border-0"
-                        >
-                          <div className="text-sm">{suggestion}</div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Specify landmark, building, or detailed location info
-              </p>
-            </div>
-
-          </div>
-
-          {/* VISIT TRACKING - SIMPLE SECTION */}
-          <div className="p-3 border border-gray-300 rounded-md mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Visit Tracking</h3>
-
-            <div className="flex items-center space-x-3 mb-2">
-              <input
-                type="checkbox"
-                id="isFirstTime"
-                name="isFirstTime"
-                checked={formData.isFirstTime}
-                onChange={handleInputChange}
-                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isFirstTime" className="text-sm text-gray-700">
-                First time visiting our salon
-              </label>
-            </div>
-
-            {!formData.isFirstTime && (
-              <div className="ml-7">
-                <label className="block text-sm text-gray-600 mb-1">
-                  Previous visits:
-                </label>
-                <input
-                  type="number"
-                  name="previousVisits"
-                  value={formData.previousVisits}
-                  onChange={handleInputChange}
-                  min="0"
-                  max="50"
-                  className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-green-500"
-                  placeholder="0"
-                />
-              </div>
-            )}
           </div>
 
           {allowDependent && (
@@ -701,15 +648,18 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                     Select Parent Customer *
                   </label>
 
-                  {/* Selected Parent Display */}
-                  {formData.parentId && (
+                  {formData.parentId ? (
                     <div className="mb-3 p-3 bg-[#5A8621] text-white rounded-md flex justify-between items-center">
                       <div>
+                        {/* Try to find parent in search results, OR fallback if it was preloaded via editingCustomer */}
                         <div className="font-medium">
-                          {customers.find(c => c.id === formData.parentId)?.fullName || customers.find(c => c.id === formData.parentId)?.name}
+                          {parentCustomers.find(c => c.id === formData.parentId)?.fullName ||
+                            parentCustomers.find(c => c.id === formData.parentId)?.name ||
+                            'Parent Selected'}
                         </div>
                         <div className="text-sm opacity-90">
-                          {customers.find(c => c.id === formData.parentId)?.phone}
+                          {parentCustomers.find(c => c.id === formData.parentId)?.phone ||
+                            'Has Phone Number'}
                         </div>
                       </div>
                       <button
@@ -724,9 +674,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                         Change
                       </button>
                     </div>
-                  )}
-
-                  {!formData.parentId && (
+                  ) : (
                     <>
                       <div className="relative mb-3">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -741,25 +689,22 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                           onFocus={() => setShowParentDropdown(true)}
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#5A8621] focus:border-[#5A8621] bg-white"
                         />
+                        {isSearchingParents && (
+                          <Loader className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 animate-spin" />
+                        )}
                       </div>
 
-                      {showParentDropdown && (
+                      {showParentDropdown && parentSearch.length > 0 && (
                         <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md bg-white shadow-lg">
-                          {customers.filter(customer =>
-                            (customer.fullName || customer.name || '').toLowerCase().includes(parentSearch.toLowerCase()) ||
-                            customer.phone?.includes(parentSearch)
-                          ).length > 0 ? (
-                            customers.filter(customer =>
-                              (customer.fullName || customer.name || '').toLowerCase().includes(parentSearch.toLowerCase()) ||
-                              customer.phone?.includes(parentSearch)
-                            ).map(customer => (
+                          {parentCustomers.length > 0 ? (
+                            parentCustomers.map(customer => (
                               <div
                                 key={customer.id}
                                 onClick={() => {
                                   setFormData(prev => ({
                                     ...prev,
                                     parentId: customer.id,
-                                    phone: customer.phone || '' // Auto-populate phone from parent
+                                    phone: customer.phone || ''
                                   }));
                                   setShowParentDropdown(false);
                                   setParentSearch('');
@@ -771,7 +716,9 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                               </div>
                             ))
                           ) : (
-                            <div className="p-3 text-gray-500 text-center">No customers found</div>
+                            <div className="p-3 text-gray-500 text-center">
+                              {isSearchingParents ? 'Searching...' : 'No customers found'}
+                            </div>
                           )}
                         </div>
                       )}
@@ -782,7 +729,6 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
               )}
             </div>
           )}
-
 
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">
             <button
@@ -795,9 +741,10 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#5A8621] border border-transparent rounded-md hover:bg-[#4A7318] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-[#5A8621] rounded-md hover:bg-[#4A7318] disabled:opacity-50 flex items-center"
             >
-              {loading ? 'Saving...' : editingCustomer ? 'Update Customer' : 'Add Customer'}
+              {loading && <Loader className="animate-spin -ml-1 mr-2 h-4 w-4" />}
+              {editingCustomer ? 'Update Customer' : 'Register Customer'}
             </button>
           </div>
         </form>

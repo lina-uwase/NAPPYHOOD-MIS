@@ -9,6 +9,7 @@ export interface Product {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  totalRevenue?: number;
 }
 
 export interface CreateProductDto {

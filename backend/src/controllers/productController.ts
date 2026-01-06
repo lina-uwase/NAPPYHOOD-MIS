@@ -6,7 +6,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
   try {
     const { isActive } = req.query;
-    
+
     const whereClause: any = {};
     if (isActive !== undefined) {
       whereClause.isActive = String(isActive) === 'true';
@@ -17,9 +17,27 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
       orderBy: { name: 'asc' }
     });
 
+    // Calculate total revenue for each product
+    const productRevenue = await prisma.saleProduct.groupBy({
+      by: ['productId'],
+      _sum: {
+        totalPrice: true
+      }
+    });
+
+    const revenueMap = new Map();
+    productRevenue.forEach(p => {
+      revenueMap.set(p.productId, Number(p._sum.totalPrice || 0));
+    });
+
+    const productsWithRevenue = products.map(p => ({
+      ...p,
+      totalRevenue: revenueMap.get(p.id) || 0
+    }));
+
     res.json({
       success: true,
-      data: products
+      data: productsWithRevenue
     });
   } catch (error) {
     console.error('Get all products error:', error);
@@ -173,7 +191,7 @@ export const deleteProduct = async (req: AuthenticatedRequest, res: Response): P
   try {
     const { id } = req.params;
 
-    const existingProduct = await prisma.product.findUnique({ 
+    const existingProduct = await prisma.product.findUnique({
       where: { id },
       include: {
         saleProducts: true

@@ -5,6 +5,7 @@ import { Customer, CreateCustomerDto, UpdateCustomerDto } from '../../services/c
 import customersService from '../../services/customersService';
 import PhoneInput, { validatePhoneNumber } from '../../components/PhoneInput';
 import { kigaliLocations } from '../../utils/kigaliLocations';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface AddCustomerModalProps {
   onClose: () => void;
@@ -21,6 +22,7 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   allowDependent = true,
   isQuickAdd = false
 }) => {
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     fullName: '',
     gender: 'FEMALE',
@@ -355,6 +357,10 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
       setSubmitError('');
       await onSubmit(submitData);
+
+      const action = editingCustomer ? 'updated' : 'added';
+      const preposition = editingCustomer ? 'in' : 'in'; // 'in the system' fits both
+      showSuccess(`Customer ${formData.fullName.toUpperCase()} was ${action} ${preposition} the system`);
     } catch (error: any) {
       console.error('Failed to submit customer:', error);
       let errorMessage = 'Failed to create customer. Please try again.';

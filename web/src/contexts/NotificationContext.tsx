@@ -8,12 +8,19 @@ interface Notification {
   title: string;
   message?: string;
   duration?: number;
+  read?: boolean;
+  timestamp?: number;
 }
 
 interface NotificationContextType {
   notifications: Notification[];
+  history: Notification[];
+  unreadCount: number;
   showNotification: (notification: Omit<Notification, 'id'>) => void;
   removeNotification: (id: string) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  clearHistory: () => void;
   showSuccess: (title: string, message?: string) => void;
   showError: (title: string, message?: string) => void;
   showInfo: (title: string, message?: string) => void;
@@ -32,6 +39,21 @@ export const useNotification = () => {
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [history, setHistory] = useState<Notification[]>([]);
+
+  const unreadCount = history.filter(n => !n.read).length;
+
+  const markAsRead = useCallback((id: string) => {
+    setHistory(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }, []);
+
+  const markAllAsRead = useCallback(() => {
+    setHistory(prev => prev.map(n => ({ ...n, read: true })));
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+  }, []);
 
   const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(notification => notification.id !== id));
@@ -43,9 +65,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       ...notification,
       id,
       duration: notification.duration || 5000,
+      read: false,
+      timestamp: Date.now(),
     };
 
     setNotifications(prev => [...prev, newNotification]);
+    setHistory(prev => [newNotification, ...prev]);
 
     // Auto remove after duration
     setTimeout(() => {
@@ -71,8 +96,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const value: NotificationContextType = {
     notifications,
+    history,
+    unreadCount,
     showNotification,
     removeNotification,
+    markAsRead,
+    markAllAsRead,
+    clearHistory,
     showSuccess,
     showError,
     showInfo,

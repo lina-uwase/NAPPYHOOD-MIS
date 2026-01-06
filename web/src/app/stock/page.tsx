@@ -178,16 +178,16 @@ export default function StockPage() {
 
       {/* Summary Stats */}
       {!loading && filteredProducts.length > 0 && (
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <div className="text-sm text-gray-600">Total Products</div>
             <div className="text-2xl font-bold text-gray-900 mt-1">{filteredProducts.length}</div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="text-sm text-gray-600">Total Stock Value</div>
-            <div className="text-2xl font-bold text-gray-900 mt-1">
+            <div className="text-sm text-gray-600">Total Sales Revenue</div>
+            <div className="text-2xl font-bold text-[#5A8621] mt-1">
               {formatCurrency(
-                filteredProducts.reduce((sum, p) => sum + (Number(p.price) * p.quantity), 0)
+                filteredProducts.reduce((sum, p) => sum + (p.totalRevenue || 0), 0)
               )}
             </div>
           </div>
@@ -249,6 +249,9 @@ export default function StockPage() {
                     Stock Quantity
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Sales Revenue
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                   {canManageStock && (
@@ -271,20 +274,23 @@ export default function StockPage() {
                       <div className="text-sm font-medium text-gray-900">{formatCurrency(Number(product.price))}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${
-                        product.quantity === 0 ? 'text-red-600' :
+                      <div className={`text-sm font-medium ${product.quantity === 0 ? 'text-red-600' :
                         product.quantity < 10 ? 'text-yellow-600' :
-                        'text-gray-900'
-                      }`}>
+                          'text-gray-900'
+                        }`}>
                         {product.quantity}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        product.isActive
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
+                      <div className="text-sm font-medium text-[#5A8621]">
+                        {formatCurrency(product.totalRevenue || 0)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${product.isActive
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-red-100 text-red-800'
+                        }`}>
                         {product.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
@@ -425,11 +431,10 @@ export default function StockPage() {
         title="Delete Product"
         message={
           productToDelete
-            ? `Are you sure you want to delete "${productToDelete.name}"? ${
-                productToDelete.quantity > 0
-                  ? 'This product has stock remaining. If it has been sold, it will be deactivated instead of deleted.'
-                  : ''
-              }`
+            ? `Are you sure you want to delete "${productToDelete.name}"? ${productToDelete.quantity > 0
+              ? 'This product has stock remaining. If it has been sold, it will be deactivated instead of deleted.'
+              : ''
+            }`
             : ''
         }
         confirmText="Delete"

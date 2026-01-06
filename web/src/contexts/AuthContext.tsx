@@ -22,7 +22,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
   const router = useRouter();
+
+  // Inactivity timeout (15 minutes)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+
+    const checkInactivity = () => {
+      if (Date.now() - lastActivity > INACTIVITY_LIMIT) {
+        console.log('💤 User inactive for 15 minutes, logging out...');
+        logout();
+      }
+    };
+
+    const interval = setInterval(checkInactivity, 60000); // Check every minute
+
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    // Events to track activity
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    window.addEventListener('scroll', handleActivity);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+      window.removeEventListener('scroll', handleActivity);
+    };
+  }, [isAuthenticated, lastActivity]);
 
   useEffect(() => {
     // Only run authentication check on client side
@@ -44,10 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = authService.getCurrentUser();
         const authStatus = authService.isAuthenticated();
 
-        console.log('🔍 Auth check:', { 
-          hasUser: !!currentUser, 
-          authStatus, 
-          userRole: currentUser?.role 
+        console.log('🔍 Auth check:', {
+          hasUser: !!currentUser,
+          authStatus,
+          userRole: currentUser?.role
         });
 
         if (currentUser && authStatus) {
@@ -159,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider 
+    <AuthContext.Provider
       value={{
         user,
         loading,

@@ -38,6 +38,25 @@ export default function Dashboard() {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const [metrics, setMetrics] = useState<SalonMetrics | null>(null);
+
+  // Redirect non-admin users immediately
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user?.role !== 'ADMIN') {
+      router.push('/sales');
+    }
+  }, [authLoading, isAuthenticated, user, router]);
+
+  // If not admin, don't render dashboard content
+  if (!authLoading && isAuthenticated && user?.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f5f7fb]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-200 border-t-green-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="mt-4 text-gray-600">Redirecting to sales...</p>
+        </div>
+      </div>
+    );
+  }
   const [revenueData, setRevenueData] = useState<{ day: string; value: number }[]>([]);
   const [salesData, setSalesData] = useState<{ day: string; value: number }[]>([]);
   const [topServices, setTopServices] = useState<{ count: number; revenue: number; name: string }[]>([]);
@@ -263,17 +282,7 @@ export default function Dashboard() {
     );
   }
 
-  if (user?.role !== 'ADMIN') {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <ShieldCheck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h2>
-          <p className="text-gray-600">Redirecting to sales page...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   if (loading) {
     return (
@@ -314,7 +323,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="mb-8">
         <div>
-          <p className="text-gray-600">Welcome back <span className="font-bold" style={{color: '#5A8621'}}>{user?.name}</span>! Here&apos;s what&apos;s happening at your salon today.</p>
+          <p className="text-gray-600">Welcome back <span className="font-bold" style={{ color: '#5A8621' }}>{user?.name}</span>! Here&apos;s what&apos;s happening at your salon today.</p>
         </div>
       </div>
 
@@ -340,7 +349,7 @@ export default function Dashboard() {
               <Calendar className="w-6 h-6 text-[#166534]" />
             </div>
             <div>
-              <p className="text-gray-700 text-sm">Total Sales</p>
+              <p className="text-gray-700 text-sm">New Sales</p>
               <p className="text-2xl font-bold text-gray-900">{metrics.todayVisits}</p>
             </div>
           </div>
@@ -413,7 +422,7 @@ export default function Dashboard() {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#6B7280' }}
-                    tickFormatter={(value) => `${(value/1000).toFixed(0)}k`}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                   />
                   <Tooltip
                     cursor={{ fill: 'rgba(90,134,33,0.08)' }}
@@ -496,7 +505,7 @@ export default function Dashboard() {
                     axisLine={false}
                     tickLine={false}
                     tick={{ fontSize: 12, fill: '#6B7280' }}
-                    tickFormatter={(value) => `${(value/1000).toFixed(0)}K`}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}K`}
                   />
                   <Tooltip
                     contentStyle={{ borderRadius: 8, borderColor: '#E5E7EB' }}
@@ -521,21 +530,19 @@ export default function Dashboard() {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setTopServicesSortBy('revenue')}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                    topServicesSortBy === 'revenue'
-                      ? 'bg-[#5A8621] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${topServicesSortBy === 'revenue'
+                    ? 'bg-[#5A8621] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   By Revenue
                 </button>
                 <button
                   onClick={() => setTopServicesSortBy('sales')}
-                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                    topServicesSortBy === 'sales'
-                      ? 'bg-[#5A8621] text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${topServicesSortBy === 'sales'
+                    ? 'bg-[#5A8621] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
                 >
                   By Sales
                 </button>
@@ -572,7 +579,7 @@ export default function Dashboard() {
                           Total
                         </text>
                         <text x="50%" y="55%" textAnchor="middle" dominantBaseline="middle" className="text-sm font-bold text-gray-900">
-                          {topServicesSortBy === 'sales' 
+                          {topServicesSortBy === 'sales'
                             ? `${topServices.reduce((sum, s) => sum + s.count, 0).toLocaleString()} Sales`
                             : `RWF ${topServices.reduce((sum, s) => sum + s.revenue, 0).toLocaleString()}`
                           }
@@ -594,7 +601,7 @@ export default function Dashboard() {
                             <div>
                               <div className="text-sm text-gray-900 font-medium">{service.name}</div>
                               <div className="text-xs text-gray-500">
-                                {topServicesSortBy === 'sales' 
+                                {topServicesSortBy === 'sales'
                                   ? `${service.count} sales`
                                   : `${service.count} visits`
                                 }

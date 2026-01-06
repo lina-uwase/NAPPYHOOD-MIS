@@ -13,6 +13,7 @@ import ProductSelect from '../../components/ProductSelect';
 import AddCustomerModal from '../customers/AddCustomerModal';
 import { CreateCustomerDto } from '../../services/customersService';
 import PhoneInput from '../../components/PhoneInput';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface AddSalesModalProps {
   onClose: () => void;
@@ -26,6 +27,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
   editingSale
 }) => {
+  const { showSuccess, showError } = useNotification();
   const [formData, setFormData] = useState({
     customerId: '',
     serviceIds: [] as string[],
@@ -309,6 +311,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       const response = await customersService.create(data);
 
       if (response.success && response.data) {
+        showSuccess('Customer created successfully');
         // Add new customer to the list
         setCustomers(prev => [response.data, ...prev]);
 
@@ -523,6 +526,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
             const response = await customersService.create(newCustomerData);
             if (response.success && response.data) {
               finalCustomerId = response.data.id;
+              showSuccess('Quick customer created');
               // Add to local list to reflect immediately
               setCustomers(prev => [response.data, ...prev]);
             } else {
@@ -594,6 +598,7 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       });
 
       await onSubmit(submitData);
+      showSuccess(editingSale ? 'Sale updated successfully' : 'Sale recorded successfully');
       onClose();
     } catch (error: any) {
       console.error('Failed to submit sale:', error);
@@ -802,12 +807,12 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
 
       if (discountEligibility) {
         // Birthday discount (20%)
+        // Birthday discount (20%) - Priority over 6th visit
         if (discountEligibility.birthdayDiscountAvailable) {
           birthdayDiscount = Math.round(subtotal * 0.2);
         }
-
-        // 6th visit discount (20%)
-        if (discountEligibility.sixthVisitEligible) {
+        // 6th visit discount (20%) - Only if no birthday discount
+        else if (discountEligibility.sixthVisitEligible) {
           sixthVisitDiscount = Math.round(subtotal * 0.2);
         }
       }

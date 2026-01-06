@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -34,9 +34,9 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/src:/app/src   # <-- Corrected path to backend/src
+      - ./backend/src:/app/src # <-- Corrected path to backend/src
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:5001/health | grep -q 'OK' || exit 1"]
+      test: [ "CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:5001/health | grep -q 'OK' || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -51,13 +51,17 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: http://backend:5001
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     ports:
       - "3000:3000"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:3000 > /dev/null || exit 1"]
+      test: [ "CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:3000/api/health > /dev/null || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3

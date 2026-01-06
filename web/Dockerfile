@@ -22,6 +22,9 @@ FROM node:18-alpine AS runner
 # Set the working directory
 WORKDIR /app
 
+# Limit Node.js memory to allow room for other processes on small VPS
+ENV NODE_OPTIONS="--max-old-space-size=384"
+
 # Copy necessary files from the build stage
 COPY --from=builder /app/package.json /app/package-lock.json* ./
 COPY --from=builder /app/.next ./.next

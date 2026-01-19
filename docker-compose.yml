@@ -1,6 +1,7 @@
 services:
   # Database
   postgres:
+
     image: postgres:15-alpine
     restart: unless-stopped
     environment:
@@ -32,12 +33,10 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       PORT: 5001
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./backend/src:/app/src
     healthcheck:
       test: [ "CMD", "sh", "-c", "wget --quiet --tries=1 --timeout=5 -O- http://0.0.0.0:5001/health | grep -q 'OK' || exit 1" ]
       interval: 30s
@@ -45,12 +44,16 @@ services:
       retries: 3
       start_period: 40s
 
+
+
   # Frontend
   frontend:
     build:
       context: ./web
       dockerfile: Dockerfile
     restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env
     environment:
       NODE_ENV: production
       # Note: 'backend' hostname only works for Server Side Rendering.
@@ -61,7 +64,7 @@ services:
         limits:
           memory: 512M
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       backend:
         condition: service_healthy

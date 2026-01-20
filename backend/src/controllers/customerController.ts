@@ -88,7 +88,7 @@ export const getAllCustomers = async (req: Request, res: Response): Promise<void
 
 export const getCustomerById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const customer = await prisma.customer.findUnique({
       where: { id },
@@ -335,7 +335,7 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
 
 export const updateCustomer = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     let {
       fullName,
       gender,
@@ -442,7 +442,7 @@ export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): 
     console.log('🔍 Request user:', req.user);
     console.log('🗑️ Delete customer request received for ID:', req.params.id);
 
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     if (!id) {
       console.log('❌ No ID provided');
@@ -518,7 +518,7 @@ export const deleteCustomer = async (req: AuthenticatedRequest, res: Response): 
 
 export const toggleCustomerActive = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const existing = await prisma.customer.findUnique({ where: { id }, select: { isActive: true } });
     if (!existing) {
       res.status(404).json({ error: 'Customer not found' });
@@ -565,7 +565,7 @@ export const getTopCustomers = async (req: Request, res: Response): Promise<void
 
 export const getCustomerStats = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const customer = await prisma.customer.findUnique({
       where: { id },
@@ -619,7 +619,7 @@ export const getCustomerStats = async (req: Request, res: Response): Promise<voi
 
 export const getDiscountEligibility = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const customer = await prisma.customer.findUnique({
       where: { id },

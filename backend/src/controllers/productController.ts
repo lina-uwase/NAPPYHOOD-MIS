@@ -48,7 +48,7 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
 // Get single product
 export const getProduct = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const product = await prisma.product.findUnique({ where: { id } });
 
     if (!product) {
@@ -110,7 +110,7 @@ export const createProduct = async (req: AuthenticatedRequest, res: Response): P
 // Update product
 export const updateProduct = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, description, price, quantity, isActive } = req.body;
 
     const existingProduct = await prisma.product.findUnique({ where: { id } });
@@ -154,7 +154,7 @@ export const updateProduct = async (req: AuthenticatedRequest, res: Response): P
 // Increase stock quantity
 export const increaseStock = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { quantity } = req.body;
 
     if (quantity === undefined || Number(quantity) <= 0) {
@@ -189,7 +189,7 @@ export const increaseStock = async (req: AuthenticatedRequest, res: Response): P
 // Delete product
 export const deleteProduct = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const existingProduct = await prisma.product.findUnique({
       where: { id },

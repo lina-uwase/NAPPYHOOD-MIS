@@ -430,7 +430,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 
 export const getUserById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const user = await prisma.user.findUnique({
       where: { id },
@@ -470,7 +470,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { names, phone, role } = req.body;
 
     const updateData: any = {};
@@ -512,7 +512,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
 
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Check if user has created any sales (foreign key constraint)
     const salesCount = await prisma.sale.count({
@@ -567,7 +567,7 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
       // Try to deactivate instead
       try {
         await prisma.user.update({
-          where: { id: req.params.id },
+          where: { id: req.params.id as string },
           data: { isActive: false }
         });
         res.json({

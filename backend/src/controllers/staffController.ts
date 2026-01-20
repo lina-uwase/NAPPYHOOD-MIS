@@ -51,7 +51,7 @@ export const getAllStaff = async (req: Request, res: Response): Promise<void> =>
 
 export const getStaffById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const staff = await prisma.user.findUnique({
       where: { id },
@@ -83,7 +83,7 @@ export const getStaffById = async (req: Request, res: Response): Promise<void> =
 
 export const getStaffPerformance = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { period = 'month', startDate, endDate } = req.query;
 
     const staff = await prisma.user.findUnique({
@@ -316,7 +316,7 @@ export const getAllStaffPerformance = async (req: Request, res: Response): Promi
 
 export const updateStaff = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { name, email, phone, role, isActive } = req.body;
 
     const existingStaff = await prisma.user.findUnique({

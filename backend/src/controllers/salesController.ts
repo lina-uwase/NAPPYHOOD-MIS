@@ -588,18 +588,23 @@ async function calculateDiscounts(
   const currentMonth = new Date().getMonth() + 1;
 
   // 1. Sixth sale discount (20%)
+
   const newSaleCount = customer.saleCount + 1;
+  let appliedSixthVisitDiscount = false;
+
   if (newSaleCount % 6 === 0) {
     discounts.push({
       type: 'SIXTH_VISIT',
       amount: Math.round(totalAmount * 0.2),
       description: '6th Sale Discount (20%)'
     });
+    appliedSixthVisitDiscount = true;
   }
 
   // 2. Birthday month discount (20%)
   // Only eligible if customer has at least 1 sale (more than 0 sales)
-  if (customer.birthMonth === currentMonth && customer.saleCount >= 1) {
+  // AND if 6th visit discount was NOT applied (prevent double discount)
+  if (!appliedSixthVisitDiscount && customer.birthMonth === currentMonth && customer.saleCount >= 1) {
     // Check if customer hasn't used birthday discount this month
     const thisMonth = new Date();
     thisMonth.setDate(1);
@@ -890,7 +895,7 @@ export const getAllSales = async (req: AuthenticatedRequest, res: Response): Pro
 
 export const getSaleById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const sale = await (prisma.sale.findUnique as any)({
       where: { id },
@@ -949,7 +954,7 @@ export const getSaleById = async (req: Request, res: Response): Promise<void> =>
 
 export const updateSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { services, serviceIds, products, staffIds, customStaffNames, notes, isCompleted, manualDiscountAmount = 0, manualDiscountReason, manualIncrementAmount = 0, manualIncrementReason, ownShampooDiscount = false, payments } = req.body;
 
     console.log('🔄 UPDATE SALE REQUEST:', {
@@ -1422,7 +1427,7 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 
 export const deleteSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const existingSale = await (prisma.sale.findUnique as any)({
       where: { id },
       include: {
@@ -1525,7 +1530,7 @@ export const deleteSale = async (req: AuthenticatedRequest, res: Response): Prom
 
 export const completeSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const sale = await prisma.sale.update({ where: { id }, data: { isCompleted: true } });
     res.json({ success: true, data: sale, message: 'Sale marked as completed' });
   } catch (error) {
@@ -1583,7 +1588,7 @@ export const getSalesSummary = async (req: AuthenticatedRequest, res: Response):
 
 export const getSalesByCustomer = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { customerId } = req.params;
+    const customerId = req.params.customerId as string;
     const { page = '1', limit = '10' } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);

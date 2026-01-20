@@ -471,7 +471,7 @@ router.get('/locations/provinces', authenticateToken, (req, res) => {
  *                     type: string
  */
 router.get('/locations/districts/:province', authenticateToken, (req, res) => {
-  const { province } = req.params;
+  const province = req.params.province as string;
 
   const districtsByProvince: Record<string, string[]> = {
     'Kigali City': ['Gasabo', 'Kicukiro', 'Nyarugenge'],
@@ -526,7 +526,7 @@ router.get('/locations/districts/:province', authenticateToken, (req, res) => {
  *                     type: string
  */
 router.get('/locations/sectors/:province/:district', authenticateToken, (req, res) => {
-  const { district } = req.params;
+  const district = req.params.district as string;
 
   const sectorsByDistrict: Record<string, string[]> = {
     // Kigali City

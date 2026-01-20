@@ -62,8 +62,7 @@ export const getAllServices = async (req: Request, res: Response): Promise<void>
 
 export const getServiceById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
-
+    const id = req.params.id as string;
     const service = await prisma.service.findUnique({
       where: { id }
     });
@@ -135,7 +134,7 @@ export const createService = async (req: AuthenticatedRequest, res: Response): P
 
 export const updateService = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const {
       name,
       category,
@@ -195,7 +194,7 @@ export const updateService = async (req: AuthenticatedRequest, res: Response): P
 
 export const deleteService = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const existingService = await prisma.service.findUnique({
       where: { id }

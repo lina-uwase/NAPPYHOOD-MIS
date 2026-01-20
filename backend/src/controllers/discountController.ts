@@ -78,7 +78,7 @@ export const createDiscountRule = async (req: Request, res: Response) => {
 
 export const updateDiscountRule = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const {
             name,
             type,
@@ -128,7 +128,7 @@ export const updateDiscountRule = async (req: Request, res: Response) => {
 
 export const deleteDiscountRule = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
 
         // Find the discount first to get its name
         const discount = await prisma.discountRule.findUnique({ where: { id } });
@@ -156,7 +156,7 @@ export const deleteDiscountRule = async (req: Request, res: Response) => {
 
 export const notifyCustomers = async (req: Request, res: Response) => {
     try {
-        const { id } = req.params;
+        const id = req.params.id as string;
         const { customerIds, message } = req.body;
 
         if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {

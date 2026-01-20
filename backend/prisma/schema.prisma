@@ -20,6 +20,7 @@ model User {
   profilePicture String?
   staffSales     SaleStaff[]
   sales          Sale[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -196,11 +197,23 @@ model Product {
   price       Decimal      @db.Decimal(10, 2)
   quantity    Int          @default(0)
   isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   saleProducts SaleProduct[]
 
   @@map("products")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // success, error, info, warning
+  title     String
+  message   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
 }
 
 model SaleProduct {

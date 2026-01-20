@@ -18,6 +18,7 @@ import staffRoutes from './routes/staff';
 import dashboardRoutes from './routes/dashboard';
 import productRoutes from './routes/products';
 import discountRoutes from './routes/discountRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -142,6 +143,7 @@ app.use('/api/staff', staffRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/discounts', discountRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

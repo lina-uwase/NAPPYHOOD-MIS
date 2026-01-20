@@ -10,7 +10,11 @@ interface Notification {
   duration?: number;
   read?: boolean;
   timestamp?: number;
+  createdAt?: string;
+  userId?: string;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 
 interface NotificationContextType {
   notifications: Notification[];
@@ -38,13 +42,59 @@ export const useNotification = () => {
 };
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [history, setHistory] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]); // Toasts (ephemeral)
+  const [history, setHistory] = useState<Notification[]>([]); // Inbox (persistent)
+
+  // Fetch notifications on mount
+  React.useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/notifications`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setHistory(data.map((n: any) => ({
+            ...n,
+            read: n.isRead,
+            timestamp: new Date(n.createdAt).getTime()
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch notifications:', error);
+      }
+    };
+
+    fetchNotifications();
+    // Poll every 30 seconds for new notifications? Or just on load.
+    // Let's do a simple polling for now to keep it fresh
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const unreadCount = history.filter(n => !n.read).length;
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
+    // Optimistic update
     setHistory(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${API_URL}/notifications/${id}/read`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
   }, []);
 
   const markAllAsRead = useCallback(() => {
@@ -69,8 +119,47 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       timestamp: Date.now(),
     };
 
-    setNotifications(prev => [...prev, newNotification]);
-    setHistory(prev => [newNotification, ...prev]);
+
+
+    // setHistory(prev => [newNotification, ...prev]); // Don't add to history manually if we are persisting it separately?
+    // Actually, for immediate feedback effectively, we should add it.
+    // BUT we also want to persist it to the DB.
+
+    // Save to backend
+    const saveNotification = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const response = await fetch(`${API_URL}/notifications`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            type: newNotification.type,
+            title: newNotification.title,
+            message: newNotification.message
+          })
+        });
+
+        if (response.ok) {
+          const saved = await response.json();
+          // Update history with the real ID from DB
+          setHistory(prev => [
+            { ...newNotification, id: saved.id, read: saved.isRead, timestamp: new Date(saved.createdAt).getTime() },
+            ...prev
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to save notification:', error);
+        // Fallback: add to local history anyway
+        setHistory(prev => [newNotification, ...prev]);
+      }
+    };
+
+    saveNotification();
 
     // Auto remove after duration
     setTimeout(() => {

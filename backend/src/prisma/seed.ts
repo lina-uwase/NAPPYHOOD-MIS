@@ -7,7 +7,12 @@ async function main() {
   console.log('🌱 Starting database seeding...');
 
   // Create default admin user only
-  const hashedPassword = await bcrypt.hash('HairIs@2030', 10);
+  // Create default admin user only
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error('SEED_ADMIN_PASSWORD must be set in .env file');
+  }
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
   const adminUser = await prisma.user.upsert({
     where: { email: 'nappyhood.boutique@gmail.com' },
@@ -733,7 +738,7 @@ async function main() {
 
   console.log('\n📋 Default Admin Login:');
   console.log('Admin Email: nappyhood.boutique@gmail.com');
-  console.log('Admin Password: HairIs@2030');
+  console.log('Admin Password: (See SEED_ADMIN_PASSWORD in .env)');
   console.log('\n💡 Other users can be created through the admin panel with custom phone numbers');
 }
 

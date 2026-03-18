@@ -12,7 +12,7 @@ model User {
   name           String
   email          String?        @unique
   password       String
-  role           String         @default("STAFF")
+  role           Role           @default(STAFF)
   phone          String         @unique
   isActive       Boolean        @default(true)
   createdAt      DateTime       @default(now())
@@ -227,4 +227,10 @@ model SaleProduct {
   sale       Sale     @relation(fields: [saleId], references: [id])
 
   @@map("sale_products")
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  MANAGER
 }

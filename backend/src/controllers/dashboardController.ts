@@ -91,8 +91,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     // Get sort parameter (default to 'revenue')
     const sortBy = (req.query.sortBy as string) || 'revenue';
     
-    // Get top services data
-    const topServicesData = await prisma.saleService.groupBy({
+    // Get top services data - sort in JS to ensure PostgreSQL compatibility
+    const topServicesRaw = await prisma.saleService.groupBy({
       by: ['serviceId'],
       where: {
         sale: { saleDate: { gte: periodStart } }
@@ -101,12 +101,15 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
         quantity: true,
         totalPrice: true
       },
-      _count: { serviceId: true },
-      orderBy: sortBy === 'sales' 
-        ? { _sum: { quantity: 'desc' } }
-        : { _sum: { totalPrice: 'desc' } },
-      take: 5
+      _count: { serviceId: true }
     });
+
+    const topServicesData = topServicesRaw.sort((a: any, b: any) => {
+      if (sortBy === 'sales') {
+        return Number(b._sum.quantity || 0) - Number(a._sum.quantity || 0);
+      }
+      return Number(b._sum.totalPrice || 0) - Number(a._sum.totalPrice || 0);
+    }).slice(0, 5);
 
     // Get service details for top services
     const topServices = await Promise.all(

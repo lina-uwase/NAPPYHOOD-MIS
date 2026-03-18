@@ -48,5 +48,5 @@ EXPOSE 5001
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --quiet --tries=1 --timeout=5 -O- http://localhost:5001/health | grep -q 'OK' || exit 1
 
-# Set the command to start the application
-CMD ["npm", "run", "start"]
+# Set the command to start the application (run migrations first, then start)
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && npm run start"]

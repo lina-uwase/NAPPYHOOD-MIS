@@ -1,7 +1,9 @@
 "use client"
 import React, { useState, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
-import { Search, Trash2, Edit, ChevronDown, Plus, ShieldCheck, FileDown, UploadCloud } from 'lucide-react';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+import { Search, Trash2, Edit, ChevronDown, Plus, ShieldCheck, FileDown, UploadCloud, Download } from 'lucide-react';
 import FileUploadButton from '../../components/FileUploadButton';
 import { useTitle } from '../../contexts/TitleContext';
 import AddStaffModal from './AddStaffModal';
@@ -9,7 +11,7 @@ import Pagination from '../../components/Pagination';
 import { useToast } from '../../components/Toast';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
-import staffService, { Staff, CreateStaffDto, UpdateStaffDto } from '../../services/staffService';
+import staffService, { Staff, CreateStaffDto, UpdateStaffDto, StaffPerformance } from '../../services/staffService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function StaffPage() {
@@ -30,7 +32,9 @@ export default function StaffPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ADMIN' | 'MANAGER' | 'STAFF' | ''>('');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [sortByRevenue, setSortByRevenue] = useState<'none' | 'desc' | 'asc'>('none');
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [performances, setPerformances] = useState<Record<string, StaffPerformance>>({});
   const [loading, setLoading] = useState(true);
   const [totalStaff, setTotalStaff] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -50,6 +54,17 @@ export default function StaffPage() {
         roleFilter || undefined,
         searchTerm || undefined
       );
+
+      // Fetch performance data in parallel if no specific role or search, or generally just fetch it
+      const perfResponse = await staffService.getAllPerformance('month').catch(() => null);
+      
+      const perfMap: Record<string, StaffPerformance> = {};
+      if (perfResponse?.success && perfResponse.data?.staffPerformance) {
+        perfResponse.data.staffPerformance.forEach(p => {
+          perfMap[p.staff.id] = p;
+        });
+      }
+      setPerformances(perfMap);
 
       if (response.success) {
         const staffData = Array.isArray(response.data) ? response.data : [];
@@ -190,8 +205,20 @@ export default function StaffPage() {
     );
   }
 
-  // Default A→Z sorting by staff name
+  // Default A→Z sorting by staff name, or by revenue
   const sortedStaff = [...staff].sort((a, b) => {
+    if (sortByRevenue !== 'none') {
+      const revA = performances[a.id]?.metrics.totalRevenue || 0;
+      const revB = performances[b.id]?.metrics.totalRevenue || 0;
+      
+      if (sortByRevenue === 'desc') {
+        return revB - revA; // Highest revenue first
+      } else {
+        return revA - revB; // Lowest revenue first
+      }
+    }
+    
+    // Default sort by name
     const an = (a.name || '').toLowerCase();
     const bn = (b.name || '').toLowerCase();
     if (an < bn) return -1;
@@ -246,6 +273,105 @@ export default function StaffPage() {
       }
       addToast({ type: ok > 0 ? 'success' : 'error', title: 'Import finished', message: `${ok} added, ${fail} failed` });
       if (ok > 0) await loadStaff();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const exportToExcel = async () => {
+    try {
+      setLoading(true);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Staff Revenue');
+
+      worksheet.columns = [
+        { header: 'ID', key: 'id', width: 10 },
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Role', key: 'role', width: 15 },
+        { header: 'Email', key: 'email', width: 25 },
+        { header: 'Phone', key: 'phone', width: 20 },
+        { header: 'Revenue (RWF)', key: 'revenue', width: 20 },
+        { header: 'Status', key: 'status', width: 15 }
+      ];
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFBDD7EE' }
+        };
+        cell.font = { bold: true };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+      });
+
+      sortedStaff.forEach((staffMember, index) => {
+        const row = worksheet.addRow({
+          id: index + 1,
+          name: staffMember.name,
+          role: staffMember.role === 'ADMIN' ? 'Admin' : staffMember.role === 'MANAGER' ? 'Manager' : 'Staff',
+          email: staffMember.email,
+          phone: staffMember.phone || '-',
+          revenue: performances[staffMember.id]?.metrics.totalRevenue || 0,
+          status: staffMember.isActive ? 'Active' : 'Inactive'
+        });
+
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: 'thin' },
+            left: { style: 'thin' },
+            bottom: { style: 'thin' },
+            right: { style: 'thin' }
+          };
+        });
+      });
+
+      worksheet.getColumn('revenue').numFmt = '#,##0';
+
+      worksheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: sortedStaff.length + 1, column: 7 }
+      };
+
+      const totalRowNumber = sortedStaff.length + 2;
+      const totalRow = worksheet.addRow({
+        id: '',
+        name: 'TOTAL',
+        role: '',
+        email: '',
+        phone: '',
+        status: ''
+      });
+      totalRow.getCell('revenue').value = { formula: `SUM(F2:F${totalRowNumber - 1})` };
+
+      totalRow.eachCell((cell) => {
+        cell.font = { bold: true };
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFEFEFEF' }
+        };
+        cell.border = {
+          top: { style: 'medium' },
+          left: { style: 'thin' },
+          bottom: { style: 'medium' },
+          right: { style: 'thin' }
+        };
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `Staff_Revenue_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+      addToast({ type: 'success', title: 'Export Successful', message: 'Staff revenue report has been downloaded.' });
+    } catch (error) {
+      console.error('Export error:', error);
+      addToast({ type: 'error', title: 'Export Failed', message: 'There was an error generating the Excel file.' });
     } finally {
       setLoading(false);
     }
@@ -332,6 +458,27 @@ export default function StaffPage() {
               </div>
             )}
           </div>
+          
+          <div className="relative">
+            <button
+              onClick={() => {
+                setSortByRevenue(prev => {
+                  if (prev === 'none') return 'desc';
+                  if (prev === 'desc') return 'asc';
+                  return 'none';
+                });
+                setCurrentPage(1);
+              }}
+              className={`flex items-center space-x-2 px-4 py-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-[#F8FAFC] text-base ${sortByRevenue !== 'none' ? 'bg-[#F8FAFC]' : ''}`}
+            >
+              <span className={`text-gray-600 ${sortByRevenue !== 'none' ? 'text-[#5A8621] font-medium' : ''}`}>
+                Revenue {sortByRevenue === 'desc' ? ' (Highest)' : sortByRevenue === 'asc' ? ' (Lowest)' : ''}
+              </span>
+              <div className="flex flex-col">
+                <ChevronDown className={`h-3 w-3 ${sortByRevenue === 'asc' ? 'text-[#5A8621]' : 'text-gray-400 rotate-180'}`} />
+              </div>
+            </button>
+          </div>
         </div>
 
         <button
@@ -345,6 +492,10 @@ export default function StaffPage() {
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="flex items-center justify-end p-4 border-b border-gray-200 gap-2">
+          <button onClick={exportToExcel} className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50">
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
           <button className="flex items-center gap-1 px-3 py-1.5 text-sm border border-gray-200 rounded hover:bg-gray-50">
             <FileDown className="w-4 h-4" />
             Export PDF
@@ -369,6 +520,7 @@ export default function StaffPage() {
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Role</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Email</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+              <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Revenue (Month)</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="text-left py-4 px-6 text-sm font-medium text-gray-500 uppercase tracking-wider">Action</th>
             </tr>
@@ -411,6 +563,9 @@ export default function StaffPage() {
                   <td className="py-4 px-6 text-base">{getRoleBadge(staffMember.role)}</td>
                   <td className="py-4 px-6 text-base text-gray-600">{staffMember.email}</td>
                   <td className="py-4 px-6 text-base text-gray-600">{staffMember.phone || '-'}</td>
+                  <td className="py-4 px-6 text-base font-semibold text-[#5A8621]">
+                    {performances[staffMember.id]?.metrics.totalRevenue.toLocaleString() || '0'} RWF
+                  </td>
                   <td className="py-4 px-6 text-base">
                     <div className="flex items-center">
                       <div className={`w-2 h-2 rounded-full mr-2 ${staffMember.isActive ? 'bg-green-500' : 'bg-red-500'}`}></div>

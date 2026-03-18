@@ -571,9 +571,18 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         };
       });
 
+      // Prepare detailed services payload to preserve shampoo selection
+      const servicesPayload = selectedServices.map(service => ({
+        serviceId: service.serviceId,
+        quantity: (service as any).quantity || 1,
+        isChild: (service as any).isChild || false,
+        addShampoo: serviceShampooOptions[service.serviceId] || false
+      }));
+
       const submitData = {
         customerId: finalCustomerId,
-        serviceIds: formData.serviceIds.length > 0 ? formData.serviceIds : undefined,
+        services: servicesPayload.length > 0 ? servicesPayload : undefined,
+        serviceIds: formData.serviceIds.length > 0 && servicesPayload.length === 0 ? formData.serviceIds : undefined,
         products: productsData.length > 0 ? productsData : undefined,
         serviceShampooOptions: serviceShampooOptions,
         staffIds: submitStaffData.staffIds,

@@ -1,10 +1,9 @@
 import { prisma } from '../utils/database';
-import { ServiceCategory } from '@prisma/client';
 
 async function checkKidsServices() {
   try {
     const kidsServices = await prisma.service.findMany({
-      where: { category: ServiceCategory.KIDS_SERVICES },
+      where: { category: 'KIDS_SERVICES' },
       select: {
         id: true,
         name: true,

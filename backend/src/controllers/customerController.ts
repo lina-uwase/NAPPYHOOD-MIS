@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/database';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { createActionNotifications } from './notificationController';
 
 export const getAllCustomers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -321,6 +322,19 @@ export const createCustomer = async (req: AuthenticatedRequest, res: Response): 
         saleCount: parseInt(saleCount) || 0 // Use provided visit count or default to 0
       }
     });
+
+    // Create system notification for the actor and all ADMIN users
+    try {
+      const actorId = req.user?.id;
+      if (actorId) {
+        const actor = await prisma.user.findUnique({ where: { id: actorId }, select: { name: true } });
+        const actorName = actor?.name || 'Staff';
+        const notificationMessage = `New customer "${capitalizedFullName}" registered by ${actorName}.`;
+        await createActionNotifications(actorId, 'New Customer Registered', notificationMessage, 'success');
+      }
+    } catch (notifError) {
+      console.error('Failed to create in-app notifications for customer creation:', notifError);
+    }
 
     res.status(201).json({
       success: true,

@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/database';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { Decimal } from '@prisma/client/runtime/library';
+import { sendTransactionAlert } from '../services/whatsappService';
+import { createActionNotifications } from './notificationController';
 
 interface SaleService {
   serviceId: string;
@@ -531,7 +533,6 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       return sale;
     });
 
-    // Fetch complete sale data to return
     const completeSale = await (prisma.sale.findUnique as any)({
       where: { id: result.id },
       include: {
@@ -561,9 +562,40 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
             discountRule: true
           }
         },
+        createdBy: {
+          select: {
+            id: true,
+            name: true
+          }
+        },
         payments: true
       }
     });
+
+    // Send WhatsApp Transaction Alert
+    if (completeSale.customer && completeSale.customer.phone) {
+      try {
+        await sendTransactionAlert(
+          completeSale.customer.fullName,
+          completeSale.customer.phone,
+          finalAmount,
+          completeSale.customer.totalSpent,
+          completeSale.customer.saleCount
+        );
+        console.log(`WhatsApp transaction alert sent to ${completeSale.customer.phone}`);
+      } catch (whatsappError) {
+        console.error('Failed to send WhatsApp transaction alert:', whatsappError);
+        // Do not fail the sale creation if WhatsApp fails
+      }
+    }
+
+    // Create system notification for the actor and all ADMIN users
+    try {
+      const notificationMessage = `New sale of ${finalAmount.toLocaleString()} RWF recorded for ${completeSale.customer?.fullName || 'a customer'} by ${completeSale.createdBy?.name || 'Staff'}.`;
+      await createActionNotifications(req.user!.id, 'New Sale Recorded', notificationMessage, 'success');
+    } catch (notifError) {
+      console.error('Failed to create in-app notifications:', notifError);
+    }
 
     res.status(201).json({
       success: true,

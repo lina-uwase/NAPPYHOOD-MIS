@@ -1,6 +1,36 @@
 import { Request, Response } from 'express';
 import { prisma } from '../utils/database';
 
+export const createActionNotifications = async (actorId: string, title: string, message: string, type: string = 'info') => {
+    try {
+        // Find all admins
+        const admins = await prisma.user.findMany({
+            where: { role: 'ADMIN' },
+            select: { id: true }
+        });
+        
+        // Compile unique list of user IDs to receive the notification
+        const userIdsToNotify = new Set(admins.map((a: any) => a.id));
+        if (actorId) {
+            userIdsToNotify.add(actorId); // Include the person who performed the action
+        }
+
+        // Create individual notification records
+        if (userIdsToNotify.size > 0) {
+            await prisma.notification.createMany({
+                data: Array.from(userIdsToNotify).map(userId => ({
+                    userId,
+                    type,
+                    title,
+                    message
+                }))
+            });
+        }
+    } catch (error) {
+        console.error('Failed to create action notifications:', error);
+    }
+};
+
 export const getNotifications = async (req: Request | any, res: Response) => {
     try {
         const userId = req.user?.id;

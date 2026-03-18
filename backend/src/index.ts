@@ -19,6 +19,7 @@ import dashboardRoutes from './routes/dashboard';
 import productRoutes from './routes/products';
 import discountRoutes from './routes/discountRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import { startBirthdayCronJob } from './jobs/birthdayCron';
 
 // Load environment variables
 dotenv.config();
@@ -215,6 +216,9 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Nappyhood Salon API server running on port ${PORT}`);
   console.log(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+  
+  // Start scheduled jobs
+  startBirthdayCronJob();
 });
 
 export default app;

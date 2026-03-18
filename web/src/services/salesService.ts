@@ -87,6 +87,12 @@ export interface Sale {
 export interface CreateSaleDto {
   customerId: string;
   serviceIds?: string[];
+  services?: Array<{
+    serviceId: string;
+    quantity: number;
+    isChild: boolean;
+    addShampoo: boolean;
+  }>;
   products?: Array<{
     productId: string;
     quantity: number;
@@ -111,6 +117,12 @@ export interface CreateSaleDto {
 
 export interface UpdateSaleDto {
   serviceIds?: string[];
+  services?: Array<{
+    serviceId: string;
+    quantity: number;
+    isChild: boolean;
+    addShampoo: boolean;
+  }>;
   products?: Array<{
     productId: string;
     quantity: number;

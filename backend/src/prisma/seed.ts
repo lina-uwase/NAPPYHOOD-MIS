@@ -1,4 +1,4 @@
-import { PrismaClient, ServiceCategory, Gender } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -83,7 +83,7 @@ async function main() {
     // HAIR TREATMENTS
     {
       name: 'Shampoo',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Relax and refresh with our Shampoo package — includes onion oil massage, pre-poo treatment, detangling, leave-in conditioner, scalp oil, hair butter, blow-dry, and your choice of a simple hair bun or two simple cornrows!',
       singlePrice: 7000,
       combinedPrice: null,
@@ -92,7 +92,7 @@ async function main() {
     },
     {
       name: 'Braids Wash',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Refresh your braids with our Braids Wash, including onion oil massage, scalp oil, hair butter, and drying for healthy, nourished hair.',
       singlePrice: 9000,
       combinedPrice: null,
@@ -101,7 +101,7 @@ async function main() {
     },
     {
       name: 'Protein Treatment',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Give your 4C hair the care it deserves with our Protein Steam Treatment - it strengthens your 4C hair, rebuilds weak and damaged strands, reduces breakage, and helps it grow healthier and thicker',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -110,7 +110,7 @@ async function main() {
     },
     {
       name: 'Hydration Deep Treatment',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Revive dry, dull hair with our Hydration Deep Conditioning Steam Treatment — it restores moisture, adds shine, and makes your hair soft and easy to manage!',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -119,7 +119,7 @@ async function main() {
     },
     {
       name: 'Fenugreek',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Got thin hair? This Treatment is designed to reduce hair fall, boost growth and volume, add shine, and leave your hair soft and nourished!',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -128,7 +128,7 @@ async function main() {
     },
     {
       name: 'No More Fall',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'This powerful treatment targets hair fall, strengthens your roots, and helps keep your strands where they belong—on your head! Perfect for thinning or shedding hair.',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -137,7 +137,7 @@ async function main() {
     },
     {
       name: 'Bye Bye Dandruff',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Say goodbye to dry scalp! Our Dandruff Treatment soothes your scalp, reduces itchiness, and leaves your hair fresh, clean, and flake-free',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -146,7 +146,7 @@ async function main() {
     },
     {
       name: 'Hot Oil Treatment',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Refresh dry, thirsty hair instantly with our Hot Oil Treatment that adds deep moisture and natural shine!',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -155,7 +155,7 @@ async function main() {
     },
     {
       name: 'Henna Treatment',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Revive damaged and shedding hair with this ancient Indian secret—Henna coats your hair to make it stronger, less likely to break, and thicker over time!',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -164,7 +164,7 @@ async function main() {
     },
     {
       name: 'Kanta',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Traditional hair treatment for natural hair care',
       singlePrice: 6000,
       combinedPrice: 12000,
@@ -173,7 +173,7 @@ async function main() {
     },
     {
       name: 'Chebe Twist',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Traditional Chebe powder treatment with protective twisting',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -182,7 +182,7 @@ async function main() {
     },
     {
       name: 'Hair Coloring (Teinture)',
-      category: ServiceCategory.HAIR_TREATMENTS,
+      category: 'HAIR_TREATMENTS',
       description: 'Professional hair coloring service',
       singlePrice: 15000,
       combinedPrice: null,
@@ -193,7 +193,7 @@ async function main() {
     // TWIST HAIRSTYLES
     {
       name: 'Normal Twist',
-      category: ServiceCategory.TWIST_HAIRSTYLE,
+      category: 'TWIST_HAIRSTYLE',
       description: 'Classic protective twisting style',
       singlePrice: 12000,
       combinedPrice: 15000,
@@ -202,7 +202,7 @@ async function main() {
     },
     {
       name: 'Small Size Twist',
-      category: ServiceCategory.TWIST_HAIRSTYLE,
+      category: 'TWIST_HAIRSTYLE',
       description: 'Small detailed protective twists',
       singlePrice: 20000,
       combinedPrice: 25000,
@@ -211,7 +211,7 @@ async function main() {
     },
     {
       name: 'Twist Out',
-      category: ServiceCategory.TWIST_HAIRSTYLE,
+      category: 'TWIST_HAIRSTYLE',
       description: 'Twist out styling for natural curl definition',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -220,7 +220,7 @@ async function main() {
     },
     {
       name: 'Twist with Extension',
-      category: ServiceCategory.TWIST_HAIRSTYLE,
+      category: 'TWIST_HAIRSTYLE',
       description: 'Protective twists with hair extensions for length and volume',
       singlePrice: 40000,
       combinedPrice: 45000,
@@ -229,7 +229,7 @@ async function main() {
     },
     {
       name: 'Flat Twist with Extension',
-      category: ServiceCategory.TWIST_HAIRSTYLE,
+      category: 'TWIST_HAIRSTYLE',
       description: 'Flat twist styling with extensions',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -240,7 +240,7 @@ async function main() {
     // CORNROWS BRAIDS
     {
       name: 'Two Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Simple two-line cornrow style',
       singlePrice: 7000,
       combinedPrice: 12000,
@@ -249,7 +249,7 @@ async function main() {
     },
     {
       name: 'Three Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Three-line cornrow style',
       singlePrice: 9000,
       combinedPrice: 14000,
@@ -258,7 +258,7 @@ async function main() {
     },
     {
       name: 'Four Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Four-line cornrow style',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -267,7 +267,7 @@ async function main() {
     },
     {
       name: 'Five Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Five-line cornrow style',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -276,7 +276,7 @@ async function main() {
     },
     {
       name: 'Six to Eight Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Medium complexity cornrow style (6-8 lines)',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -285,7 +285,7 @@ async function main() {
     },
     {
       name: 'Nine to Twelve Lines Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Complex cornrow style (9-12 lines)',
       singlePrice: 18000,
       combinedPrice: 24000,
@@ -294,7 +294,7 @@ async function main() {
     },
     {
       name: 'Cornrows for Wig',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Cornrows styled specifically for wig application',
       singlePrice: 10000,
       combinedPrice: 16000,
@@ -303,7 +303,7 @@ async function main() {
     },
     {
       name: 'Men Cornrows',
-      category: ServiceCategory.CORNROWS_BRAIDS,
+      category: 'CORNROWS_BRAIDS',
       description: 'Cornrow styling for men',
       singlePrice: 7000,
       combinedPrice: 14000,
@@ -314,7 +314,7 @@ async function main() {
     // STRAWSET & CURLS
     {
       name: 'Big Strawset',
-      category: ServiceCategory.STRAWSET_CURLS,
+      category: 'STRAWSET_CURLS',
       description: 'Large curl pattern strawset styling',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -323,7 +323,7 @@ async function main() {
     },
     {
       name: 'Small Strawset',
-      category: ServiceCategory.STRAWSET_CURLS,
+      category: 'STRAWSET_CURLS',
       description: 'Small curl pattern strawset styling',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -332,7 +332,7 @@ async function main() {
     },
     {
       name: 'Flexroad/Imiheha',
-      category: ServiceCategory.STRAWSET_CURLS,
+      category: 'STRAWSET_CURLS',
       description: 'Traditional Rwandan curl styling technique',
       singlePrice: 20000,
       combinedPrice: 25000,
@@ -341,7 +341,7 @@ async function main() {
     },
     {
       name: 'Fingerlocs',
-      category: ServiceCategory.STRAWSET_CURLS,
+      category: 'STRAWSET_CURLS',
       description: 'Finger-coiled loc styling',
       singlePrice: 20000,
       combinedPrice: 25000,
@@ -352,7 +352,7 @@ async function main() {
     // STYLING SERVICES
     {
       name: 'Styling without Extension',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'General hair styling without extensions',
       singlePrice: 7000,
       combinedPrice: 12000,
@@ -361,7 +361,7 @@ async function main() {
     },
     {
       name: 'Styling with Extension',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'Hair styling with extensions',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -370,7 +370,7 @@ async function main() {
     },
     {
       name: 'Braids & Dreadlocks',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'Protective braiding and dreadlock maintenance',
       singlePrice: 9000,
       combinedPrice: 15000,
@@ -379,7 +379,7 @@ async function main() {
     },
     {
       name: 'Bride Styling',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'Special bridal hair styling',
       singlePrice: 20000,
       combinedPrice: 25000,
@@ -388,7 +388,7 @@ async function main() {
     },
     {
       name: 'Silk Press (Flat, Trim)',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'Professional silk press with trimming',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -397,7 +397,7 @@ async function main() {
     },
     {
       name: 'Blow Drying',
-      category: ServiceCategory.STYLING_SERVICE,
+      category: 'STYLING_SERVICE',
       description: 'Professional blow dry service',
       singlePrice: 3000,
       combinedPrice: null,
@@ -408,7 +408,7 @@ async function main() {
     // SPECIAL OFFERS
     {
       name: 'DIY Treatment/Kanta Service',
-      category: ServiceCategory.SPECIAL_OFFERS,
+      category: 'SPECIAL_OFFERS',
       description: 'Do-it-yourself treatment guidance and Kanta service',
       singlePrice: 10000,
       combinedPrice: null,
@@ -419,7 +419,7 @@ async function main() {
     // KIDS SERVICES (Children below 10 years old)
     {
       name: 'Kids Shampoo',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Shampoo service for children below 10 years old',
       singlePrice: 9000,
       combinedPrice: null,
@@ -428,7 +428,7 @@ async function main() {
     },
     {
       name: 'Kids Braids Wash',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Braids wash service for children below 10 years old',
       singlePrice: 12000,
       combinedPrice: null,
@@ -437,7 +437,7 @@ async function main() {
     },
     {
       name: 'Kids Protein Treatment',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Protein treatment for children below 10 years old',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -446,7 +446,7 @@ async function main() {
     },
     {
       name: 'Kids Hydration Deep Treatment',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Hydration deep treatment for children below 10 years old',
       singlePrice: 14000,
       combinedPrice: 19000,
@@ -455,7 +455,7 @@ async function main() {
     },
     {
       name: 'Kids Fenugreek',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Fenugreek treatment for children below 10 years old',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -464,7 +464,7 @@ async function main() {
     },
     {
       name: 'Kids Stop Shredding',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Stop shredding treatment for children below 10 years old',
       singlePrice: 14000,
       combinedPrice: 22000,
@@ -473,7 +473,7 @@ async function main() {
     },
     {
       name: 'Kids Dandruff Treatment',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Dandruff treatment for children below 10 years old',
       singlePrice: 14000,
       combinedPrice: 22000,
@@ -482,7 +482,7 @@ async function main() {
     },
     {
       name: 'Kids Hot Oil Treatment',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Hot oil treatment for children below 10 years old',
       singlePrice: 14000,
       combinedPrice: 22000,
@@ -491,7 +491,7 @@ async function main() {
     },
     {
       name: 'Kids Henna Treatment',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Henna treatment for children below 10 years old',
       singlePrice: 14000,
       combinedPrice: 22000,
@@ -500,7 +500,7 @@ async function main() {
     },
     {
       name: 'Kids Twist',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Twist hairstyle for children below 10 years old',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -509,7 +509,7 @@ async function main() {
     },
     {
       name: 'Kids Styling (No Extension)',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Styling service without extension for children below 10 years old',
       singlePrice: 10000,
       combinedPrice: 15000,
@@ -518,7 +518,7 @@ async function main() {
     },
     {
       name: 'Kids Styling (With Extension)',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Styling service with extension for children below 10 years old',
       singlePrice: 15000,
       combinedPrice: 20000,
@@ -527,7 +527,7 @@ async function main() {
     },
     {
       name: 'Kids Cornrows',
-      category: 'KIDS_SERVICES' as ServiceCategory,
+      category: 'KIDS_SERVICES',
       description: 'Cornrows hairstyle for children below 10 years old',
       singlePrice: 12000,
       combinedPrice: 17000,
@@ -551,7 +551,7 @@ async function main() {
   const sampleCustomers = [
     {
       fullName: 'Marie Claire Uwimana',
-      gender: Gender.FEMALE,
+      gender: 'FEMALE',
       location: 'Nyamirambo',
       district: 'Nyarugenge',
       province: 'Kigali City',
@@ -563,7 +563,7 @@ async function main() {
     },
     {
       fullName: 'Grace Mukamana',
-      gender: Gender.FEMALE,
+      gender: 'FEMALE',
       location: 'Karuruma',
       district: 'Kicukiro',
       province: 'Kigali City',
@@ -575,7 +575,7 @@ async function main() {
     },
     {
       fullName: 'Divine Uwase',
-      gender: Gender.FEMALE,
+      gender: 'FEMALE',
       location: 'Kimironko',
       district: 'Gasabo',
       province: 'Kigali City',

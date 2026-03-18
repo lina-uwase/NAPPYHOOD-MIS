@@ -364,7 +364,7 @@ export default function Dashboard() {
               <DollarSign className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-gray-700 text-sm">Total Revenue</p>
+              <p className="text-gray-700 text-sm">Service Revenue</p>
               <p className="text-2xl font-bold text-gray-900">RWF {metrics.totalRevenue.toLocaleString()}</p>
             </div>
           </div>

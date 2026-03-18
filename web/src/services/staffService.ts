@@ -26,6 +26,27 @@ export interface UpdateStaffDto {
   isActive?: boolean;
 }
 
+export interface StaffPerformanceMetrics {
+  totalSales: number;
+  totalRevenue: number;
+  averageRevenuePerSale: number;
+  uniqueCustomers: number;
+}
+
+export interface StaffPerformance {
+  staff: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  metrics: StaffPerformanceMetrics;
+}
+
+export interface AllStaffPerformanceResponse {
+  period: string;
+  staffPerformance: StaffPerformance[];
+}
+
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
@@ -60,6 +81,11 @@ class StaffService {
 
   async delete(id: string): Promise<ApiResponse<null>> {
     const response = await api.delete<ApiResponse<null>>(`/auth/users/${id}`);
+    return response.data;
+  }
+
+  async getAllPerformance(period: string = 'month'): Promise<ApiResponse<AllStaffPerformanceResponse>> {
+    const response = await api.get<ApiResponse<AllStaffPerformanceResponse>>(`/staff/performance?period=${period}`);
     return response.data;
   }
 }

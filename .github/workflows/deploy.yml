@@ -1,0 +1,39 @@
+name: Deploy to Kigali VPS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy securely via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 41.186.186.178
+          username: root # Changed from ubuntu to root based on terminal feedback
+          password: ${{ secrets.VPS_PASSWORD }} # This safely retrieves the password you add in GitHub Settings
+          script: |
+            # Navigate to where your live code actually lives
+            cd /opt/nappyhood
+            
+            echo "📥 Pulling latest code from GitHub..."
+            git pull
+            
+            echo "⚙️ Building Backend..."
+            cd backend
+            npm install
+            npm run build
+            
+            echo "💻 Building Frontend..."
+            cd ../web
+            npm install
+            npm run build
+            
+            echo "🚀 Restarting live server..."
+            pm2 restart all || pm2 reload all
+            
+            echo "✅ Deployment finished successfully!"

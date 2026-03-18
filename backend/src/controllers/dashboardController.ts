@@ -60,12 +60,12 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
     const allTimeSales = await prisma.sale.count();
 
     // Get revenue data
-    const totalRevenueResult = await prisma.sale.aggregate({
-      _sum: { finalAmount: true }
+    const totalRevenueResult = await prisma.saleService.aggregate({
+      _sum: { totalPrice: true }
     });
 
     const averageSaleResult = await prisma.sale.aggregate({
-      _avg: { finalAmount: true }
+      _avg: { finalAmount: true } // Keeps total average cart size including products
     });
 
     // Get period-specific data
@@ -73,9 +73,9 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
       where: { saleDate: { gte: periodStart } }
     });
 
-    const periodRevenueResult = await prisma.sale.aggregate({
-      where: { saleDate: { gte: periodStart } },
-      _sum: { finalAmount: true }
+    const periodRevenueResult = await prisma.saleService.aggregate({
+      where: { sale: { saleDate: { gte: periodStart } } },
+      _sum: { totalPrice: true }
     });
 
     // Customer retention
@@ -136,7 +136,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
     const revenueTrendData = await prisma.sale.findMany({
       where: { saleDate: { gte: trendPeriod } },
-      select: { saleDate: true, finalAmount: true }
+      select: { saleDate: true, services: { select: { totalPrice: true } } }
     });
 
     // Group by appropriate time unit based on period
@@ -151,7 +151,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
         const monthRevenue = revenueTrendData
           .filter((sale: any) => sale.saleDate.toISOString().substring(0, 7) === monthStr)
-          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
+          .reduce((sum: number, sale: any) => sum + sale.services.reduce((sSum: number, s: any) => sSum + Number(s.totalPrice), 0), 0);
 
         return {
           date: monthStr,
@@ -168,7 +168,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
         const dayRevenue = revenueTrendData
           .filter((sale: any) => sale.saleDate.toISOString().split('T')[0] === dayStr)
-          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
+          .reduce((sum: number, sale: any) => sum + sale.services.reduce((sSum: number, s: any) => sSum + Number(s.totalPrice), 0), 0);
 
         return {
           date: dayStr,
@@ -185,7 +185,7 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
 
         const dayRevenue = revenueTrendData
           .filter((sale: any) => sale.saleDate.toISOString().split('T')[0] === dayStr)
-          .reduce((sum: number, sale: any) => sum + Number(sale.finalAmount), 0);
+          .reduce((sum: number, sale: any) => sum + sale.services.reduce((sSum: number, s: any) => sSum + Number(s.totalPrice), 0), 0);
 
         return {
           date: dayStr,
@@ -249,8 +249,8 @@ export const getDashboardStats = async (req: Request, res: Response): Promise<vo
           periodSales,
           todaySales, // Today's sales count
           allTimeSales,
-          totalRevenue: Number(totalRevenueResult._sum.finalAmount || 0),
-          averageSaleValue: Number(averageSaleResult._avg.finalAmount || 0),
+          totalRevenue: Number(totalRevenueResult._sum.totalPrice || 0),
+          averageSaleValue: Number(totalRevenueResult._sum.totalPrice || 0) / (allTimeSales || 1), // Average service ticket size
           customerRetentionRate: Math.round(customerRetentionRate * 100) / 100
         },
         topServices,

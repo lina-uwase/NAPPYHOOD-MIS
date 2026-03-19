@@ -90,7 +90,7 @@ model Sale {
   updatedAt           DateTime       @updatedAt
   birthMonthDiscount  Boolean        @default(false)
   ownShampooDiscount  Boolean        @default(false)
-  paymentMethod       String         @default("CASH")
+  paymentMethod       PaymentMethod  @default(CASH)
   discounts           SaleDiscount[]
   payments            SalePayment[]
   products            SaleProduct[]

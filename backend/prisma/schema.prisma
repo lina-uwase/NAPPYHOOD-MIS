@@ -257,6 +257,7 @@ enum DiscountType {
   LOYALTY_POINTS
   SERVICE_COMBO
   BRING_OWN_PRODUCT
+  MANUAL_DISCOUNT
 }
 
 enum PaymentMethod {

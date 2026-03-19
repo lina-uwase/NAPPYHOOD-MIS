@@ -265,4 +265,5 @@ enum PaymentMethod {
   CARD
   MOMO
   BANK_TRANSFER
+  BANK_CARD
 }

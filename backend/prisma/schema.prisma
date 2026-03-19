@@ -28,7 +28,7 @@ model User {
 model Customer {
   id                      String             @id @default(cuid())
   fullName                String
-  gender                  String
+  gender                  Gender
   location                String?
   district                String?
   province                String?
@@ -60,7 +60,7 @@ model Customer {
 model Service {
   id                 String         @id @default(cuid())
   name               String         @unique
-  category           String
+  category           ServiceCategory
   description        String?
   singlePrice        Float
   combinedPrice      Float?
@@ -135,7 +135,7 @@ model SaleStaff {
 model DiscountRule {
   id                 String             @id @default(cuid())
   name               String             @unique
-  type               String
+  type               DiscountType
   value              Float
   isPercentage       Boolean            @default(true)
   isActive           Boolean            @default(true)
@@ -181,7 +181,7 @@ model CustomerDiscount {
 model SalePayment {
   id            String   @id @default(cuid())
   saleId        String
-  paymentMethod String
+  paymentMethod PaymentMethod
   amount        Float
   createdAt     DateTime @default(now())
   sale          Sale     @relation(fields: [saleId], references: [id])
@@ -233,4 +233,34 @@ enum Role {
   ADMIN
   STAFF
   MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ServiceCategory {
+  HAIR_TREATMENTS
+  TWIST_HAIRSTYLE
+  CORNROWS_BRAIDS
+  STRAWSET_CURLS
+  STYLING_SERVICE
+  SPECIAL_OFFERS
+}
+
+enum DiscountType {
+  SIXTH_VISIT
+  BIRTHDAY_MONTH
+  LOYALTY_POINTS
+  SERVICE_COMBO
+  BRING_OWN_PRODUCT
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOMO
+  BANK_TRANSFER
 }

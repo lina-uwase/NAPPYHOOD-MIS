@@ -477,7 +477,7 @@ async function seedServices() {
         const createdService = await prisma.service.upsert({
           where: { name: service.name },
           update: {
-            category: service.category,
+            category: service.category as any,
             description: service.description,
             singlePrice: service.singlePrice,
             combinedPrice: service.combinedPrice,
@@ -485,7 +485,10 @@ async function seedServices() {
             childCombinedPrice: service.childCombinedPrice,
             isActive: true
           },
-          create: service
+          create: {
+            ...service,
+            category: service.category as any
+          }
         });
         console.log(`✅ Upserted service: ${createdService.name}`);
       } catch (error) {

@@ -45,7 +45,7 @@ async function seedProducts() {
   console.log('🌱 Seeding products...');
 
   for (const productData of initialProducts) {
-    const existingProduct = await (prisma as any).product.findUnique({
+    const existingProduct = await prisma.product.findUnique({
       where: { name: productData.name }
     });
 
@@ -55,7 +55,7 @@ async function seedProducts() {
       
     }
 
-    const product = await (prisma as any).product.create({
+    const product = await prisma.product.create({
       data: productData
     });
 

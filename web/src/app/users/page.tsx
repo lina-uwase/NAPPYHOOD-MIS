@@ -80,7 +80,7 @@ export default function UsersPage() {
     try {
       const response = await usersService.create(newUser as CreateUserDto);
       if (response.success) {
-        showSuccess(`${(newUser as CreateUserDto).names} has been added successfully!`);
+        showSuccess(response.message || `${(newUser as CreateUserDto).names} has been added successfully!`);
         setShowAddModal(false);
         loadUsers();
       }

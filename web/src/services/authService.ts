@@ -15,6 +15,7 @@ export interface User {
   email?: string;
   role: 'ADMIN' | 'MANAGER' | 'STAFF';
   profile_picture?: string;
+  canDeleteSales?: boolean;
 }
 
 export interface LoginResponse {

@@ -106,3 +106,109 @@ Body: {
   "applyToAllServices": true,
   "serviceIds": []
 }
+
+[2026-04-27T13:44:14.484Z] POST /
+Body: {
+  "name": "iiuif",
+  "type": "SEASONAL",
+  "value": 5,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-27T00:00:00.000Z",
+  "endDate": "2026-04-27T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": [
+    "cmobflpg90009oy4e8u4nf473"
+  ]
+}
+
+[2026-04-27T13:44:22.147Z] POST /
+Body: {
+  "name": "iiuif",
+  "type": "SEASONAL",
+  "value": 5,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-27T00:00:00.000Z",
+  "endDate": "2026-04-27T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": [
+    "cmobflpg90009oy4e8u4nf473"
+  ]
+}
+
+[2026-04-27T13:44:22.925Z] POST /
+Body: {
+  "name": "iiuif",
+  "type": "SEASONAL",
+  "value": 5,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-27T00:00:00.000Z",
+  "endDate": "2026-04-27T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": [
+    "cmobflpg90009oy4e8u4nf473"
+  ]
+}
+
+[2026-04-27T13:44:25.148Z] POST /
+Body: {
+  "name": "iiuif",
+  "type": "SEASONAL",
+  "value": 5,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-27T00:00:00.000Z",
+  "endDate": "2026-04-27T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": [
+    "cmobflpg90009oy4e8u4nf473"
+  ]
+}
+
+[2026-04-29T08:40:54.447Z] POST /
+Body: {
+  "name": "wew",
+  "type": "SEASONAL",
+  "value": 2,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-29T00:00:00.000Z",
+  "endDate": "2026-04-30T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2026-04-29T08:40:56.416Z] POST /
+Body: {
+  "name": "wew",
+  "type": "SEASONAL",
+  "value": 2,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-29T00:00:00.000Z",
+  "endDate": "2026-04-30T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}
+
+[2026-04-29T08:40:57.231Z] POST /
+Body: {
+  "name": "wew",
+  "type": "SEASONAL",
+  "value": 2,
+  "isPercentage": false,
+  "isActive": true,
+  "description": "",
+  "startDate": "2026-04-29T00:00:00.000Z",
+  "endDate": "2026-04-30T00:00:00.000Z",
+  "applyToAllServices": true,
+  "serviceIds": []
+}

@@ -8,7 +8,8 @@ import {
   getTopCustomers,
   deleteCustomer,
   toggleCustomerActive,
-  getDiscountEligibility
+  getDiscountEligibility,
+  sendBulkMessage
 } from '../controllers/customerController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -327,6 +328,42 @@ router.get('/:id', authenticateToken, getCustomerById);
 router.put('/:id', authenticateToken, requireRole(['ADMIN', 'MANAGER']), updateCustomer);
 router.delete('/:id', authenticateToken, requireRole(['ADMIN', 'MANAGER']), deleteCustomer);
 router.patch('/:id/toggle-active', authenticateToken, requireRole(['ADMIN', 'MANAGER']), toggleCustomerActive);
+
+/**
+ * @swagger
+ * /api/customers/bulk-message:
+ *   post:
+ *     summary: Send bulk WhatsApp messages to customers
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *               - target
+ *             properties:
+ *               message:
+ *                 type: string
+ *               target:
+ *                 type: string
+ *                 enum: [ALL, MALE, FEMALE, SPECIFIC]
+ *               customerIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Required if target is SPECIFIC
+ *     responses:
+ *       200:
+ *         description: Messages queued/sent successfully
+ *       403:
+ *         description: Forbidden
+ */
+router.post('/bulk-message', authenticateToken, requireRole(['ADMIN', 'MANAGER']), sendBulkMessage);
 
 /**
  * @swagger

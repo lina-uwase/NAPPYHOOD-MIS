@@ -46,7 +46,13 @@ export const sendWhatsAppMessage = async (to: string, message: string): Promise<
 };
 
 export const sendTransactionAlert = async (customerName: string, phoneNumber: string, amount: number, totalSpent: number, visitCount: number) => {
-    const message = `Hello ${customerName}, thank you for visiting Nappyhood! You spent ${amount.toLocaleString()} RWF today. Total Spent: ${totalSpent.toLocaleString()} RWF. Visits: ${visitCount}. See you soon!`;
+    // Loyalty program: a discount every 6 visits. Calculate visits remaining until next discount.
+    const visitsRemaining = 6 - (visitCount % 6);
+    const loyaltyText = visitsRemaining === 6 
+        ? "Congratulations on unlocking your loyalty discount today!" 
+        : `You are ${visitsRemaining} visit(s) away from your loyalty discount!`;
+
+    const message = `Hello ${customerName}, thank you for visiting Nappyhood! You spent ${amount.toLocaleString()} RWF today. Total Visits: ${visitCount}. Reminder: ${loyaltyText} Also, don't forget you get a special discount during your birthday month! See you soon!`;
     return sendWhatsAppMessage(phoneNumber, message);
 };
 

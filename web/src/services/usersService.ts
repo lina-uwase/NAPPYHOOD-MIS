@@ -6,6 +6,7 @@ export interface User {
   phone: string;
   email?: string;
   role: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
+  canDeleteSales?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +17,7 @@ export interface CreateUserDto {
   email?: string;
   password: string;
   role?: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
+  canDeleteSales?: boolean;
 }
 
 export interface UpdateUserDto {
@@ -23,6 +25,7 @@ export interface UpdateUserDto {
   phone?: string;
   password?: string;
   role?: 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER';
+  canDeleteSales?: boolean;
 }
 
 export interface UsersResponse {

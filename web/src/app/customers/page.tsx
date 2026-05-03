@@ -11,10 +11,12 @@ import {
   MapPin,
   Phone,
   Calendar,
-  Award
+  Award,
+  MessageCircle
 } from 'lucide-react';
 import customersService, { Customer, GetCustomersParams, CreateCustomerDto, UpdateCustomerDto } from '../../services/customersService';
 import AddCustomerModal from './AddCustomerModal';
+import SendWhatsAppModal from './SendWhatsAppModal';
 import { useTitle } from '../../contexts/TitleContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -31,6 +33,7 @@ const CustomersPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [provinces, setProvinces] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
@@ -213,7 +216,15 @@ const CustomersPage: React.FC = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-4">
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end space-x-3">
+          <button
+            onClick={() => setIsMessageModalOpen(true)}
+            className="bg-white text-[#5A8621] border border-[#5A8621] px-4 py-2 rounded-lg hover:bg-[#5A8621]/10 flex items-center space-x-2 transition-colors"
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span>Message Customers</span>
+          </button>
+          
           <button
             onClick={() => {
               setEditingCustomer(null);
@@ -461,6 +472,13 @@ const CustomersPage: React.FC = () => {
           }}
           onSubmit={editingCustomer ? handleEditCustomer : handleAddCustomer}
           editingCustomer={editingCustomer}
+        />
+      )}
+
+      {isMessageModalOpen && (
+        <SendWhatsAppModal
+          onClose={() => setIsMessageModalOpen(false)}
+          onSend={() => fetchCustomers()}
         />
       )}
 

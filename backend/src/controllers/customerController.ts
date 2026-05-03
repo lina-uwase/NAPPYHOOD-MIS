@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../utils/database';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { createActionNotifications } from './notificationController';
+import { sendWhatsAppMessage } from '../services/whatsappService';
 
 export const getAllCustomers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -690,5 +691,73 @@ export const getDiscountEligibility = async (req: Request, res: Response): Promi
   } catch (error) {
     console.error('Get discount eligibility error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const sendBulkMessage = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { message, target, customerIds } = req.body;
+
+    if (!message || !target) {
+      res.status(400).json({ success: false, error: 'Message and target are required' });
+      return;
+    }
+
+    let whereClause: any = {};
+
+    if (target === 'MALE') {
+      whereClause.gender = 'MALE';
+    } else if (target === 'FEMALE') {
+      whereClause.gender = 'FEMALE';
+    } else if (target === 'SPECIFIC') {
+      if (!customerIds || !Array.isArray(customerIds) || customerIds.length === 0) {
+        res.status(400).json({ success: false, error: 'customerIds array is required when target is SPECIFIC' });
+        return;
+      }
+      whereClause.id = { in: customerIds };
+    }
+
+    // Always ensure they have a phone number
+    whereClause.phone = { not: null };
+
+    const customers = await prisma.customer.findMany({
+      where: whereClause,
+      select: { id: true, phone: true, fullName: true }
+    });
+
+    if (customers.length === 0) {
+      res.status(404).json({ success: false, message: 'No customers found matching the criteria with valid phone numbers' });
+      return;
+    }
+
+    // Process all messages
+    let successCount = 0;
+    let failCount = 0;
+
+    // Send messages (in a real production app with thousands of users, this should be a background job)
+    // For this app size, a loop with Promise.allSettled or sequential await is okay.
+    for (const customer of customers) {
+      if (!customer.phone) continue;
+      
+      // Personalize message if placeholders exist
+      const personalizedMessage = message.replace(/{CustomerName}/gi, customer.fullName);
+      
+      const sent = await sendWhatsAppMessage(customer.phone, personalizedMessage);
+      if (sent) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Finished sending bulk messages. Success: ${successCount}, Failed: ${failCount}`,
+      data: { successCount, failCount, totalAttempted: customers.length }
+    });
+
+  } catch (error) {
+    console.error('Send bulk message error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error while sending messages' });
   }
 };

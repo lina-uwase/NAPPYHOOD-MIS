@@ -191,6 +191,15 @@ class CustomersService {
     }>>(`/customers/${customerId}/discount-eligibility`);
     return response.data;
   }
+
+  async sendBulkMessage(data: {
+    message: string;
+    target: 'ALL' | 'MALE' | 'FEMALE' | 'SPECIFIC';
+    customerIds?: string[];
+  }): Promise<ApiResponse<{ successCount: number; failCount: number; totalAttempted: number }>> {
+    const response = await api.post<ApiResponse<{ successCount: number; failCount: number; totalAttempted: number }>>('/customers/bulk-message', data);
+    return response.data;
+  }
 }
 
 const customersService = new CustomersService();

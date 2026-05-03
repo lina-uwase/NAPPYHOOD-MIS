@@ -104,7 +104,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('📝 Registration request body:', JSON.stringify(req.body, null, 2));
-    const { name, email, phone, password, role } = req.body;
+    const { name, email, phone, password, role, canDeleteSales } = req.body;
 
     if (!name || !phone) {
       console.log('❌ Missing required fields - name:', !!name, 'phone:', !!phone, 'email:', !!email);
@@ -150,6 +150,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         password: hashedPassword,
         phone,
         role: userRole as any,
+        canDeleteSales: Boolean(canDeleteSales),
         isActive: false // User needs to be activated by admin or first login? Logic says inactive until first login if created by admin? 
         // Original code: isActive: false // New staff are inactive until they log in for the first time
       },
@@ -159,22 +160,31 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         email: true,
         role: true,
         phone: true,
+        canDeleteSales: true,
         createdAt: true
       }
     });
 
     // Send welcome credentials
+    let emailFailed = false;
+    
     try {
       if (email) {
         console.log(`📧 Attempting to send welcome email to ${email}...`);
-        await emailService.sendWelcomeEmail(email, name, userPassword, phone);
-        console.log('✅ Welcome email sent successfully');
+        const sent = await emailService.sendWelcomeEmail(email, name, userPassword, phone);
+        if (sent) {
+          console.log('✅ Welcome email sent successfully');
+        } else {
+          emailFailed = true;
+          console.log('⚠️ Welcome email failed to send (likely due to missing credentials).');
+        }
       } else if (phone) {
         // SMS fallback
         await smsService.sendWelcomeMessage(phone, name, userPassword);
       }
     } catch (error) {
       console.error('❌ Failed to send welcome credentials:', error);
+      emailFailed = true;
       if ((error as any).code === 'EAUTH') {
         console.error('💡 Hint: Check EMAIL_USER and EMAIL_APP_PASSWORD in .env');
       }
@@ -183,7 +193,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       success: true,
       data: { user },
-      message: 'User registered successfully. Credentials sent.'
+      message: emailFailed 
+        ? 'User added successfully, but the welcome email failed to send. Please share the password manually.'
+        : 'User registered successfully. Credentials sent.'
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -340,6 +352,7 @@ export const updateProfilePicture = async (req: AuthenticatedRequest, res: Respo
         email: true,
         phone: true,
         role: true,
+        canDeleteSales: true,
         profilePicture: true
       }
     });
@@ -352,6 +365,7 @@ export const updateProfilePicture = async (req: AuthenticatedRequest, res: Respo
         email: updatedUser.email,
         phone: updatedUser.phone,
         role: updatedUser.role,
+        canDeleteSales: updatedUser.canDeleteSales,
         profile_picture: updatedUser.profilePicture
       },
       message: 'Profile picture updated successfully'
@@ -392,6 +406,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
           email: true,
           phone: true,
           role: true,
+          canDeleteSales: true,
           isActive: true,
           createdAt: true
         },
@@ -408,6 +423,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
       email: user.email,
       phone: user.phone,
       role: user.role,
+      canDeleteSales: user.canDeleteSales,
       created_at: user.createdAt,
       updated_at: user.createdAt
     }));
@@ -440,6 +456,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
         email: true,
         phone: true,
         role: true,
+        canDeleteSales: true,
         isActive: true,
         createdAt: true
       }
@@ -458,6 +475,7 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
         email: user.email,
         phone: user.phone,
         role: user.role,
+        canDeleteSales: user.canDeleteSales,
         created_at: user.createdAt,
         updated_at: user.createdAt
       }
@@ -471,12 +489,13 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const id = req.params.id as string;
-    const { names, phone, role } = req.body;
+    const { names, phone, role, canDeleteSales } = req.body;
 
     const updateData: any = {};
     if (names) updateData.name = names;
     if (phone) updateData.phone = phone;
     if (role) updateData.role = role;
+    if (canDeleteSales !== undefined) updateData.canDeleteSales = Boolean(canDeleteSales);
 
     const user = await prisma.user.update({
       where: { id },
@@ -487,6 +506,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         email: true,
         phone: true,
         role: true,
+        canDeleteSales: true,
         createdAt: true
       }
     });
@@ -499,6 +519,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         email: user.email,
         phone: user.phone,
         role: user.role,
+        canDeleteSales: user.canDeleteSales,
         created_at: user.createdAt,
         updated_at: user.createdAt
       },

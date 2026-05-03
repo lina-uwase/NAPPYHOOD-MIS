@@ -351,8 +351,17 @@ const DiscountsSection: React.FC = () => {
                                     <label className="block text-gray-700 font-medium mb-1">Start Date</label>
                                     <input
                                         type="date"
+                                        min={new Date().toISOString().split('T')[0]}
                                         value={formData.startDate}
-                                        onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+                                        onChange={e => {
+                                            const newStartDate = e.target.value;
+                                            // Auto-adjust end date if it's now before the new start date
+                                            let newEndDate = formData.endDate;
+                                            if (newEndDate && new Date(newEndDate) < new Date(newStartDate)) {
+                                                newEndDate = newStartDate;
+                                            }
+                                            setFormData({ ...formData, startDate: newStartDate, endDate: newEndDate });
+                                        }}
                                         className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-[#5A8621]"
                                     />
                                 </div>
@@ -360,6 +369,7 @@ const DiscountsSection: React.FC = () => {
                                     <label className="block text-gray-700 font-medium mb-1">End Date</label>
                                     <input
                                         type="date"
+                                        min={formData.startDate || new Date().toISOString().split('T')[0]}
                                         value={formData.endDate}
                                         onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                                         className="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-[#5A8621]"

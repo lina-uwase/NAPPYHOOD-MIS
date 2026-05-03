@@ -109,6 +109,10 @@ export interface CreateSaleDto {
     paymentMethod: string;
     amount: number;
   }>;
+  customServices?: Array<{
+    name: string;
+    price: number;
+  }>;
   manualDiscountAmount?: number;
   manualDiscountReason?: string;
   manualIncrementAmount?: number;

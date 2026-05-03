@@ -20,10 +20,12 @@ import AddSalesModal from './AddSalesModal';
 import { useTitle } from '../../contexts/TitleContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 const SalesPage: React.FC = () => {
   const { setTitle } = useTitle();
   const { showSuccess, showError } = useNotification();
+  const { user } = useAuth();
   const [sales, setSales] = useState<Sale[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -657,12 +659,14 @@ const SalesPage: React.FC = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDeleteClick(sale.id)}
-                        className="p-2 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {(user?.role === 'ADMIN' || user?.canDeleteSales) && (
+                        <button
+                          onClick={() => handleDeleteClick(sale.id)}
+                          className="p-2 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
 

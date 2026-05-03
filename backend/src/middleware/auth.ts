@@ -7,6 +7,7 @@ interface AuthenticatedRequest extends Request {
     id: string;
     phone: string;
     role: string;
+    canDeleteSales?: boolean;
   };
   file?: Express.Multer.File;
 }
@@ -38,7 +39,7 @@ export const authenticateToken = async (
     // Verify user exists and is active
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, phone: true, role: true, isActive: true }
+      select: { id: true, phone: true, role: true, isActive: true, canDeleteSales: true }
     });
 
     if (!user || !user.isActive) {

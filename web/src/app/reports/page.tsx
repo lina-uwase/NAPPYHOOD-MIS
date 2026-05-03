@@ -11,11 +11,13 @@ import {
 import { useTitle } from '../../contexts/TitleContext';
 import salesService from '../../services/salesService';
 import customersService from '../../services/customersService';
+import staffService from '../../services/staffService';
 import * as XLSX from 'xlsx';
 
 interface ReportData {
   sales: any[];
   customers: any[];
+  staff: any[];
   totalSales: number;
   totalRevenue: number;
   totalCustomers: number;
@@ -24,7 +26,7 @@ interface ReportData {
 
 const ReportsPage: React.FC = () => {
   const { setTitle } = useTitle();
-  const [reportType, setReportType] = useState<'sales' | 'customers'>('sales');
+  const [reportType, setReportType] = useState<'sales' | 'customers' | 'staff'>('sales');
   const [periodType, setPeriodType] = useState<'daily' | 'monthly' | 'yearly' | 'custom'>('custom');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -62,7 +64,7 @@ const ReportsPage: React.FC = () => {
         reportEndDate = endDate;
       }
 
-      const [salesResponse, customersResponse] = await Promise.all([
+      const [salesResponse, customersResponse, staffResponse] = await Promise.all([
         salesService.getAll({
           startDate: reportStartDate,
           endDate: reportEndDate,
@@ -71,7 +73,8 @@ const ReportsPage: React.FC = () => {
         customersService.getAll({
           limit: 1000,
           isActive: true
-        })
+        }),
+        staffService.getAll()
       ]);
 
       // Filter customers by the selected date range
@@ -88,6 +91,7 @@ const ReportsPage: React.FC = () => {
       setReportData({
         sales,
         customers: filteredCustomers,
+        staff: staffResponse.success && Array.isArray(staffResponse.data) ? staffResponse.data : [],
         totalSales: sales.length,
         totalRevenue,
         totalCustomers: allCustomers.length,
@@ -98,6 +102,7 @@ const ReportsPage: React.FC = () => {
       setReportData({
         sales: [],
         customers: [],
+        staff: [],
         totalSales: 0,
         totalRevenue: 0,
         totalCustomers: 0,
@@ -231,7 +236,7 @@ const ReportsPage: React.FC = () => {
       if (!ws['A2']) ws['A2'] = { t: 's', v: `${reportType.toUpperCase()} REPORT` };
 
       XLSX.utils.book_append_sheet(wb, ws, 'Sales Report');
-    } else {
+    } else if (reportType === 'customers') {
       // Customer report
       summaryData.push(['CUSTOMER DETAILS']);
 
@@ -268,6 +273,41 @@ const ReportsPage: React.FC = () => {
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, 'Customer Report');
+    } else if (reportType === 'staff') {
+      // Staff report
+      summaryData.push(['STAFF DETAILS']);
+
+      // Add staff table headers
+      const staffHeaders = [['Date Joined', 'Name', 'Role', 'Status', 'Phone', 'Email', 'Total Recorded Sales', 'Total Revenue Generated']];
+      const staffRows = (reportData.staff || []).map((staff: any) => {
+        const date = formatDate(staff.createdAt);
+        const name = staff.name || 'Unknown';
+        const role = staff.role || 'N/A';
+        const status = staff.isActive ? 'Active' : 'Inactive';
+        const phone = staff.phone || 'N/A';
+        const email = staff.email || 'N/A';
+        const visits = (staff.salesCount || 0).toString();
+        const spent = staff.revenueGenerated ? formatCurrency(staff.revenueGenerated) : formatCurrency(0);
+
+        return [date, name, role, status, phone, email, visits, spent];
+      });
+
+      const staffSheetData = [...summaryData, ...staffHeaders, ...staffRows];
+      const ws = XLSX.utils.aoa_to_sheet(staffSheetData);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 15 }, // Date Joined
+        { wch: 25 }, // Name
+        { wch: 15 }, // Role
+        { wch: 10 }, // Status
+        { wch: 18 }, // Phone
+        { wch: 25 }, // Email
+        { wch: 20 }, // Total Sales
+        { wch: 25 }, // Total Revenue
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Staff Report');
     }
   };
 
@@ -287,6 +327,7 @@ const ReportsPage: React.FC = () => {
                 >
                   <option value="sales">Sales Report</option>
                   <option value="customers">Customer Report</option>
+                  <option value="staff">Staff Report</option>
                 </select>
               </div>
 
@@ -477,7 +518,7 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
               )
-            ) : (
+            ) : reportType === 'customers' ? (
               reportData.customers.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="mx-auto h-12 w-12 text-gray-400" />
@@ -501,6 +542,39 @@ const ReportsPage: React.FC = () => {
                           <div className="text-right">
                             <p className="text-sm text-gray-500">Registered</p>
                             <p className="font-medium">{formatDate(customer.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ) : (
+              reportData.staff.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No staff found</h3>
+                  <p className="mt-1 text-sm text-gray-500">No staff accounts found.</p>
+                </div>
+              ) : (
+                <div className="p-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Staff Details</h3>
+                  <div className="space-y-4">
+                    {reportData.staff.map((staff: any) => (
+                      <div key={staff.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium text-gray-900">{staff.name}</h4>
+                            <p className="text-sm text-gray-600">{staff.phone || 'No phone'} • {staff.role}</p>
+                            <p className="text-sm">
+                              <span className={staff.isActive ? "text-green-600" : "text-red-600"}>
+                                {staff.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-gray-500">Total Sales Recorded</p>
+                            <p className="font-medium">{staff.salesCount || 0}</p>
                           </div>
                         </div>
                       </div>

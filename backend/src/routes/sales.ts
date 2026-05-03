@@ -285,7 +285,7 @@ router.post('/debug', authenticateToken, (req: any, res: any) => {
 
 router.get('/:id', authenticateToken, getSaleById);
 router.put('/:id', authenticateToken, updateSale);
-router.delete('/:id', authenticateToken, requireRole(['ADMIN', 'MANAGER']), deleteSale);
+router.delete('/:id', authenticateToken, deleteSale);
 router.patch('/:id/complete', authenticateToken, completeSale);
 
 export default router;

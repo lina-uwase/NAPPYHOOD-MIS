@@ -17,7 +17,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
     phone: '',
     email: '',
     password: '',
-    role: 'STAFF' as 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER'
+    role: 'STAFF' as 'ADMIN' | 'STAFF' | 'HAIRSTYLIST' | 'RECEPTIONIST' | 'MANAGER',
+    canDeleteSales: false
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,7 +31,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         phone: editingUser.phone || '',
         email: editingUser.email || '',
         password: '', // Don't populate password when editing
-        role: editingUser.role || 'STAFF'
+        role: editingUser.role || 'STAFF',
+        canDeleteSales: editingUser.canDeleteSales || false
       });
     } else {
       setFormData({
@@ -38,7 +40,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         phone: '',
         email: '',
         password: '',
-        role: 'STAFF'
+        role: 'STAFF',
+        canDeleteSales: false
       });
     }
     setErrors({});
@@ -94,7 +97,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         const updateData: UpdateUserDto = {
           names: formData.names,
           phone: formData.phone,
-          role: formData.role
+          role: formData.role,
+          canDeleteSales: formData.canDeleteSales
         };
 
         if (formData.password) {
@@ -108,7 +112,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
           phone: formData.phone,
           role: formData.role,
           email: formData.email.trim() || undefined, // Email is optional - only send if provided
-          password: formData.password
+          password: formData.password,
+          canDeleteSales: formData.canDeleteSales
         };
         await onAddUser(createData);
       }
@@ -119,7 +124,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
         phone: '',
         email: '',
         password: '',
-        role: 'STAFF'
+        role: 'STAFF',
+        canDeleteSales: false
       });
       setErrors({});
       setErrors({});
@@ -138,7 +144,8 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
           phone: '',
           email: '',
           password: '',
-          role: 'STAFF'
+          role: 'STAFF',
+          canDeleteSales: false
         });
         setErrors({});
       }
@@ -282,6 +289,24 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose, onAddUser,
               <option value="ADMIN">Admin</option>
             </select>
           </div>
+
+          {formData.role !== 'ADMIN' && (
+            <div className="mb-4">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.canDeleteSales}
+                  onChange={(e) => setFormData(prev => ({ ...prev, canDeleteSales: e.target.checked }))}
+                  className="w-4 h-4 text-[#009900] rounded focus:ring-[#009900]"
+                />
+                <span className="text-sm font-medium text-gray-700">Can Delete Sales</span>
+              </label>
+              <p className="mt-1 text-xs text-gray-500 ml-6">
+                Grant this user the privilege to delete recorded sales.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"

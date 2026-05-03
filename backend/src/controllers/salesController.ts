@@ -8,8 +8,7 @@ import { createActionNotifications } from './notificationController';
 interface SaleService {
   serviceId: string;
   quantity: number;
-  isChild: boolean;
-  isCombined: boolean;
+  isChild: boolean; 
   addShampoo?: boolean;
 }
 
@@ -29,6 +28,7 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       serviceIds, // Optional: Array<string> (frontend simplified payload)
       serviceShampooOptions, // Object mapping serviceId to shampoo preference
       products, // Array of {productId, quantity}
+      customServices, // Array of { name: string, price: number }
       staffIds, // Array of staff IDs
       customStaffNames, // Array of custom staff names
       notes,
@@ -73,12 +73,44 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
         }))
         : [];
 
-    // Validate that at least services or products are provided
+    // Validate that at least services, customServices, or products are provided
     const normalizedProducts = Array.isArray(products) ? products : [];
+    const hasCustomServices = Array.isArray(customServices) && customServices.length > 0;
 
-    if (!customerId || (normalizedServices.length === 0 && normalizedProducts.length === 0)) {
-      res.status(400).json({ error: 'Customer ID and at least one service or product is required' });
+    if (!customerId || (normalizedServices.length === 0 && normalizedProducts.length === 0 && !hasCustomServices)) {
+      res.status(400).json({ error: 'Customer ID and at least one service, custom service, or product is required' });
       return;
+    }
+
+    // Upsert custom services and inject into normalizedServices
+    if (hasCustomServices) {
+      for (const custom of customServices) {
+        if (!custom.name || custom.price === undefined) continue;
+        
+        let dbService = await prisma.service.findFirst({
+          where: { name: { equals: custom.name, mode: 'insensitive' } }
+        });
+        
+        if (!dbService) {
+          dbService = await prisma.service.create({
+            data: {
+              name: custom.name,
+              category: 'NAILS',
+              singlePrice: Number(custom.price),
+              isActive: true
+            }
+          });
+        }
+        
+        normalizedServices.push({
+          serviceId: dbService.id,
+          quantity: 1,
+          isChild: false,
+          isCombined: false,
+          addShampoo: false,
+          customPrice: Number(custom.price)
+        });
+      }
     }
 
     // Get customer data
@@ -121,7 +153,9 @@ export const createSale = async (req: AuthenticatedRequest, res: Response): Prom
       // Determine if shampoo should be added for this service
       const shouldAddShampoo = service.addShampoo || false;
 
-      if (service.isChild) {
+      if (service.customPrice !== undefined) {
+        unitPrice = Number(service.customPrice);
+      } else if (service.isChild) {
         if (shouldAddShampoo && serviceDetail.childCombinedPrice) {
           unitPrice = Number(serviceDetail.childCombinedPrice);
         } else {
@@ -1459,6 +1493,14 @@ export const updateSale = async (req: AuthenticatedRequest, res: Response): Prom
 
 export const deleteSale = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
+    const user = req.user;
+    
+    // Enforce granular privileges
+    if (user?.role !== 'ADMIN' && !user?.canDeleteSales) {
+      res.status(403).json({ error: 'You do not have permission to delete sales. Please contact an administrator.' });
+      return;
+    }
+
     const id = req.params.id as string;
     const existingSale = await (prisma.sale.findUnique as any)({
       where: { id },

@@ -57,6 +57,8 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
     { paymentMethod: 'MOMO', amount: 0 }
   ]);
 
+  const [customServices, setCustomServices] = useState<Array<{ id: string; name: string; price: number | '' }>>([]);
+
   const [serviceShampooOptions, setServiceShampooOptions] = useState<Record<string, boolean>>({});
   const [selectedServices, setSelectedServices] = useState<SelectedServiceWithCombo[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<(StaffOption | CustomStaff)[]>([]);
@@ -428,10 +430,19 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
       newErrors.customerId = 'Customer Name is required';
     }
 
-    // Allow either services OR products (or both)
-    if (formData.serviceIds.length === 0 && formData.productIds.length === 0) {
-      newErrors.serviceIds = 'Please select at least one service or product';
+    // Allow either services OR products OR custom services
+    const validCustomServices = customServices.filter(cs => cs.name.trim() !== '' && cs.price !== '' && Number(cs.price) >= 0);
+    if (formData.serviceIds.length === 0 && formData.productIds.length === 0 && validCustomServices.length === 0) {
+      newErrors.serviceIds = 'Please select at least one service, custom service, or product';
     }
+
+    // Validate custom services if any are partially filled
+    customServices.forEach((cs, index) => {
+      if ((cs.name.trim() !== '' && (cs.price === '' || Number(cs.price) < 0)) || 
+          (cs.name.trim() === '' && cs.price !== '')) {
+        newErrors[`customService_${index}`] = 'Both Name and Price are required for a custom service';
+      }
+    });
 
     // Validate product quantities
     formData.productIds.forEach(productId => {
@@ -583,6 +594,10 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         customerId: finalCustomerId,
         services: servicesPayload.length > 0 ? servicesPayload : undefined,
         serviceIds: formData.serviceIds.length > 0 && servicesPayload.length === 0 ? formData.serviceIds : undefined,
+        customServices: customServices.filter(cs => cs.name.trim() !== '' && cs.price !== '').map(cs => ({
+          name: cs.name.trim(),
+          price: Number(cs.price)
+        })),
         products: productsData.length > 0 ? productsData : undefined,
         serviceShampooOptions: serviceShampooOptions,
         staffIds: submitStaffData.staffIds,
@@ -709,6 +724,13 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
         const quantity = formData.productQuantities[productId] || 1; // Default to 1 for calculation if not set
         if (product && quantity > 0) {
           subtotal += Number(product.price) * quantity;
+        }
+      });
+
+      // Calculate custom services costs
+      customServices.forEach(cs => {
+        if (cs.name.trim() !== '' && cs.price !== '' && Number(cs.price) > 0) {
+          subtotal += Number(cs.price);
         }
       });
 
@@ -1764,6 +1786,95 @@ const AddSalesModal: React.FC<AddSalesModalProps> = ({
                         );
                       })}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Custom Services Section (Nails, Misc) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    <Scissors className="inline h-4 w-4 mr-1" />
+                    Add Custom Service (Nails, etc.)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomServices(prev => [...prev, { id: Math.random().toString(), name: '', price: '' }])}
+                    className="text-sm text-[#5A8621] hover:text-[#4A6E1A] font-medium"
+                  >
+                    + Add Row
+                  </button>
+                </div>
+                
+                {customServices.length > 0 && (
+                  <div className="space-y-3">
+                    {customServices.map((cs, index) => (
+                      <div key={cs.id} className="flex gap-2 items-start">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            placeholder="Service Name (e.g., Gel, Guca inzara)"
+                            value={cs.name}
+                            onChange={(e) => {
+                              const newCs = [...customServices];
+                              newCs[index].name = e.target.value;
+                              setCustomServices(newCs);
+                              
+                              if (errors[`customService_${index}`]) {
+                                setErrors(prev => {
+                                  const ne = { ...prev };
+                                  delete ne[`customService_${index}`];
+                                  return ne;
+                                });
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                          />
+                        </div>
+                        <div className="w-1/3 relative">
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Price"
+                            value={cs.price}
+                            onChange={(e) => {
+                              const newCs = [...customServices];
+                              newCs[index].price = e.target.value === '' ? '' : Number(e.target.value);
+                              setCustomServices(newCs);
+                              
+                              if (errors[`customService_${index}`]) {
+                                setErrors(prev => {
+                                  const ne = { ...prev };
+                                  delete ne[`customService_${index}`];
+                                  return ne;
+                                });
+                              }
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5A8621]"
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">RWF</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomServices(prev => prev.filter((_, i) => i !== index));
+                            if (errors[`customService_${index}`]) {
+                              setErrors(prev => {
+                                const ne = { ...prev };
+                                delete ne[`customService_${index}`];
+                                return ne;
+                              });
+                            }
+                          }}
+                          className="mt-1 p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                    {Object.keys(errors).some(key => key.startsWith('customService_')) && (
+                      <p className="text-sm text-red-600 mt-1">Please ensure all custom services have both a name and a valid price.</p>
+                    )}
                   </div>
                 )}
               </div>
